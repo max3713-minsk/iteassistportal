@@ -158,6 +158,7 @@ export type Database = {
           period_start: string
           site_id: string
           status: Database["public"]["Enums"]["protocol_status"]
+          ticket_id: string | null
           updated_at: string
         }
         Insert: {
@@ -172,6 +173,7 @@ export type Database = {
           period_start: string
           site_id: string
           status?: Database["public"]["Enums"]["protocol_status"]
+          ticket_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -186,6 +188,7 @@ export type Database = {
           period_start?: string
           site_id?: string
           status?: Database["public"]["Enums"]["protocol_status"]
+          ticket_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -194,6 +197,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_protocols_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
