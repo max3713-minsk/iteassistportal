@@ -165,6 +165,9 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
     },
   });
 
+  // Initialize protocolNotes from protocol data
+  const currentProtocolNotes = protocolNotes || protocol?.notes || "";
+
   if (!protocol) return <p className="text-muted-foreground">Загрузка...</p>;
 
   const allCompleted = totalCount > 0 && completedCount === totalCount;
