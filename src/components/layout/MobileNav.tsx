@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, Shield } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList,
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import logo from "@/assets/logo-innotech.png";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд" },
@@ -26,12 +28,15 @@ export default function MobileNav() {
   return (
     <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-card">
       <div className="flex items-center gap-2">
-        <Shield className="h-5 w-5 text-primary" />
-        <span className="font-heading font-semibold">InfraSupport</span>
+        <img src={logo} alt="Innotech" className="h-7 w-auto" />
+        <span className="font-heading font-semibold text-sm">InfraSupport</span>
       </div>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+      </div>
 
       {open && (
         <div className="absolute top-14 left-0 right-0 z-50 bg-card border-b shadow-lg p-4 space-y-1">
