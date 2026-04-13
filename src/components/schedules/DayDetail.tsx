@@ -3,7 +3,8 @@ import { ru } from "date-fns/locale";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, Circle, X } from "lucide-react";
+import { CheckCircle2, Circle, X, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +28,7 @@ interface GroupedCategory {
 }
 
 export default function DayDetail({ date, tasks, completedTaskIds, onClose }: Props) {
+  const navigate = useNavigate();
   const grouped = useMemo(() => {
     // Filter tasks scheduled on this date
     const scheduled = tasks.filter((t) =>
@@ -84,8 +86,21 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose }: Pr
         ))}
       </div>
 
+      {/* Navigate to protocols */}
+      <div className="px-4 py-2 border-b">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2"
+          onClick={() => navigate(`/protocols?date=${format(date, "yyyy-MM-dd")}`)}
+        >
+          <FileText className="h-4 w-4" />
+          Перейти к отчётам за эту дату
+        </Button>
+      </div>
+
       {/* Task list */}
-      <ScrollArea className="max-h-[60vh]">
+      <ScrollArea className="h-[calc(100vh-380px)] min-h-[200px]">
         <div className="p-4 space-y-4">
           {grouped.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
