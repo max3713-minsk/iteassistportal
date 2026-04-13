@@ -229,6 +229,38 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         )}
       </div>
 
+      {/* On-request: result entry */}
+      {isOnRequest && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-base">Результат выполнения заявки</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 space-y-3">
+            {isStaff && !isCompleted ? (
+              <>
+                <Textarea
+                  placeholder="Опишите результат выполнения работ по заявке..."
+                  className="min-h-[100px]"
+                  value={protocolNotes || protocol.notes || ""}
+                  onChange={(e) => setProtocolNotes(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => saveProtocolNotes.mutate()}
+                  disabled={saveProtocolNotes.isPending || !protocolNotes}
+                >
+                  Сохранить результат
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">
+                {protocol.notes || <span className="text-muted-foreground italic">Результат ещё не заполнен</span>}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Checklist */}
       <ScrollArea className="h-[calc(100vh-380px)] min-h-[300px]">
         <div className="space-y-4">
