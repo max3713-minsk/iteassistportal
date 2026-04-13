@@ -1,5 +1,4 @@
-import logoLight from "@/assets/logo-light.png";
-import logoDark from "@/assets/logo-dark.png";
+import logo from "@/assets/logo.png";
 
 interface BrandLogoProps {
   className?: string;
@@ -7,10 +6,5 @@ interface BrandLogoProps {
 }
 
 export default function BrandLogo({ className = "h-9 w-auto", alt = "Innotech Engineering" }: BrandLogoProps) {
-  return (
-    <>
-      <img src={logoLight} alt={alt} className={`${className} dark:hidden`} />
-      <img src={logoDark} alt={alt} className={`${className} hidden dark:block`} />
-    </>
-  );
+  return <img src={logo} alt={alt} className={className} />;
 }
