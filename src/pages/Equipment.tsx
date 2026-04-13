@@ -228,8 +228,9 @@ export default function Equipment() {
         </div>
       </div>
 
+      {isLoading ? (
         <p className="text-muted-foreground">Загрузка...</p>
-      ) : equipment.length === 0 ? (
+      ) : filteredEquipment.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Server className="h-12 w-12 text-muted-foreground/40 mb-4" />
@@ -243,7 +244,7 @@ export default function Equipment() {
               <TableRow>
                 <TableHead>Название</TableHead>
                 <TableHead>Модель</TableHead>
-                <TableHead>Площадка</TableHead>
+                <TableHead>ЦОД</TableHead>
                 <TableHead className="hidden md:table-cell">Категория</TableHead>
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
@@ -251,7 +252,7 @@ export default function Equipment() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {equipment.map((eq: any) => {
+              {filteredEquipment.map((eq: any) => {
                 const row = (
                   <TableRow key={eq.id}>
                     <TableCell className="font-medium">{eq.name}</TableCell>
