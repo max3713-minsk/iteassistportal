@@ -288,6 +288,18 @@ export default function Dashboard() {
   const { data: activity } = useActivity();
   const { data: equipmentByStatus } = useEquipmentByStatus();
   const { data: recentTickets } = useRecentTickets();
+  const { data: closedStats } = useClosedTicketsStats();
+
+  function formatDuration(ms: number) {
+    const totalMinutes = Math.round(ms / 60000);
+    if (totalMinutes < 60) return `${totalMinutes} мин`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) return `${hours} ч ${minutes > 0 ? `${minutes} мин` : ""}`.trim();
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return `${days} д ${remHours > 0 ? `${remHours} ч` : ""}`.trim();
+  }
 
   const priorityVariant: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
     P1: "destructive",
