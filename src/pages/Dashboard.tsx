@@ -171,7 +171,23 @@ function useEquipmentByStatus() {
         const s = e.status || "active";
         counts[s] = (counts[s] || 0) + 1;
       });
-      return Object.entries(counts).map(([status, count]) => ({ status, count }));
+      const labels: Record<string, string> = {
+        active: "Активно",
+        maintenance: "На обслуживании",
+        decommissioned: "Выведено",
+        faulty: "Неисправно",
+      };
+      // Ensure all known statuses are present
+      const allStatuses = Object.keys(labels);
+      // Add any statuses from data that aren't in our labels
+      Object.keys(counts).forEach((s) => {
+        if (!allStatuses.includes(s)) allStatuses.push(s);
+      });
+      return allStatuses.map((status) => ({
+        status,
+        label: labels[status] || status,
+        count: counts[status] || 0,
+      }));
     },
   });
 }
