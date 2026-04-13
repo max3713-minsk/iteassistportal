@@ -207,6 +207,15 @@ export default function Equipment() {
                   <Label>Описание</Label>
                   <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
                 </div>
+                <div className="space-y-2">
+                  <Label>Статус</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue placeholder="Выберите статус" /></SelectTrigger>
+                    <SelectContent>
+                      {EQUIPMENT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveMutation.mutate(form)} disabled={!form.name || !form.site_id || saveMutation.isPending}>
