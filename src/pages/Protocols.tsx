@@ -178,6 +178,7 @@ export default function Protocols() {
           protocolId={selectedId}
           onBack={() => setSelectedId(null)}
           onExportPdf={handleExportPdf}
+          onExportDocx={handleExportDocx}
         />
       </div>
     );
