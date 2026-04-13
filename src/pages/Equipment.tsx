@@ -215,30 +215,43 @@ export default function Equipment() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {equipment.map((eq: any) => (
-                <TableRow key={eq.id}>
-                  <TableCell className="font-medium">{eq.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{eq.model ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{eq.sites?.name ?? "—"}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
-                  <TableCell>{eq.quantity}</TableCell>
-                  {isStaff && (
+              {equipment.map((eq: any) => {
+                const row = (
+                  <TableRow key={eq.id}>
+                    <TableCell className="font-medium">{eq.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{eq.model ?? "—"}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(eq)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+                      <Badge variant="secondary">{eq.sites?.name ?? "—"}</Badge>
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
+                    <TableCell>{eq.quantity}</TableCell>
+                    {isStaff && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(eq)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+                if (eq.description) {
+                  return (
+                    <Tooltip key={eq.id}>
+                      <TooltipTrigger asChild>{row}</TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p>{eq.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                return row;
+              })}
             </TableBody>
           </Table>
         </Card>
