@@ -133,6 +133,7 @@ export default function Equipment() {
       os_info: eq.os_info ?? "",
       quantity: eq.quantity ?? 1,
       description: eq.description ?? "",
+      status: eq.status ?? "active",
     });
     setEditing(eq.id);
     setOpen(true);
