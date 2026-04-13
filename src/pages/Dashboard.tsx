@@ -320,7 +320,7 @@ export default function Dashboard() {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {protocolsByStatus.map((_, i) => (
-                      <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                      <Cell key={i} fill={PROTOCOL_COLORS[i % PROTOCOL_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -350,7 +350,7 @@ export default function Dashboard() {
                     label={({ status, count }) => `${status}: ${count}`}
                   >
                     {equipmentByStatus.map((_, i) => (
-                      <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                      <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -375,22 +375,8 @@ export default function Dashboard() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="tickets"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  name="Заявки"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="protocols"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  name="Протоколы"
-                />
+                <Line type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Заявки" />
+                <Line type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} name="Протоколы" />
               </LineChart>
             </ChartContainer>
           ) : (
