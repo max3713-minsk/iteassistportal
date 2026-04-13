@@ -500,15 +500,15 @@ export default function Dashboard() {
                     outerRadius={80}
                     label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}
                   >
-                    {equipmentByStatus.map((_, i) => (
-                      <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
+                    {equipmentByStatus.map((item, i) => (
+                      <Cell key={i} fill={EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK} />
                     ))}
                   </Pie>
                   <Legend
-                    payload={equipmentByStatus.map((item, i) => ({
+                    payload={equipmentByStatus.map((item) => ({
                       value: item.label,
                       type: "circle" as const,
-                      color: EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length],
+                      color: EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK,
                     }))}
                     wrapperStyle={{ fontSize: 12 }}
                   />
