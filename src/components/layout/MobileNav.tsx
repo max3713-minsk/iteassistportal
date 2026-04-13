@@ -11,7 +11,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Дашборд" },
+  { to: "/", icon: LayoutDashboard, label: "Панель управления" },
   { to: "/sites", icon: Building2, label: "ЦОД" },
   { to: "/equipment", icon: Server, label: "Оборудование" },
   { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО" },
