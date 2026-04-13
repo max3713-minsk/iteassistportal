@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -94,6 +94,10 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const completedCount = items.filter((i) => i.status === "completed").length;
   const totalCount = items.length;
 
+  const [protocolNotes, setProtocolNotes] = useState("");
+
+  const isOnRequest = protocol?.frequency === "on_request";
+
   const toggleItem = useMutation({
     mutationFn: async (item: ProtocolItem) => {
       const newStatus = item.status === "completed" ? "pending" : "completed";
@@ -104,12 +108,41 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           completed_by: newStatus === "completed" ? session?.user.id : null,
           completed_at: newStatus === "completed" ? new Date().toISOString() : null,
           notes: itemNotes[item.id] || item.notes || null,
+          result: isOnRequest ? (itemNotes[item.id] || item.notes || null) : item.result,
         })
         .eq("id", item.id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+    },
+  });
+
+  const saveItemResult = useMutation({
+    mutationFn: async ({ itemId, result }: { itemId: string; result: string }) => {
+      const { error } = await supabase
+        .from("protocol_items")
+        .update({ result, notes: result })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      toast({ title: "Результат сохранён" });
+    },
+  });
+
+  const saveProtocolNotes = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("maintenance_protocols")
+        .update({ notes: protocolNotes, status: "in_progress" })
+        .eq("id", protocolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
+      toast({ title: "Результат работы сохранён" });
     },
   });
 
@@ -131,6 +164,9 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       toast({ title: "Протокол завершён" });
     },
   });
+
+  // Initialize protocolNotes from protocol data
+  const currentProtocolNotes = protocolNotes || protocol?.notes || "";
 
   if (!protocol) return <p className="text-muted-foreground">Загрузка...</p>;
 
@@ -192,6 +228,38 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           </Button>
         )}
       </div>
+
+      {/* On-request: result entry */}
+      {isOnRequest && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-base">Результат выполнения заявки</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 space-y-3">
+            {isStaff && !isCompleted ? (
+              <>
+                <Textarea
+                  placeholder="Опишите результат выполнения работ по заявке..."
+                  className="min-h-[100px]"
+                  value={protocolNotes || protocol.notes || ""}
+                  onChange={(e) => setProtocolNotes(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => saveProtocolNotes.mutate()}
+                  disabled={saveProtocolNotes.isPending || !protocolNotes}
+                >
+                  Сохранить результат
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">
+                {protocol.notes || <span className="text-muted-foreground italic">Результат ещё не заполнен</span>}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Checklist */}
       <ScrollArea className="h-[calc(100vh-380px)] min-h-[300px]">
