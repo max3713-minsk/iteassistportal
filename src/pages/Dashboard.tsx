@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Server, Ticket, ClipboardList, AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Building2, Server, Ticket, ClipboardList, AlertTriangle, CheckCircle2, Clock, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import {
   ChartContainer,
   ChartTooltip,
