@@ -166,7 +166,13 @@ export default function UsersAdmin() {
 
   return (
     <div className="space-y-4">
-      <h1 className="font-heading text-2xl font-bold">Пользователи</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-bold">Пользователи</h1>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Создать пользователя
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
