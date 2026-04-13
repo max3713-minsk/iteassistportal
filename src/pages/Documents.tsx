@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileArchive, Trash2, Eye, Download, Filter } from "lucide-react";
+import { Plus, FileArchive, Trash2, Eye, Download, Filter, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -23,7 +23,9 @@ export default function Documents() {
   const [open, setOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState("");
+  const [previewType, setPreviewType] = useState("");
   const [filterOrg, setFilterOrg] = useState<string>("all");
+  const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
@@ -112,7 +114,11 @@ export default function Documents() {
     const { data } = supabase.storage.from("documents").getPublicUrl(doc.file_path);
     setPreviewUrl(data.publicUrl);
     setPreviewName(doc.name);
+    setPreviewType(doc.file_type || "");
+    setZoom(1);
   };
+
+  const isImage = previewType?.startsWith("image/");
 
   const handleDownload = (doc: any) => {
     const { data } = supabase.storage.from("documents").getPublicUrl(doc.file_path);
@@ -282,19 +288,47 @@ export default function Documents() {
       )}
 
       {/* Preview dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={(v) => { if (!v) { setPreviewUrl(null); setPreviewName(""); } }}>
-        <DialogContent className="max-w-5xl h-[85vh]">
+      <Dialog open={!!previewUrl} onOpenChange={(v) => { if (!v) { setPreviewUrl(null); setPreviewName(""); setPreviewType(""); setZoom(1); } }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>{previewName}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between pr-8">
+              <span className="truncate">{previewName}</span>
+              {isImage && (
+                <div className="flex items-center gap-1 ml-4 shrink-0">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => Math.max(0.25, z - 0.25))}>
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground w-14 text-center">{Math.round(zoom * 100)}%</span>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => Math.min(5, z + 0.25))}>
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(1)}>
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </DialogTitle>
           </DialogHeader>
-          {previewUrl && (
+          {previewUrl && isImage ? (
+            <div className="flex-1 overflow-auto rounded border bg-muted/30 cursor-grab active:cursor-grabbing">
+              <div className="min-h-full flex items-center justify-center p-4">
+                <img
+                  src={previewUrl}
+                  alt={previewName}
+                  className="transition-transform duration-200"
+                  style={{ transform: `scale(${zoom})`, transformOrigin: "center center", maxWidth: zoom <= 1 ? "100%" : "none" }}
+                  draggable={false}
+                />
+              </div>
+            </div>
+          ) : previewUrl ? (
             <iframe
               src={previewUrl}
               className="w-full flex-1 rounded border"
               style={{ minHeight: "calc(85vh - 80px)" }}
               title={previewName}
             />
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
