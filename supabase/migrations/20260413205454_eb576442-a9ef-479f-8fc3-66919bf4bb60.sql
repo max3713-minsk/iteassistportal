@@ -1,0 +1,1 @@
+ALTER TABLE public.tickets ADD COLUMN first_response_at timestamp with time zone DEFAULT NULL;
