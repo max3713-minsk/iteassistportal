@@ -59,8 +59,7 @@ export default function Protocols() {
     return result;
   }, [protocols, filterSite, filterFrequency, filterStatus, dateParam]);
 
-  const handleExportPdf = async (protocolId: string) => {
-    // Fetch protocol + items for PDF
+  const fetchProtocolData = async (protocolId: string) => {
     const { data: protocol } = await supabase
       .from("maintenance_protocols")
       .select("*, sites(name)")
@@ -75,13 +74,37 @@ export default function Protocols() {
 
     if (!protocol || !items) {
       toast({ title: "Ошибка", description: "Не удалось загрузить данные", variant: "destructive" });
-      return;
+      return null;
     }
 
-    // Generate simple text-based PDF using browser print
     const siteName = (protocol as any).sites?.name ?? "—";
+    const mappedItems = items.map((it: any) => ({
+      equipmentName: it.equipment
+        ? `${it.equipment.name}${it.equipment.model ? ` (${it.equipment.model})` : ""}`
+        : "—",
+      taskTitle: it.maintenance_tasks?.title ?? "—",
+      status: it.status ?? "pending",
+      notes: it.notes,
+      completedAt: it.completed_at,
+    }));
+
+    return { protocol, siteName, items: mappedItems };
+  };
+
+  const handleExportPdf = async (protocolId: string) => {
+    const result = await fetchProtocolData(protocolId);
+    if (!result) return;
+    const { protocol, siteName, items: mappedItems } = result;
+
     const freq = frequencyLabels[protocol.frequency] ?? protocol.frequency;
     const period = `${format(new Date(protocol.period_start), "dd.MM.yyyy")} — ${format(new Date(protocol.period_end), "dd.MM.yyyy")}`;
+
+    // Group by equipment
+    const eqMap = new Map<string, typeof mappedItems>();
+    for (const item of mappedItems) {
+      if (!eqMap.has(item.equipmentName)) eqMap.set(item.equipmentName, []);
+      eqMap.get(item.equipmentName)!.push(item);
+    }
 
     let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Протокол ТО</title>
       <style>
@@ -94,7 +117,6 @@ export default function Protocols() {
         th { background: #f0f0f0; font-weight: bold; }
         .done { color: green; }
         .pending { color: #999; }
-        .footer { margin-top: 40px; display: flex; justify-content: space-between; }
         .sig { border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 4px; margin-top: 60px; }
         @media print { body { padding: 20px; } }
       </style>
@@ -102,28 +124,18 @@ export default function Protocols() {
     html += `<h1>Протокол технического обслуживания</h1>`;
     html += `<p class="meta">${siteName} • ${freq} • ${period}</p>`;
 
-    // Group by equipment
-    const eqMap = new Map<string, typeof items>();
-    for (const item of items) {
-      const name = (item as any).equipment
-        ? `${(item as any).equipment.name}${(item as any).equipment.model ? ` (${(item as any).equipment.model})` : ""}`
-        : "—";
-      if (!eqMap.has(name)) eqMap.set(name, []);
-      eqMap.get(name)!.push(item);
-    }
-
     for (const [eqName, eqItems] of eqMap) {
       html += `<h2>${eqName}</h2>`;
       html += `<table><tr><th>№</th><th>Задача</th><th>Статус</th><th>Примечания</th><th>Дата выполнения</th></tr>`;
-      eqItems.forEach((it: any, idx: number) => {
+      eqItems.forEach((it, idx) => {
         const status = it.status === "completed" ? "✔ Выполнено" : "— Не выполнено";
         const cls = it.status === "completed" ? "done" : "pending";
         html += `<tr>
           <td>${idx + 1}</td>
-          <td>${it.maintenance_tasks?.title ?? "—"}</td>
+          <td>${it.taskTitle}</td>
           <td class="${cls}">${status}</td>
           <td>${it.notes ?? ""}</td>
-          <td>${it.completed_at ? format(new Date(it.completed_at), "dd.MM.yyyy HH:mm") : ""}</td>
+          <td>${it.completedAt ? format(new Date(it.completedAt), "dd.MM.yyyy HH:mm") : ""}</td>
         </tr>`;
       });
       html += `</table>`;
@@ -141,6 +153,22 @@ export default function Protocols() {
       win.document.close();
       setTimeout(() => win.print(), 500);
     }
+  };
+
+  const handleExportDocx = async (protocolId: string) => {
+    const result = await fetchProtocolData(protocolId);
+    if (!result) return;
+    const { protocol, siteName, items: mappedItems } = result;
+
+    await exportProtocolDocx({
+      siteName,
+      frequency: protocol.frequency,
+      periodStart: protocol.period_start,
+      periodEnd: protocol.period_end,
+      status: protocol.status,
+      notes: protocol.notes,
+      items: mappedItems,
+    });
   };
 
   if (selectedId) {
