@@ -449,6 +449,46 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Recent tickets */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Последние заявки</CardTitle>
+          <Link to="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
+            Все заявки <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {recentTickets && recentTickets.length > 0 ? (
+            <div className="space-y-3">
+              {recentTickets.map((ticket) => (
+                <Link
+                  key={ticket.id}
+                  to={`/tickets?id=${ticket.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{ticket.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(ticket as any).sites?.name ?? "—"} · {format(new Date(ticket.created_at), "dd MMM yyyy", { locale: ru })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <Badge variant={priorityVariant[ticket.priority] ?? "outline"} className="text-xs">
+                      {ticket.priority}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {statusLabels[ticket.status] ?? ticket.status}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-10">Нет заявок</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
