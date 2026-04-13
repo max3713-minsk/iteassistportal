@@ -181,19 +181,15 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
             Завершить протокол
           </Button>
         )}
-        {isCompleted && (
-          <>
-            <Button variant="outline" onClick={() => onExportPdf(protocolId)}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Скачать PDF
-            </Button>
-            {onExportDocx && (
-              <Button variant="outline" onClick={() => onExportDocx(protocolId)}>
-                <FileText className="h-4 w-4 mr-2" />
-                Скачать DOC
-              </Button>
-            )}
-          </>
+        <Button variant="outline" onClick={() => onExportPdf(protocolId)}>
+          <FileDown className="h-4 w-4 mr-2" />
+          Скачать PDF
+        </Button>
+        {onExportDocx && (
+          <Button variant="outline" onClick={() => onExportDocx(protocolId)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Скачать DOC
+          </Button>
         )}
       </div>
 
