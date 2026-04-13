@@ -253,6 +253,21 @@ export default function Dashboard() {
   const { data: protocolsByStatus } = useProtocolsByStatus();
   const { data: activity } = useActivity();
   const { data: equipmentByStatus } = useEquipmentByStatus();
+  const { data: recentTickets } = useRecentTickets();
+
+  const priorityVariant: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
+    P1: "destructive",
+    P2: "default",
+    P3: "secondary",
+    P4: "outline",
+  };
+  const statusLabels: Record<string, string> = {
+    open: "Открыта",
+    in_progress: "В работе",
+    waiting: "Ожидание",
+    resolved: "Решена",
+    closed: "Закрыта",
+  };
 
   const stats = [
     { label: "Площадки", value: summary?.sites ?? 0, icon: Building2, color: "text-primary" },
