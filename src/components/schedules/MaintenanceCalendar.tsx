@@ -1,0 +1,157 @@
+import { useMemo, useState } from "react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  isSameMonth,
+  isSameDay,
+  isBefore,
+  startOfDay,
+  addMonths,
+  subMonths,
+} from "date-fns";
+import { ru } from "date-fns/locale";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  frequencyColors,
+  isTaskScheduledOnDate,
+  type FrequencyType,
+  type TaskWithCategory,
+} from "@/lib/schedule-utils";
+
+interface Props {
+  tasks: TaskWithCategory[];
+  selectedDate: Date | null;
+  onSelectDate: (date: Date) => void;
+}
+
+const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate }: Props) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const today = startOfDay(new Date());
+
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+    const days: Date[] = [];
+    let d = calStart;
+    while (d <= calEnd) {
+      days.push(d);
+      d = addDays(d, 1);
+    }
+    return days;
+  }, [currentMonth]);
+
+  // Precompute frequencies per day
+  const dayFrequencies = useMemo(() => {
+    const map = new Map<string, Set<FrequencyType>>();
+    for (const day of calendarDays) {
+      const key = format(day, "yyyy-MM-dd");
+      const freqs = new Set<FrequencyType>();
+      for (const t of tasks) {
+        if (isTaskScheduledOnDate(t.frequency, day)) {
+          freqs.add(t.frequency);
+        }
+      }
+      if (freqs.size > 0) map.set(key, freqs);
+    }
+    return map;
+  }, [calendarDays, tasks]);
+
+  const isPast = (date: Date) => isBefore(date, today) && !isSameDay(date, today);
+
+  // Frequency priority for dot ordering
+  const freqOrder: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
+
+  return (
+    <div className="select-none">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h2 className="font-heading text-lg font-semibold capitalize">
+          {format(currentMonth, "LLLL yyyy", { locale: ru })}
+        </h2>
+        <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS.map((wd) => (
+          <div key={wd} className="text-center text-xs font-medium text-muted-foreground py-1">
+            {wd}
+          </div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {calendarDays.map((day) => {
+          const key = format(day, "yyyy-MM-dd");
+          const inMonth = isSameMonth(day, currentMonth);
+          const past = isPast(day);
+          const isToday = isSameDay(day, today);
+          const isSelected = selectedDate && isSameDay(day, selectedDate);
+          const freqs = dayFrequencies.get(key);
+          const hasEvents = freqs && freqs.size > 0;
+          const sortedFreqs = freqs
+            ? freqOrder.filter((f) => freqs.has(f))
+            : [];
+
+          return (
+            <button
+              key={key}
+              onClick={() => !past && inMonth && onSelectDate(day)}
+              disabled={past || !inMonth}
+              className={cn(
+                "relative flex flex-col items-center justify-start rounded-lg p-1 min-h-[60px] md:min-h-[72px] transition-all text-sm border border-transparent",
+                !inMonth && "opacity-20 cursor-default",
+                inMonth && past && "opacity-40 cursor-default bg-muted/50",
+                inMonth && !past && "hover:border-primary/40 cursor-pointer",
+                isToday && "ring-2 ring-primary/50 font-bold",
+                isSelected && "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm",
+              )}
+            >
+              <span
+                className={cn(
+                  "text-xs md:text-sm leading-none mb-1",
+                  isToday && "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center",
+                  past && "text-muted-foreground",
+                )}
+              >
+                {format(day, "d")}
+              </span>
+
+              {/* Frequency dots */}
+              {hasEvents && inMonth && (
+                <div className="flex flex-wrap gap-0.5 justify-center mt-auto">
+                  {sortedFreqs.map((f) => (
+                    <span
+                      key={f}
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        past ? "bg-muted-foreground/30" : frequencyColors[f].dot,
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
