@@ -55,7 +55,7 @@ export default function Sites() {
       setOpen(false);
       setEditing(null);
       setForm(empty);
-      toast({ title: editing ? "Площадка обновлена" : "Площадка добавлена" });
+      toast({ title: editing ? "ЦОД обновлён" : "ЦОД добавлен" });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
@@ -68,7 +68,7 @@ export default function Sites() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sites"] });
       qc.invalidateQueries({ queryKey: ["sites-count"] });
-      toast({ title: "Площадка удалена" });
+      toast({ title: "ЦОД удалён" });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
@@ -82,7 +82,7 @@ export default function Sites() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-heading text-2xl font-bold">Площадки</h1>
+        <h1 className="font-heading text-2xl font-bold">ЦОД</h1>
         {isStaff && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
             <DialogTrigger asChild>
@@ -90,8 +90,8 @@ export default function Sites() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editing ? "Редактировать площадку" : "Новая площадка"}</DialogTitle>
-                <DialogDescription>Заполните информацию о площадке обслуживания</DialogDescription>
+                <DialogTitle>{editing ? "Редактировать ЦОД" : "Новый ЦОД"}</DialogTitle>
+                <DialogDescription>Заполните информацию о центре обработки данных</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -133,7 +133,7 @@ export default function Sites() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Building2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground">Площадки ещё не добавлены</p>
+            <p className="text-muted-foreground">ЦОД ещё не добавлены</p>
           </CardContent>
         </Card>
       ) : (
@@ -144,7 +144,8 @@ export default function Sites() {
                 <TableHead>Название</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead>Город</TableHead>
-                <TableHead className="hidden md:table-cell">Описание</TableHead>
+                <TableHead className="hidden md:table-cell">Адрес</TableHead>
+                <TableHead className="hidden lg:table-cell">Описание</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
               </TableRow>
             </TableHeader>
@@ -159,7 +160,10 @@ export default function Sites() {
                       {site.city ?? "—"}
                     </span>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-xs truncate">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                    {site.address ?? "—"}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-muted-foreground text-sm max-w-xs truncate">
                     {site.description ?? "—"}
                   </TableCell>
                   {isStaff && (

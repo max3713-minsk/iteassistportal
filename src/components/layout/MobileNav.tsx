@@ -5,18 +5,19 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд" },
-  { to: "/sites", icon: Building2, label: "Площадки" },
+  { to: "/sites", icon: Building2, label: "ЦОД" },
   { to: "/equipment", icon: Server, label: "Оборудование" },
   { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО" },
   { to: "/protocols", icon: ClipboardList, label: "Протоколы" },
   { to: "/tickets", icon: Ticket, label: "Заявки" },
+  { to: "/documents", icon: FileArchive, label: "Документация" },
   { to: "/users", icon: Users, label: "Пользователи" },
 ];
 

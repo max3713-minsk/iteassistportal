@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,12 @@ import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд", roles: [] },
-  { to: "/sites", icon: Building2, label: "Площадки", roles: [] },
+  { to: "/sites", icon: Building2, label: "ЦОД", roles: [] },
   { to: "/equipment", icon: Server, label: "Оборудование", roles: [] },
   { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", roles: [] },
   { to: "/protocols", icon: ClipboardList, label: "Протоколы", roles: [] },
   { to: "/tickets", icon: Ticket, label: "Заявки", roles: [] },
+  { to: "/documents", icon: FileArchive, label: "Документация", roles: [] },
   { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"] },
 ];
 

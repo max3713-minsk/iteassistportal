@@ -12,6 +12,7 @@ import Equipment from "@/pages/Equipment";
 import Tickets from "@/pages/Tickets";
 import Schedules from "@/pages/Schedules";
 import Protocols from "@/pages/Protocols";
+import Documents from "@/pages/Documents";
 import UsersAdmin from "@/pages/UsersAdmin";
 import NotFound from "@/pages/NotFound";
 
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/tickets" element={<Tickets />} />
               <Route path="/schedules" element={<Schedules />} />
               <Route path="/protocols" element={<Protocols />} />
+              <Route path="/documents" element={<Documents />} />
               <Route path="/users" element={<UsersAdmin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
