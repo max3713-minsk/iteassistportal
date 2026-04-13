@@ -341,8 +341,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Row: Tickets by status + Tickets by priority */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Row: Tickets by status + Tickets by priority + Closed stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Заявки по статусам</CardTitle>
@@ -403,6 +403,51 @@ export default function Dashboard() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-10">Нет открытых заявок</p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Closed tickets stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              Закрытые заявки
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Всего закрыто</p>
+              <p className="text-3xl font-heading font-bold">{closedStats?.total ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Среднее время первого реагирования</p>
+              <p className="text-lg font-heading font-semibold">
+                {closedStats?.avgResponseMs ? (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    {formatDuration(closedStats.avgResponseMs)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Нет данных</span>
+                )}
+              </p>
+            </div>
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-2">По приоритетам</p>
+              <div className="space-y-1.5">
+                {["P1", "P2", "P3", "P4"].map((p, i) => (
+                  <div key={p} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[i] }} />
+                      <span className="text-muted-foreground">
+                        {p === "P1" ? "Критический" : p === "P2" ? "Высокий" : p === "P3" ? "Средний" : "Низкий"}
+                      </span>
+                    </div>
+                    <span className="font-medium">{closedStats?.byPriority[p] ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
