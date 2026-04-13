@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format as formatDate } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -120,22 +121,60 @@ export default function Tickets() {
 
   const createMutation = useMutation({
     mutationFn: async (f: TicketForm) => {
-      const { error } = await supabase.from("tickets").insert({
+      // Create ticket
+      const { data: ticket, error } = await supabase.from("tickets").insert({
         title: f.title,
         description: f.description || null,
         priority: f.priority as any,
         site_id: f.site_id || null,
         equipment_id: f.equipment_id || null,
         created_by: user!.id,
-      });
+      }).select("id, site_id").single();
       if (error) throw error;
+
+      // Auto-create on_request protocol linked to this ticket
+      if (ticket && ticket.site_id) {
+        const todayStr = formatDate(new Date(), "yyyy-MM-dd");
+        const { data: protocol } = await supabase
+          .from("maintenance_protocols")
+          .insert({
+            site_id: ticket.site_id,
+            frequency: "on_request" as any,
+            period_start: todayStr,
+            period_end: todayStr,
+            status: "in_progress",
+            created_by: user!.id,
+            ticket_id: ticket.id,
+            notes: `Заявка: ${f.title}`,
+          })
+          .select("id")
+          .single();
+
+        // If equipment is specified, get on_request tasks and create items
+        if (protocol && f.equipment_id) {
+          const { data: tasks } = await supabase
+            .from("maintenance_tasks")
+            .select("id")
+            .eq("frequency", "on_request");
+
+          if (tasks?.length) {
+            const items = tasks.map((t) => ({
+              protocol_id: protocol.id,
+              equipment_id: f.equipment_id,
+              task_id: t.id,
+            }));
+            await supabase.from("protocol_items").insert(items);
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
       qc.invalidateQueries({ queryKey: ["open-tickets-count"] });
+      qc.invalidateQueries({ queryKey: ["protocols"] });
       setOpen(false);
       setForm(emptyForm);
-      toast({ title: "Заявка создана" });
+      toast({ title: "Заявка создана", description: "Протокол обслуживания создан автоматически" });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
