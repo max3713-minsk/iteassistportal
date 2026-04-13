@@ -386,7 +386,7 @@ export default function Dashboard() {
                     cx="50%"
                     cy="45%"
                     outerRadius={80}
-                    label={({ priority, count }) => (count > 0 ? `${priority}: ${count}` : "")}
+                    label={false}
                   >
                     {ticketsByPriority.map((_, i) => (
                       <Cell key={i} fill={PRIORITY_COLORS[i]} />
