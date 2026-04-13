@@ -194,6 +194,21 @@ function useEquipmentByStatus() {
   });
 }
 
+/* ─── Recent 5 tickets ─── */
+function useRecentTickets() {
+  return useQuery({
+    queryKey: ["dashboard-recent-tickets"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tickets")
+        .select("id, title, status, priority, created_at, site_id, sites(name)")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+  });
+}
+
 /* ─── Colors ─── */
 const STATUS_COLORS = [
   "hsl(217 91% 60%)",   // blue
