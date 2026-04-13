@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -25,6 +25,7 @@ interface Props {
   protocolId: string;
   onBack: () => void;
   onExportPdf: (protocolId: string) => void;
+  onExportDocx?: (protocolId: string) => void;
 }
 
 interface ProtocolItem {
@@ -44,7 +45,7 @@ interface GroupedEquipment {
   items: ProtocolItem[];
 }
 
-export default function ProtocolDetail({ protocolId, onBack, onExportPdf }: Props) {
+export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExportDocx }: Props) {
   const { session, isStaff } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -181,10 +182,18 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf }: Prop
           </Button>
         )}
         {isCompleted && (
-          <Button variant="outline" onClick={() => onExportPdf(protocolId)}>
-            <FileDown className="h-4 w-4 mr-2" />
-            Скачать PDF
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => onExportPdf(protocolId)}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Скачать PDF
+            </Button>
+            {onExportDocx && (
+              <Button variant="outline" onClick={() => onExportDocx(protocolId)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Скачать DOC
+              </Button>
+            )}
+          </>
         )}
       </div>
 
