@@ -14,16 +14,501 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      equipment: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          model: string | null
+          name: string
+          os_info: string | null
+          quantity: number | null
+          serial_number: string | null
+          site_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          model?: string | null
+          name: string
+          os_info?: string | null
+          quantity?: number | null
+          serial_number?: string | null
+          site_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          model?: string | null
+          name?: string
+          os_info?: string | null
+          quantity?: number | null
+          serial_number?: string | null
+          site_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_categories: {
+        Row: {
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      maintenance_protocols: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          site_id: string
+          status: Database["public"]["Enums"]["protocol_status"]
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          site_id: string
+          status?: Database["public"]["Enums"]["protocol_status"]
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          frequency?: Database["public"]["Enums"]["maintenance_frequency"]
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          site_id?: string
+          status?: Database["public"]["Enums"]["protocol_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_protocols_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_schedules: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          equipment_id: string
+          id: string
+          last_completed_date: string | null
+          next_due_date: string
+          task_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          equipment_id: string
+          id?: string
+          last_completed_date?: string | null
+          next_due_date: string
+          task_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          equipment_id?: string
+          id?: string
+          last_completed_date?: string | null
+          next_due_date?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedules_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_tasks: {
+        Row: {
+          automation_script: string | null
+          category_id: string | null
+          created_at: string
+          description: string | null
+          frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          id: string
+          is_automatable: boolean | null
+          title: string
+        }
+        Insert: {
+          automation_script?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          id?: string
+          is_automatable?: boolean | null
+          title: string
+        }
+        Update: {
+          automation_script?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: Database["public"]["Enums"]["maintenance_frequency"]
+          id?: string
+          is_automatable?: boolean | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_tasks_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          organization: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      protocol_items: {
+        Row: {
+          auto_result: Json | null
+          completed_at: string | null
+          completed_by: string | null
+          equipment_id: string
+          id: string
+          notes: string | null
+          protocol_id: string
+          result: string | null
+          schedule_id: string | null
+          status: string | null
+          task_id: string
+        }
+        Insert: {
+          auto_result?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          equipment_id: string
+          id?: string
+          notes?: string | null
+          protocol_id: string
+          result?: string | null
+          schedule_id?: string | null
+          status?: string | null
+          task_id: string
+        }
+        Update: {
+          auto_result?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          equipment_id?: string
+          id?: string
+          notes?: string | null
+          protocol_id?: string
+          result?: string | null
+          schedule_id?: string | null
+          status?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_items_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_items_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_protocols"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_items_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          organization: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          organization: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          organization?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ticket_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean | null
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          equipment_id: string | null
+          id: string
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          resolved_at: string | null
+          site_id: string | null
+          sla_deadline: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          equipment_id?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolved_at?: string | null
+          site_id?: string | null
+          sla_deadline?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          equipment_id?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolved_at?: string | null
+          site_id?: string | null
+          sla_deadline?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "engineer" | "customer"
+      maintenance_frequency:
+        | "daily"
+        | "weekly"
+        | "monthly"
+        | "quarterly"
+        | "semi_annual"
+        | "on_request"
+      protocol_status: "pending" | "in_progress" | "completed" | "overdue"
+      ticket_priority: "P1" | "P2" | "P3" | "P4"
+      ticket_status: "open" | "in_progress" | "waiting" | "resolved" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +635,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "engineer", "customer"],
+      maintenance_frequency: [
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "semi_annual",
+        "on_request",
+      ],
+      protocol_status: ["pending", "in_progress", "completed", "overdue"],
+      ticket_priority: ["P1", "P2", "P3", "P4"],
+      ticket_status: ["open", "in_progress", "waiting", "resolved", "closed"],
+    },
   },
 } as const
