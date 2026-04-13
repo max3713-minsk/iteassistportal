@@ -194,6 +194,40 @@ function useEquipmentByStatus() {
   });
 }
 
+/* ─── Closed tickets stats ─── */
+function useClosedTicketsStats() {
+  return useQuery({
+    queryKey: ["dashboard-closed-tickets-stats"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tickets")
+        .select("id, priority, created_at, first_response_at, resolved_at")
+        .in("status", ["resolved", "closed"]);
+
+      const rows = data ?? [];
+      const total = rows.length;
+      const byPriority: Record<string, number> = { P1: 0, P2: 0, P3: 0, P4: 0 };
+      let responseTimeSum = 0;
+      let responseTimeCount = 0;
+
+      rows.forEach((t) => {
+        byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+        if (t.first_response_at) {
+          const diff = new Date(t.first_response_at).getTime() - new Date(t.created_at).getTime();
+          if (diff > 0) {
+            responseTimeSum += diff;
+            responseTimeCount++;
+          }
+        }
+      });
+
+      const avgResponseMs = responseTimeCount > 0 ? responseTimeSum / responseTimeCount : null;
+
+      return { total, byPriority, avgResponseMs };
+    },
+  });
+}
+
 /* ─── Recent 5 tickets ─── */
 function useRecentTickets() {
   return useQuery({
@@ -254,6 +288,18 @@ export default function Dashboard() {
   const { data: activity } = useActivity();
   const { data: equipmentByStatus } = useEquipmentByStatus();
   const { data: recentTickets } = useRecentTickets();
+  const { data: closedStats } = useClosedTicketsStats();
+
+  function formatDuration(ms: number) {
+    const totalMinutes = Math.round(ms / 60000);
+    if (totalMinutes < 60) return `${totalMinutes} мин`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) return `${hours} ч ${minutes > 0 ? `${minutes} мин` : ""}`.trim();
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return `${days} д ${remHours > 0 ? `${remHours} ч` : ""}`.trim();
+  }
 
   const priorityVariant: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
     P1: "destructive",
@@ -295,8 +341,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Row: Tickets by status + Tickets by priority */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Row: Tickets by status + Tickets by priority + Closed stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Заявки по статусам</CardTitle>
@@ -357,6 +403,51 @@ export default function Dashboard() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-10">Нет открытых заявок</p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Closed tickets stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              Закрытые заявки
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Всего закрыто</p>
+              <p className="text-3xl font-heading font-bold">{closedStats?.total ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Среднее время первого реагирования</p>
+              <p className="text-lg font-heading font-semibold">
+                {closedStats?.avgResponseMs ? (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    {formatDuration(closedStats.avgResponseMs)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Нет данных</span>
+                )}
+              </p>
+            </div>
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-2">По приоритетам</p>
+              <div className="space-y-1.5">
+                {["P1", "P2", "P3", "P4"].map((p, i) => (
+                  <div key={p} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[i] }} />
+                      <span className="text-muted-foreground">
+                        {p === "P1" ? "Критический" : p === "P2" ? "Высокий" : p === "P3" ? "Средний" : "Низкий"}
+                      </span>
+                    </div>
+                    <span className="font-medium">{closedStats?.byPriority[p] ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
