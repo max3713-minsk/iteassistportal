@@ -91,6 +91,7 @@ export default function Equipment() {
         os_info: f.os_info || null,
         quantity: f.quantity,
         description: f.description || null,
+        status: f.status,
       };
       if (editing) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", editing);
