@@ -11,6 +11,8 @@ import ProtocolList from "@/components/protocols/ProtocolList";
 import ProtocolDetail from "@/components/protocols/ProtocolDetail";
 import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
 import { frequencyLabels } from "@/lib/schedule-utils";
+import { useAutoProtocols } from "@/hooks/useAutoProtocols";
+import { exportProtocolDocx } from "@/lib/export-protocol-docx";
 
 export default function Protocols() {
   const { isStaff } = useAuth();
@@ -22,6 +24,9 @@ export default function Protocols() {
   const [filterSite, setFilterSite] = useState("all");
   const [filterFrequency, setFilterFrequency] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Auto-create protocols for today
+  useAutoProtocols();
 
   const { data: protocols = [], isLoading } = useQuery({
     queryKey: ["protocols"],
