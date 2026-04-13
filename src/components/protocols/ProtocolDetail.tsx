@@ -94,6 +94,10 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const completedCount = items.filter((i) => i.status === "completed").length;
   const totalCount = items.length;
 
+  const [protocolNotes, setProtocolNotes] = useState("");
+
+  const isOnRequest = protocol?.frequency === "on_request";
+
   const toggleItem = useMutation({
     mutationFn: async (item: ProtocolItem) => {
       const newStatus = item.status === "completed" ? "pending" : "completed";
@@ -104,12 +108,41 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           completed_by: newStatus === "completed" ? session?.user.id : null,
           completed_at: newStatus === "completed" ? new Date().toISOString() : null,
           notes: itemNotes[item.id] || item.notes || null,
+          result: isOnRequest ? (itemNotes[item.id] || item.notes || null) : item.result,
         })
         .eq("id", item.id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+    },
+  });
+
+  const saveItemResult = useMutation({
+    mutationFn: async ({ itemId, result }: { itemId: string; result: string }) => {
+      const { error } = await supabase
+        .from("protocol_items")
+        .update({ result, notes: result })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      toast({ title: "Результат сохранён" });
+    },
+  });
+
+  const saveProtocolNotes = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("maintenance_protocols")
+        .update({ notes: protocolNotes, status: "in_progress" })
+        .eq("id", protocolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
+      toast({ title: "Результат работы сохранён" });
     },
   });
 
