@@ -14,6 +14,20 @@ import { Plus, Server, Pencil, Trash2, Filter } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+const EQUIPMENT_STATUSES = [
+  { value: "active", label: "Активно" },
+  { value: "maintenance", label: "На обслуживании" },
+  { value: "decommissioned", label: "Выведено" },
+  { value: "faulty", label: "Неисправно" },
+];
+
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  active: "default",
+  maintenance: "secondary",
+  decommissioned: "outline",
+  faulty: "destructive",
+};
+
 interface EquipForm {
   name: string;
   model: string;
@@ -23,9 +37,10 @@ interface EquipForm {
   os_info: string;
   quantity: number;
   description: string;
+  status: string;
 }
 
-const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "" };
+const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "", status: "active" };
 
 export default function Equipment() {
   const { isStaff } = useAuth();
