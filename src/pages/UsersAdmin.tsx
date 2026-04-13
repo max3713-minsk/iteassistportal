@@ -46,6 +46,7 @@ export default function UsersAdmin() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editOrganization, setEditOrganization] = useState("");
