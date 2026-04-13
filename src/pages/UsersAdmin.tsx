@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Shield, Search, UserCog, Plus, Trash2, Building2, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { CreateUserDialog } from "@/components/users/CreateUserDialog";
 
 type AppRole = "admin" | "engineer" | "customer";
 
