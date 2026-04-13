@@ -290,6 +290,11 @@ export default function Equipment() {
                     <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[eq.status ?? "active"] ?? "outline"}>
+                        {EQUIPMENT_STATUSES.find((s) => s.value === (eq.status ?? "active"))?.label ?? eq.status}
+                      </Badge>
+                    </TableCell>
                     {isStaff && (
                       <TableCell>
                         <div className="flex gap-1">
