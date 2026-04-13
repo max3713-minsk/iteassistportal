@@ -21,9 +21,9 @@ const EQUIPMENT_STATUSES = [
   { value: "faulty", label: "Неисправно" },
 ];
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  active: "default",
-  maintenance: "secondary",
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
+  active: "success",
+  maintenance: "warning",
   decommissioned: "outline",
   faulty: "destructive",
 };

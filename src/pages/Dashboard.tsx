@@ -257,13 +257,14 @@ const PRIORITY_COLORS = [
   "hsl(38 92% 50%)",    // amber – P3
   "hsl(217 91% 60%)",   // blue – P4
 ];
-const EQUIPMENT_COLORS = [
-  "hsl(160 84% 39%)",   // teal
-  "hsl(38 92% 50%)",    // amber
-  "hsl(0 72% 51%)",     // red
-  "hsl(262 83% 58%)",   // violet
-  "hsl(199 89% 48%)",   // sky
-];
+// Matches Equipment page badge colors: active=green, maintenance=amber, decommissioned=gray, faulty=red
+const EQUIPMENT_STATUS_COLOR_MAP: Record<string, string> = {
+  active: "hsl(152 82% 30%)",       // emerald-600
+  maintenance: "hsl(38 92% 50%)",   // amber-500
+  decommissioned: "hsl(220 9% 46%)",// gray
+  faulty: "hsl(0 72% 51%)",         // red
+};
+const EQUIPMENT_COLORS_FALLBACK = "hsl(199 89% 48%)";
 const PROTOCOL_COLORS = [
   "hsl(38 92% 50%)",    // amber
   "hsl(217 91% 60%)",   // blue
@@ -499,15 +500,15 @@ export default function Dashboard() {
                     outerRadius={80}
                     label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}
                   >
-                    {equipmentByStatus.map((_, i) => (
-                      <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
+                    {equipmentByStatus.map((item, i) => (
+                      <Cell key={i} fill={EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK} />
                     ))}
                   </Pie>
                   <Legend
-                    payload={equipmentByStatus.map((item, i) => ({
+                    payload={equipmentByStatus.map((item) => ({
                       value: item.label,
                       type: "circle" as const,
-                      color: EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length],
+                      color: EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK,
                     }))}
                     wrapperStyle={{ fontSize: 12 }}
                   />
