@@ -194,6 +194,40 @@ function useEquipmentByStatus() {
   });
 }
 
+/* ─── Closed tickets stats ─── */
+function useClosedTicketsStats() {
+  return useQuery({
+    queryKey: ["dashboard-closed-tickets-stats"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tickets")
+        .select("id, priority, created_at, first_response_at, resolved_at")
+        .in("status", ["resolved", "closed"]);
+
+      const rows = data ?? [];
+      const total = rows.length;
+      const byPriority: Record<string, number> = { P1: 0, P2: 0, P3: 0, P4: 0 };
+      let responseTimeSum = 0;
+      let responseTimeCount = 0;
+
+      rows.forEach((t) => {
+        byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+        if (t.first_response_at) {
+          const diff = new Date(t.first_response_at).getTime() - new Date(t.created_at).getTime();
+          if (diff > 0) {
+            responseTimeSum += diff;
+            responseTimeCount++;
+          }
+        }
+      });
+
+      const avgResponseMs = responseTimeCount > 0 ? responseTimeSum / responseTimeCount : null;
+
+      return { total, byPriority, avgResponseMs };
+    },
+  });
+}
+
 /* ─── Recent 5 tickets ─── */
 function useRecentTickets() {
   return useQuery({
