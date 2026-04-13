@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Shield, Search, UserCog, Plus, Trash2, Building2, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { CreateUserDialog } from "@/components/users/CreateUserDialog";
 
 type AppRole = "admin" | "engineer" | "customer";
 
@@ -45,6 +46,7 @@ export default function UsersAdmin() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editOrganization, setEditOrganization] = useState("");
@@ -164,7 +166,13 @@ export default function UsersAdmin() {
 
   return (
     <div className="space-y-4">
-      <h1 className="font-heading text-2xl font-bold">Пользователи</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-bold">Пользователи</h1>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Создать пользователя
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -344,6 +352,7 @@ export default function UsersAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
     </div>
   );
 }
