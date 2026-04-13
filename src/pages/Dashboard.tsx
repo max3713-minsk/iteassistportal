@@ -295,8 +295,8 @@ export default function Dashboard() {
             <CardTitle className="text-base">Открытые заявки по приоритету</CardTitle>
           </CardHeader>
           <CardContent>
-            {ticketsByPriority && ticketsByPriority.some((d) => d.count > 0) ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
+            {ticketsByPriority ? (
+              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent nameKey="priority" />} />
                   <Pie
@@ -304,14 +304,22 @@ export default function Dashboard() {
                     dataKey="count"
                     nameKey="priority"
                     cx="50%"
-                    cy="50%"
-                    outerRadius={90}
+                    cy="45%"
+                    outerRadius={80}
                     label={({ priority, count }) => (count > 0 ? `${priority}: ${count}` : "")}
                   >
                     {ticketsByPriority.map((_, i) => (
                       <Cell key={i} fill={PRIORITY_COLORS[i]} />
                     ))}
                   </Pie>
+                  <Legend
+                    payload={["P1 — Критический", "P2 — Высокий", "P3 — Средний", "P4 — Низкий"].map((label, i) => ({
+                      value: label,
+                      type: "circle" as const,
+                      color: PRIORITY_COLORS[i],
+                    }))}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
                 </PieChart>
               </ChartContainer>
             ) : (
