@@ -90,7 +90,7 @@ export default function Tickets() {
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("equipment").select("id, name, site_id").order("name");
+      const { data } = await supabase.from("equipment").select("id, name, model, site_id").order("name");
       return data ?? [];
     },
   });
@@ -248,7 +248,7 @@ export default function Tickets() {
                   <Select value={form.equipment_id} onValueChange={(v) => setForm({ ...form, equipment_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Выберите оборудование" /></SelectTrigger>
                     <SelectContent>
-                      {filteredEquipment.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                      {filteredEquipment.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}{e.model ? ` (${e.model})` : ''}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
