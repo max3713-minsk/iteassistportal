@@ -176,12 +176,36 @@ function useEquipmentByStatus() {
 }
 
 /* ─── Colors ─── */
-const STATUS_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(142 71% 45%)", "hsl(var(--destructive))", "hsl(var(--muted-foreground))"];
-const PRIORITY_COLORS = ["hsl(var(--destructive))", "hsl(25 95% 53%)", "hsl(var(--primary))", "hsl(var(--muted-foreground))"];
+const STATUS_COLORS = [
+  "hsl(217 91% 60%)",   // blue
+  "hsl(38 92% 50%)",    // amber
+  "hsl(142 71% 45%)",   // green
+  "hsl(0 72% 51%)",     // red
+  "hsl(262 83% 58%)",   // violet
+];
+const PRIORITY_COLORS = [
+  "hsl(0 72% 51%)",     // red – P1
+  "hsl(25 95% 53%)",    // orange – P2
+  "hsl(38 92% 50%)",    // amber – P3
+  "hsl(217 91% 60%)",   // blue – P4
+];
+const EQUIPMENT_COLORS = [
+  "hsl(160 84% 39%)",   // teal
+  "hsl(38 92% 50%)",    // amber
+  "hsl(0 72% 51%)",     // red
+  "hsl(262 83% 58%)",   // violet
+  "hsl(199 89% 48%)",   // sky
+];
+const PROTOCOL_COLORS = [
+  "hsl(38 92% 50%)",    // amber
+  "hsl(217 91% 60%)",   // blue
+  "hsl(160 84% 39%)",   // teal
+  "hsl(0 72% 51%)",     // red
+];
 
 const activityConfig: ChartConfig = {
-  tickets: { label: "Заявки", color: "hsl(var(--primary))" },
-  protocols: { label: "Протоколы", color: "hsl(var(--accent))" },
+  tickets: { label: "Заявки", color: "hsl(217 91% 60%)" },
+  protocols: { label: "Протоколы", color: "hsl(160 84% 39%)" },
 };
 
 const ticketStatusConfig: ChartConfig = {
