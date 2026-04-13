@@ -176,12 +176,36 @@ function useEquipmentByStatus() {
 }
 
 /* ─── Colors ─── */
-const STATUS_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(142 71% 45%)", "hsl(var(--destructive))", "hsl(var(--muted-foreground))"];
-const PRIORITY_COLORS = ["hsl(var(--destructive))", "hsl(25 95% 53%)", "hsl(var(--primary))", "hsl(var(--muted-foreground))"];
+const STATUS_COLORS = [
+  "hsl(217 91% 60%)",   // blue
+  "hsl(38 92% 50%)",    // amber
+  "hsl(142 71% 45%)",   // green
+  "hsl(0 72% 51%)",     // red
+  "hsl(262 83% 58%)",   // violet
+];
+const PRIORITY_COLORS = [
+  "hsl(0 72% 51%)",     // red – P1
+  "hsl(25 95% 53%)",    // orange – P2
+  "hsl(38 92% 50%)",    // amber – P3
+  "hsl(217 91% 60%)",   // blue – P4
+];
+const EQUIPMENT_COLORS = [
+  "hsl(160 84% 39%)",   // teal
+  "hsl(38 92% 50%)",    // amber
+  "hsl(0 72% 51%)",     // red
+  "hsl(262 83% 58%)",   // violet
+  "hsl(199 89% 48%)",   // sky
+];
+const PROTOCOL_COLORS = [
+  "hsl(38 92% 50%)",    // amber
+  "hsl(217 91% 60%)",   // blue
+  "hsl(160 84% 39%)",   // teal
+  "hsl(0 72% 51%)",     // red
+];
 
 const activityConfig: ChartConfig = {
-  tickets: { label: "Заявки", color: "hsl(var(--primary))" },
-  protocols: { label: "Протоколы", color: "hsl(var(--accent))" },
+  tickets: { label: "Заявки", color: "hsl(217 91% 60%)" },
+  protocols: { label: "Протоколы", color: "hsl(160 84% 39%)" },
 };
 
 const ticketStatusConfig: ChartConfig = {
@@ -296,7 +320,7 @@ export default function Dashboard() {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {protocolsByStatus.map((_, i) => (
-                      <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                      <Cell key={i} fill={PROTOCOL_COLORS[i % PROTOCOL_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -326,7 +350,7 @@ export default function Dashboard() {
                     label={({ status, count }) => `${status}: ${count}`}
                   >
                     {equipmentByStatus.map((_, i) => (
-                      <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                      <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -351,22 +375,8 @@ export default function Dashboard() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="tickets"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  name="Заявки"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="protocols"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  name="Протоколы"
-                />
+                <Line type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Заявки" />
+                <Line type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} name="Протоколы" />
               </LineChart>
             </ChartContainer>
           ) : (
