@@ -20,6 +20,7 @@ import {
   Cell,
   LineChart,
   Line,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
