@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Server, Pencil, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 interface EquipForm {
   name: string;
   model: string;
