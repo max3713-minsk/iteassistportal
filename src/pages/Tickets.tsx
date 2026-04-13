@@ -70,7 +70,7 @@ export default function Tickets() {
       if (statusFilter === "active") {
         q = q.in("status", ["open", "in_progress", "waiting"]);
       } else if (statusFilter !== "all") {
-        q = q.eq("status", statusFilter);
+        q = q.eq("status", statusFilter as any);
       }
 
       const { data, error } = await q;
