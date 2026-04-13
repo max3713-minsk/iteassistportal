@@ -361,23 +361,31 @@ export default function Dashboard() {
             <CardTitle className="text-base">Оборудование по статусу</CardTitle>
           </CardHeader>
           <CardContent>
-            {equipmentByStatus && equipmentByStatus.length > 0 ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
+            {equipmentByStatus ? (
+              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
                 <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="status" />} />
+                  <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
                   <Pie
                     data={equipmentByStatus}
                     dataKey="count"
-                    nameKey="status"
+                    nameKey="label"
                     cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ status, count }) => `${status}: ${count}`}
+                    cy="45%"
+                    outerRadius={80}
+                    label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}
                   >
                     {equipmentByStatus.map((_, i) => (
                       <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
                     ))}
                   </Pie>
+                  <Legend
+                    payload={equipmentByStatus.map((item, i) => ({
+                      value: item.label,
+                      type: "circle" as const,
+                      color: EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length],
+                    }))}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
                 </PieChart>
               </ChartContainer>
             ) : (
