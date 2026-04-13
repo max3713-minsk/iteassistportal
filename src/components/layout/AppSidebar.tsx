@@ -1,18 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard,
-  Building2,
-  Server,
-  CalendarCheck,
-  Ticket,
-  Users,
-  LogOut,
-  Shield,
-  ClipboardList,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/ThemeToggle";
+import logo from "@/assets/logo-innotech.png";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд", roles: [] },
@@ -34,13 +28,11 @@ export default function AppSidebar() {
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-          <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="font-heading text-base font-semibold text-sidebar-primary-foreground">InfraSupport</h1>
-          <p className="text-xs text-sidebar-foreground/60">Техподдержка</p>
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
+        <img src={logo} alt="Innotech Engineering" className="h-9 w-auto" />
+        <div className="min-w-0">
+          <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">InfraSupport</h1>
+          <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
         </div>
       </div>
 
@@ -54,8 +46,8 @@ export default function AppSidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  ? "bg-sidebar-primary/15 text-sidebar-primary font-medium"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
@@ -66,9 +58,12 @@ export default function AppSidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-sidebar-border">
-        <div className="px-3 py-2 mb-2">
-          <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? "—"}</p>
-          <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+        <div className="px-3 py-2 mb-2 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? "—"}</p>
+            <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+          </div>
+          <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
         </div>
         <Button
           variant="ghost"

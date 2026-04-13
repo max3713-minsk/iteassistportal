@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Shield } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import logo from "@/assets/logo-innotech.png";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -49,11 +50,14 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-            <Shield className="h-7 w-7 text-primary-foreground" />
+          <div className="mx-auto mb-4">
+            <img src={logo} alt="Innotech Engineering" className="h-16 w-auto mx-auto" />
           </div>
           <CardTitle className="font-heading text-2xl">InfraSupport</CardTitle>
           <CardDescription>Портал технической поддержки</CardDescription>
