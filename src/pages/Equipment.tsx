@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2 } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -34,6 +34,8 @@ export default function Equipment() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<EquipForm>(empty);
+  const [filterSite, setFilterSite] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
 
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ["equipment"],
@@ -121,9 +123,17 @@ export default function Equipment() {
     setOpen(true);
   };
 
+  const filteredEquipment = useMemo(() => {
+    return equipment.filter((eq: any) => {
+      if (filterSite !== "all" && eq.site_id !== filterSite) return false;
+      if (filterCategory !== "all" && eq.category_id !== filterCategory) return false;
+      return true;
+    });
+  }, [equipment, filterSite, filterCategory]);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold">Оборудование</h1>
         {isStaff && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
@@ -191,7 +201,33 @@ export default function Equipment() {
         )}
       </div>
 
-      {isLoading ? (
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="w-56">
+          <Select value={filterSite} onValueChange={setFilterSite}>
+            <SelectTrigger>
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Все площадки" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все ЦОД</SelectItem>
+              {sites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-56">
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger>
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Все категории" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все категории</SelectItem>
+              {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
         <p className="text-muted-foreground">Загрузка...</p>
       ) : equipment.length === 0 ? (
         <Card>
