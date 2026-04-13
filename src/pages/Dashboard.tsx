@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Server, Ticket, ClipboardList, AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Building2, Server, Ticket, ClipboardList, AlertTriangle, CheckCircle2, Clock, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import {
   ChartContainer,
   ChartTooltip,
@@ -192,6 +194,21 @@ function useEquipmentByStatus() {
   });
 }
 
+/* ─── Recent 5 tickets ─── */
+function useRecentTickets() {
+  return useQuery({
+    queryKey: ["dashboard-recent-tickets"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tickets")
+        .select("id, title, status, priority, created_at, site_id, sites(name)")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+  });
+}
+
 /* ─── Colors ─── */
 const STATUS_COLORS = [
   "hsl(217 91% 60%)",   // blue
@@ -236,6 +253,21 @@ export default function Dashboard() {
   const { data: protocolsByStatus } = useProtocolsByStatus();
   const { data: activity } = useActivity();
   const { data: equipmentByStatus } = useEquipmentByStatus();
+  const { data: recentTickets } = useRecentTickets();
+
+  const priorityVariant: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
+    P1: "destructive",
+    P2: "default",
+    P3: "secondary",
+    P4: "outline",
+  };
+  const statusLabels: Record<string, string> = {
+    open: "Открыта",
+    in_progress: "В работе",
+    waiting: "Ожидание",
+    resolved: "Решена",
+    closed: "Закрыта",
+  };
 
   const stats = [
     { label: "Площадки", value: summary?.sites ?? 0, icon: Building2, color: "text-primary" },
@@ -414,6 +446,46 @@ export default function Dashboard() {
             </ChartContainer>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-10">Нет активности за последние 14 дней</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent tickets */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Последние заявки</CardTitle>
+          <Link to="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
+            Все заявки <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {recentTickets && recentTickets.length > 0 ? (
+            <div className="space-y-3">
+              {recentTickets.map((ticket) => (
+                <Link
+                  key={ticket.id}
+                  to={`/tickets?id=${ticket.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{ticket.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(ticket as any).sites?.name ?? "—"} · {format(new Date(ticket.created_at), "dd MMM yyyy", { locale: ru })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <Badge variant={priorityVariant[ticket.priority] ?? "outline"} className="text-xs">
+                      {ticket.priority}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {statusLabels[ticket.status] ?? ticket.status}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-10">Нет заявок</p>
           )}
         </CardContent>
       </Card>
