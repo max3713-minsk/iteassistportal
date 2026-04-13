@@ -6,7 +6,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
-import logo from "@/assets/logo-innotech.png";
+import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд", roles: [] },
@@ -29,9 +29,9 @@ export default function AppSidebar() {
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
-        <img src={logo} alt="Innotech Engineering" className="h-9 w-auto" />
+        <BrandLogo className="h-9 w-auto" />
         <div className="min-w-0">
-          <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">InfraSupport</h1>
+          <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
           <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
         </div>
       </div>

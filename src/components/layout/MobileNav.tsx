@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import logo from "@/assets/logo-innotech.png";
+import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Дашборд" },
@@ -28,8 +28,8 @@ export default function MobileNav() {
   return (
     <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-card">
       <div className="flex items-center gap-2">
-        <img src={logo} alt="Innotech" className="h-7 w-auto" />
-        <span className="font-heading font-semibold text-sm">InfraSupport</span>
+        <BrandLogo className="h-7 w-auto" />
+        <span className="font-heading font-semibold text-sm">ITE Assist Portal</span>
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
