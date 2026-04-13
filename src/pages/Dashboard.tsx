@@ -20,6 +20,7 @@ import {
   Cell,
   LineChart,
   Line,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
@@ -170,7 +171,23 @@ function useEquipmentByStatus() {
         const s = e.status || "active";
         counts[s] = (counts[s] || 0) + 1;
       });
-      return Object.entries(counts).map(([status, count]) => ({ status, count }));
+      const labels: Record<string, string> = {
+        active: "Активно",
+        maintenance: "На обслуживании",
+        decommissioned: "Выведено",
+        faulty: "Неисправно",
+      };
+      // Ensure all known statuses are present
+      const allStatuses = Object.keys(labels);
+      // Add any statuses from data that aren't in our labels
+      Object.keys(counts).forEach((s) => {
+        if (!allStatuses.includes(s)) allStatuses.push(s);
+      });
+      return allStatuses.map((status) => ({
+        status,
+        label: labels[status] || status,
+        count: counts[status] || 0,
+      }));
     },
   });
 }
@@ -278,8 +295,8 @@ export default function Dashboard() {
             <CardTitle className="text-base">Открытые заявки по приоритету</CardTitle>
           </CardHeader>
           <CardContent>
-            {ticketsByPriority && ticketsByPriority.some((d) => d.count > 0) ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
+            {ticketsByPriority ? (
+              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent nameKey="priority" />} />
                   <Pie
@@ -287,14 +304,22 @@ export default function Dashboard() {
                     dataKey="count"
                     nameKey="priority"
                     cx="50%"
-                    cy="50%"
-                    outerRadius={90}
+                    cy="45%"
+                    outerRadius={80}
                     label={({ priority, count }) => (count > 0 ? `${priority}: ${count}` : "")}
                   >
                     {ticketsByPriority.map((_, i) => (
                       <Cell key={i} fill={PRIORITY_COLORS[i]} />
                     ))}
                   </Pie>
+                  <Legend
+                    payload={["P1 — Критический", "P2 — Высокий", "P3 — Средний", "P4 — Низкий"].map((label, i) => ({
+                      value: label,
+                      type: "circle" as const,
+                      color: PRIORITY_COLORS[i],
+                    }))}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
                 </PieChart>
               </ChartContainer>
             ) : (
@@ -336,23 +361,31 @@ export default function Dashboard() {
             <CardTitle className="text-base">Оборудование по статусу</CardTitle>
           </CardHeader>
           <CardContent>
-            {equipmentByStatus && equipmentByStatus.length > 0 ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
+            {equipmentByStatus ? (
+              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
                 <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="status" />} />
+                  <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
                   <Pie
                     data={equipmentByStatus}
                     dataKey="count"
-                    nameKey="status"
+                    nameKey="label"
                     cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ status, count }) => `${status}: ${count}`}
+                    cy="45%"
+                    outerRadius={80}
+                    label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}
                   >
                     {equipmentByStatus.map((_, i) => (
                       <Cell key={i} fill={EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length]} />
                     ))}
                   </Pie>
+                  <Legend
+                    payload={equipmentByStatus.map((item, i) => ({
+                      value: item.label,
+                      type: "circle" as const,
+                      color: EQUIPMENT_COLORS[i % EQUIPMENT_COLORS.length],
+                    }))}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
                 </PieChart>
               </ChartContainer>
             ) : (
