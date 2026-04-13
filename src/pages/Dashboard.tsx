@@ -316,10 +316,10 @@ export default function Dashboard() {
   };
 
   const stats = [
-    { label: "Площадки", value: summary?.sites ?? 0, icon: Building2, color: "text-primary" },
-    { label: "Оборудование", value: summary?.equipment ?? 0, icon: Server, color: "text-accent" },
-    { label: "Открытые заявки", value: summary?.openTickets ?? 0, icon: Ticket, color: "text-destructive" },
-    { label: "Активные протоколы", value: summary?.activeProtocols ?? 0, icon: ClipboardList, color: "text-primary" },
+    { label: "ЦОД", value: summary?.sites ?? 0, icon: Building2, color: "text-primary", to: "/sites" },
+    { label: "Оборудование", value: summary?.equipment ?? 0, icon: Server, color: "text-accent", to: "/equipment" },
+    { label: "Открытые заявки", value: summary?.openTickets ?? 0, icon: Ticket, color: "text-destructive", to: "/tickets" },
+    { label: "Активные протоколы", value: summary?.activeProtocols ?? 0, icon: ClipboardList, color: "text-primary", to: "/protocols" },
   ];
 
   return (
@@ -329,15 +329,17 @@ export default function Dashboard() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
-              <s.icon className={cn("h-5 w-5", s.color)} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-heading font-bold">{s.value}</div>
-            </CardContent>
-          </Card>
+          <Link key={s.label} to={s.to} className="block">
+            <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
+                <s.icon className={cn("h-5 w-5", s.color)} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-heading font-bold">{s.value}</div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
