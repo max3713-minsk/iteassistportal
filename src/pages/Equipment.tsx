@@ -14,6 +14,20 @@ import { Plus, Server, Pencil, Trash2, Filter } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+const EQUIPMENT_STATUSES = [
+  { value: "active", label: "Активно" },
+  { value: "maintenance", label: "На обслуживании" },
+  { value: "decommissioned", label: "Выведено" },
+  { value: "faulty", label: "Неисправно" },
+];
+
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  active: "default",
+  maintenance: "secondary",
+  decommissioned: "outline",
+  faulty: "destructive",
+};
+
 interface EquipForm {
   name: string;
   model: string;
@@ -23,9 +37,10 @@ interface EquipForm {
   os_info: string;
   quantity: number;
   description: string;
+  status: string;
 }
 
-const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "" };
+const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "", status: "active" };
 
 export default function Equipment() {
   const { isStaff } = useAuth();
@@ -76,6 +91,7 @@ export default function Equipment() {
         os_info: f.os_info || null,
         quantity: f.quantity,
         description: f.description || null,
+        status: f.status,
       };
       if (editing) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", editing);
@@ -118,6 +134,7 @@ export default function Equipment() {
       os_info: eq.os_info ?? "",
       quantity: eq.quantity ?? 1,
       description: eq.description ?? "",
+      status: eq.status ?? "active",
     });
     setEditing(eq.id);
     setOpen(true);
@@ -190,6 +207,15 @@ export default function Equipment() {
                   <Label>Описание</Label>
                   <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
                 </div>
+                <div className="space-y-2">
+                  <Label>Статус</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue placeholder="Выберите статус" /></SelectTrigger>
+                    <SelectContent>
+                      {EQUIPMENT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveMutation.mutate(form)} disabled={!form.name || !form.site_id || saveMutation.isPending}>
@@ -248,6 +274,7 @@ export default function Equipment() {
                 <TableHead className="hidden md:table-cell">Категория</TableHead>
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
+                <TableHead>Статус</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
               </TableRow>
             </TableHeader>
@@ -263,6 +290,11 @@ export default function Equipment() {
                     <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[eq.status ?? "active"] ?? "outline"}>
+                        {EQUIPMENT_STATUSES.find((s) => s.value === (eq.status ?? "active"))?.label ?? eq.status}
+                      </Badge>
+                    </TableCell>
                     {isStaff && (
                       <TableCell>
                         <div className="flex gap-1">
