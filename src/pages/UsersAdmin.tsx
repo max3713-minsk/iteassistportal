@@ -352,6 +352,7 @@ export default function UsersAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
     </div>
   );
 }
