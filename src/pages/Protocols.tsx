@@ -25,6 +25,7 @@ export default function Protocols() {
   const [filterSite, setFilterSite] = useState("all");
   const [filterFrequency, setFilterFrequency] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState("active");
 
   // Auto-create protocols for today
   useAutoProtocols();
