@@ -107,6 +107,31 @@ export default function UsersAdmin() {
         })
         .eq("user_id", editUser.user_id);
       if (error) throw error;
+
+      // Save module permissions (only for non-admins)
+      if (!editUser.roles.includes("admin")) {
+        // Delete existing permissions
+        await supabase
+          .from("user_module_permissions")
+          .delete()
+          .eq("user_id", editUser.user_id);
+
+        // Insert new ones (if all modules selected = no restrictions)
+        if (editModules.length > 0 && editModules.length < MODULES.length) {
+          const rows = editModules.map((m) => ({
+            user_id: editUser.user_id,
+            module_key: m,
+          }));
+          await supabase.from("user_module_permissions").insert(rows);
+        }
+
+        await logAudit({
+          action: "Изменение доступа к модулям",
+          module: "users",
+          entityId: editUser.user_id,
+          details: `Модули: ${editModules.length === MODULES.length ? "Все" : editModules.join(", ")}`,
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
