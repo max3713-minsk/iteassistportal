@@ -12,13 +12,14 @@ export async function logAudit(params: {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name")
+      .select("full_name, organization")
       .eq("user_id", session.user.id)
       .single();
 
     await supabase.from("audit_logs").insert({
       user_id: session.user.id,
       user_name: profile?.full_name || session.user.email || "—",
+      organization: profile?.organization || null,
       action: params.action,
       module: params.module,
       entity_id: params.entityId,

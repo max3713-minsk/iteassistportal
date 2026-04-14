@@ -1,0 +1,1 @@
+ALTER TABLE public.audit_logs ADD COLUMN organization text;
