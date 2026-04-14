@@ -85,7 +85,7 @@ export default function Tickets() {
         .order("created_at", { ascending: false });
 
       if (statusFilter === "active") {
-        q = q.in("status", ["open", "in_progress", "waiting"]);
+        q = q.in("status", ["open", "in_progress", "waiting", "overdue"]);
       } else if (statusFilter !== "all") {
         q = q.eq("status", statusFilter as any);
       }
