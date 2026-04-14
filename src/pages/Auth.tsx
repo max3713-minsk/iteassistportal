@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import logoLight from "@/assets/logo-light.png";
+import { useTheme } from "next-themes";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
