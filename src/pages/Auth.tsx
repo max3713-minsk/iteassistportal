@@ -9,8 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import logoLight from "@/assets/logo-light.png";
+import { useTheme } from "next-themes";
 
 export default function Auth() {
+  const { resolvedTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -57,7 +60,11 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <BrandLogo className="h-16 w-auto mx-auto" />
+            {resolvedTheme === "light" ? (
+              <img src={logoLight} alt="Innotech Engineering" className="h-16 w-auto mx-auto" />
+            ) : (
+              <BrandLogo className="h-16 w-auto mx-auto" />
+            )}
           </div>
           <CardTitle className="font-heading text-2xl">ITE Assist Portal</CardTitle>
           <CardDescription>Портал технической поддержки</CardDescription>
