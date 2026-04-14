@@ -228,7 +228,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
-        {isStaff && !isCompleted && allCompleted && (
+        {isStaff && !isCompleted && (allCompleted || isOnRequest) && (
           <Button onClick={() => completeProtocol.mutate()} disabled={completeProtocol.isPending}>
             <Check className="h-4 w-4 mr-2" />
             Завершить протокол
