@@ -39,7 +39,7 @@ function useSummary() {
         supabase
           .from("tickets")
           .select("*", { count: "exact", head: true })
-          .in("status", ["open", "in_progress"]),
+          .in("status", ["open", "in_progress", "waiting", "overdue"]),
         supabase
           .from("maintenance_protocols")
           .select("*", { count: "exact", head: true })
