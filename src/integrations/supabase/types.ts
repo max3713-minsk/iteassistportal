@@ -604,7 +604,13 @@ export type Database = {
         | "on_request"
       protocol_status: "pending" | "in_progress" | "completed" | "overdue"
       ticket_priority: "P1" | "P2" | "P3" | "P4"
-      ticket_status: "open" | "in_progress" | "waiting" | "resolved" | "closed"
+      ticket_status:
+        | "open"
+        | "in_progress"
+        | "waiting"
+        | "overdue"
+        | "resolved"
+        | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -743,7 +749,14 @@ export const Constants = {
       ],
       protocol_status: ["pending", "in_progress", "completed", "overdue"],
       ticket_priority: ["P1", "P2", "P3", "P4"],
-      ticket_status: ["open", "in_progress", "waiting", "resolved", "closed"],
+      ticket_status: [
+        "open",
+        "in_progress",
+        "waiting",
+        "overdue",
+        "resolved",
+        "closed",
+      ],
     },
   },
 } as const
