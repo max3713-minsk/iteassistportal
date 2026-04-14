@@ -23,7 +23,8 @@ const moduleLabels: Record<string, string> = {
 
 export default function AuditLog() {
   const { hasRole } = useAuth();
-  const [moduleFilter, setModuleFilter] = useState("all");
+const [moduleFilter, setModuleFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const { data: logs = [], isLoading } = useQuery({
