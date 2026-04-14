@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import MaintenanceCalendar from "@/components/schedules/MaintenanceCalendar";
 import DayDetail from "@/components/schedules/DayDetail";
+import DayStats from "@/components/schedules/DayStats";
 import {
   frequencyColors,
   frequencyLabels,
