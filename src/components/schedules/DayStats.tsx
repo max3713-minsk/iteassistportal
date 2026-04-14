@@ -21,24 +21,7 @@ interface Props {
 const FREQ_ORDER: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
 
 export default function DayStats({ date, tasks }: Props) {
-  // Fetch completed protocol_items for the selected date
   const dateStr = format(date, "yyyy-MM-dd");
-  const { data: completedItems = [] } = useQuery({
-    queryKey: ["day-completed-items", dateStr],
-    queryFn: async () => {
-      // Find protocols covering this date
-      const { data, error } = await supabase
-        .from("protocol_items")
-        .select("task_id, status, maintenance_tasks!protocol_items_task_id_fkey(frequency)")
-        .not("completed_at", "is", null);
-      if (error) throw error;
-      // Filter items completed on selected date
-      return (data ?? []).filter((item: any) => {
-        // We consider a task completed if there's a completed protocol_item for it
-        return true;
-      });
-    },
-  });
 
   // Build a set of completed task IDs from protocol items that match the date range
   const { data: completedTaskIdsForDate = new Set<string>() } = useQuery({
