@@ -13,6 +13,7 @@ import logoLight from "@/assets/logo-light.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
+  const { resolvedTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
