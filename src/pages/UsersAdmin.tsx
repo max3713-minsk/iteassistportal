@@ -64,6 +64,7 @@ export default function UsersAdmin() {
   const [editOrganization, setEditOrganization] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [newRole, setNewRole] = useState<AppRole | "">("");
+  const [editModules, setEditModules] = useState<string[]>([]);
 
   const isAdmin = hasRole("admin");
 
