@@ -61,9 +61,11 @@ export default function Auth() {
 
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
+          <div className="mx-auto mb-4 flex justify-center">
             {resolvedTheme === "light" ? (
-              <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto" />
+              <div className="rounded-md bg-white px-3 py-2">
+                <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto object-contain" />
+              </div>
             ) : (
               <BrandLogo className="h-20 w-auto mx-auto" />
             )}
