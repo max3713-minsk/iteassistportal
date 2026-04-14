@@ -11,22 +11,24 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Панель управления" },
-  { to: "/sites", icon: Building2, label: "ЦОД" },
-  { to: "/equipment", icon: Server, label: "Оборудование" },
-  { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО" },
-  { to: "/protocols", icon: ClipboardList, label: "Протоколы" },
-  { to: "/tickets", icon: Ticket, label: "Заявки" },
-  { to: "/documents", icon: FileArchive, label: "Документация" },
-  { to: "/users", icon: Users, label: "Пользователи" },
-  { to: "/audit", icon: ScrollText, label: "Журнал событий" },
-  { to: "/help", icon: HelpCircle, label: "Справка" },
+  { to: "/", icon: LayoutDashboard, label: "Панель управления", moduleKey: "dashboard" },
+  { to: "/sites", icon: Building2, label: "ЦОД", moduleKey: "sites" },
+  { to: "/equipment", icon: Server, label: "Оборудование", moduleKey: "equipment" },
+  { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", moduleKey: "schedules" },
+  { to: "/protocols", icon: ClipboardList, label: "Протоколы", moduleKey: "protocols" },
+  { to: "/tickets", icon: Ticket, label: "Заявки", moduleKey: "tickets" },
+  { to: "/documents", icon: FileArchive, label: "Документация", moduleKey: "documents" },
+  { to: "/users", icon: Users, label: "Пользователи", moduleKey: "users" },
+  { to: "/audit", icon: ScrollText, label: "Журнал событий", moduleKey: "audit" },
+  { to: "/help", icon: HelpCircle, label: "Справка", moduleKey: "help" },
 ];
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, hasModuleAccess } = useAuth();
+
+  const visibleItems = navItems.filter((item) => hasModuleAccess(item.moduleKey));
 
   return (
     <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-card">
@@ -43,7 +45,7 @@ export default function MobileNav() {
 
       {open && (
         <div className="absolute top-14 left-0 right-0 z-50 bg-card border-b shadow-lg p-4 space-y-1">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
