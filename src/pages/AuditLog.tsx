@@ -109,7 +109,7 @@ const [moduleFilter, setModuleFilter] = useState("all");
             <SelectTrigger><SelectValue placeholder="Все организации" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все организации</SelectItem>
-              {organizations.map((org: string) => (
+              {allOrgs.map((org: string) => (
                 <SelectItem key={org} value={org}>{org}</SelectItem>
               ))}
             </SelectContent>
