@@ -180,12 +180,21 @@ export default function UsersAdmin() {
     return matchSearch && matchRole;
   });
 
-  const openEdit = (user: UserProfile) => {
+  const openEdit = async (user: UserProfile) => {
     setEditUser(user);
     setEditFullName(user.full_name || "");
     setEditOrganization(user.organization || "");
     setEditPhone(user.phone || "");
     setNewRole("");
+
+    // Load current module permissions
+    const { data } = await supabase
+      .from("user_module_permissions")
+      .select("module_key")
+      .eq("user_id", user.user_id);
+    const perms = (data ?? []).map((p) => p.module_key);
+    // If no restrictions set, show all checked
+    setEditModules(perms.length > 0 ? perms : MODULES.map((m) => m.key));
   };
 
   if (!isAdmin) {
