@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
+import { logAudit } from "@/lib/audit";
 import { useState } from "react";
 
 const statusLabels: Record<string, string> = {

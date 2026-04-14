@@ -232,7 +232,9 @@ export default function Tickets() {
       qc.invalidateQueries({ queryKey: ["open-tickets-count"] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
       if (selectedTicket) {
-        setSelectedTicket((prev: any) => prev ? { ...prev, status: "updated" } : null);
+        // Refetch selected ticket data
+        const { data: updated } = await supabase.from("tickets").select("*, sites(name), equipment(name)").eq("id", selectedTicket.id).single();
+        if (updated) setSelectedTicket(updated);
       }
       toast({ title: "Статус обновлён" });
     },
