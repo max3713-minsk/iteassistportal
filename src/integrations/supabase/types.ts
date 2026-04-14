@@ -22,6 +22,7 @@ export type Database = {
           entity_id: string | null
           id: string
           module: string
+          organization: string | null
           user_id: string
           user_name: string | null
         }
@@ -32,6 +33,7 @@ export type Database = {
           entity_id?: string | null
           id?: string
           module: string
+          organization?: string | null
           user_id: string
           user_name?: string | null
         }
@@ -42,6 +44,7 @@ export type Database = {
           entity_id?: string | null
           id?: string
           module?: string
+          organization?: string | null
           user_id?: string
           user_name?: string | null
         }
