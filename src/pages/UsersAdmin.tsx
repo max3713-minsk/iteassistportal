@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,11 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Shield, Search, UserCog, Plus, Trash2, Building2, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CreateUserDialog } from "@/components/users/CreateUserDialog";
+import { logAudit } from "@/lib/audit";
 
 type AppRole = "admin" | "engineer" | "customer";
 
@@ -25,6 +27,16 @@ const roleLabels: Record<AppRole, string> = {
   customer: "Заказчик",
 };
 
+const MODULES = [
+  { key: "dashboard", label: "Панель управления" },
+  { key: "sites", label: "ЦОД" },
+  { key: "equipment", label: "Оборудование" },
+  { key: "schedules", label: "Календарь ТО" },
+  { key: "protocols", label: "Протоколы" },
+  { key: "tickets", label: "Заявки" },
+  { key: "documents", label: "Документация" },
+  { key: "help", label: "Справка" },
+];
 const roleBadgeVariant: Record<AppRole, "default" | "secondary" | "outline"> = {
   admin: "default",
   engineer: "secondary",
@@ -52,6 +64,7 @@ export default function UsersAdmin() {
   const [editOrganization, setEditOrganization] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [newRole, setNewRole] = useState<AppRole | "">("");
+  const [editModules, setEditModules] = useState<string[]>([]);
 
   const isAdmin = hasRole("admin");
 
@@ -94,6 +107,31 @@ export default function UsersAdmin() {
         })
         .eq("user_id", editUser.user_id);
       if (error) throw error;
+
+      // Save module permissions (only for non-admins)
+      if (!editUser.roles.includes("admin")) {
+        // Delete existing permissions
+        await supabase
+          .from("user_module_permissions")
+          .delete()
+          .eq("user_id", editUser.user_id);
+
+        // Insert new ones (if all modules selected = no restrictions)
+        if (editModules.length > 0 && editModules.length < MODULES.length) {
+          const rows = editModules.map((m) => ({
+            user_id: editUser.user_id,
+            module_key: m,
+          }));
+          await supabase.from("user_module_permissions").insert(rows);
+        }
+
+        await logAudit({
+          action: "Изменение доступа к модулям",
+          module: "users",
+          entityId: editUser.user_id,
+          details: `Модули: ${editModules.length === MODULES.length ? "Все" : editModules.join(", ")}`,
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
@@ -142,12 +180,21 @@ export default function UsersAdmin() {
     return matchSearch && matchRole;
   });
 
-  const openEdit = (user: UserProfile) => {
+  const openEdit = async (user: UserProfile) => {
     setEditUser(user);
     setEditFullName(user.full_name || "");
     setEditOrganization(user.organization || "");
     setEditPhone(user.phone || "");
     setNewRole("");
+
+    // Load current module permissions
+    const { data } = await supabase
+      .from("user_module_permissions")
+      .select("module_key")
+      .eq("user_id", user.user_id);
+    const perms = (data ?? []).map((p) => p.module_key);
+    // If no restrictions set, show all checked
+    setEditModules(perms.length > 0 ? perms : MODULES.map((m) => m.key));
   };
 
   if (!isAdmin) {
@@ -342,6 +389,34 @@ export default function UsersAdmin() {
                   </Button>
                 </div>
               </div>
+
+              {/* Module permissions (only for non-admins) */}
+              {!editUser.roles.includes("admin") && (
+                <div className="space-y-2">
+                  <Label>Доступ к модулям</Label>
+                  <p className="text-xs text-muted-foreground">Отметьте модули, к которым пользователь будет иметь доступ</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MODULES.map((m) => (
+                      <div key={m.key} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`module-${m.key}`}
+                          checked={editModules.includes(m.key)}
+                          onCheckedChange={(checked) => {
+                            setEditModules((prev) =>
+                              checked
+                                ? [...prev, m.key]
+                                : prev.filter((k) => k !== m.key)
+                            );
+                          }}
+                        />
+                        <label htmlFor={`module-${m.key}`} className="text-sm cursor-pointer">
+                          {m.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

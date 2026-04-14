@@ -9,25 +9,29 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 
 const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [] },
-  { to: "/sites", icon: Building2, label: "ЦОД", roles: [] },
-  { to: "/equipment", icon: Server, label: "Оборудование", roles: [] },
-  { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", roles: [] },
-  { to: "/protocols", icon: ClipboardList, label: "Протоколы", roles: [] },
-  { to: "/tickets", icon: Ticket, label: "Заявки", roles: [] },
-  { to: "/documents", icon: FileArchive, label: "Документация", roles: [] },
-  { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"] },
-  { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"] },
-  { to: "/help", icon: HelpCircle, label: "Справка", roles: [] },
+  { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [], moduleKey: "dashboard" },
+  { to: "/sites", icon: Building2, label: "ЦОД", roles: [], moduleKey: "sites" },
+  { to: "/equipment", icon: Server, label: "Оборудование", roles: [], moduleKey: "equipment" },
+  { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", roles: [], moduleKey: "schedules" },
+  { to: "/protocols", icon: ClipboardList, label: "Протоколы", roles: [], moduleKey: "protocols" },
+  { to: "/tickets", icon: Ticket, label: "Заявки", roles: [], moduleKey: "tickets" },
+  { to: "/documents", icon: FileArchive, label: "Документация", roles: [], moduleKey: "documents" },
+  { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
+  { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
+  { to: "/help", icon: HelpCircle, label: "Справка", roles: [], moduleKey: "help" },
 ];
 
 export default function AppSidebar() {
   const { pathname } = useLocation();
-  const { profile, signOut, hasRole, roles } = useAuth();
+  const { profile, signOut, hasRole, hasModuleAccess, roles } = useAuth();
 
-  const visibleItems = navItems.filter(
-    (item) => item.roles.length === 0 || item.roles.some((r) => hasRole(r as any))
-  );
+  const visibleItems = navItems.filter((item) => {
+    // Role-based filter (admin-only items)
+    if (item.roles.length > 0 && !item.roles.some((r) => hasRole(r as any))) return false;
+    // Module permission filter
+    if (!hasModuleAccess(item.moduleKey)) return false;
+    return true;
+  });
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
