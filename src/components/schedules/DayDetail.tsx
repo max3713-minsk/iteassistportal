@@ -95,7 +95,7 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose }: Pr
           onClick={() => navigate(`/protocols?date=${format(date, "yyyy-MM-dd")}`)}
         >
           <FileText className="h-4 w-4" />
-          Перейти к отчётам за эту дату
+          Перейти к протоколам за эту дату
         </Button>
       </div>
 
