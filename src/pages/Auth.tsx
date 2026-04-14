@@ -11,6 +11,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 import logoLight from "@/assets/logo-light.png";
 import { useTheme } from "next-themes";
+import { Phone, Mail, Globe, Clock } from "lucide-react";
 
 export default function Auth() {
   const { resolvedTheme } = useTheme();
@@ -53,17 +54,18 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 relative">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
+
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             {resolvedTheme === "light" ? (
-              <img src={logoLight} alt="Innotech Engineering" className="h-16 w-auto mx-auto" />
+              <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto" />
             ) : (
-              <BrandLogo className="h-16 w-auto mx-auto" />
+              <BrandLogo className="h-20 w-auto mx-auto" />
             )}
           </div>
           <CardTitle className="font-heading text-2xl">ITE Assist Portal</CardTitle>
@@ -112,6 +114,31 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Company info footer */}
+      <div className="mt-8 text-center space-y-2 max-w-md">
+        <p className="text-sm font-medium text-muted-foreground">
+          ООО «ИнноТех Инжиниринг»
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <a href="tel:+375336605070" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+            <Phone className="h-3 w-3" />
+            +375 33 660 50 70
+          </a>
+          <a href="mailto:info@iteng.by" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+            <Mail className="h-3 w-3" />
+            info@iteng.by
+          </a>
+          <a href="https://iteng.by" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+            <Globe className="h-3 w-3" />
+            iteng.by
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground inline-flex items-center gap-1 justify-center">
+          <Clock className="h-3 w-3" />
+          Пн–Пт: 9:00 – 18:00
+        </p>
+      </div>
     </div>
   );
 }
