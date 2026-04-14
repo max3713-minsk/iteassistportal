@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
-import logoLight from "@/assets/logo-light-v2.png";
+import logoLight from "@/assets/logo-light.svg";
 import { useTheme } from "next-themes";
 import { Phone, Mail, Globe, Clock } from "lucide-react";
 
@@ -63,9 +63,7 @@ export default function Auth() {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex justify-center">
             {resolvedTheme === "light" ? (
-              <div className="rounded-md bg-white px-3 py-2">
-                <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto object-contain" />
-              </div>
+              <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto" />
             ) : (
               <BrandLogo className="h-20 w-auto mx-auto" />
             )}
