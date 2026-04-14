@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Ticket, MessageSquare, Clock } from "lucide-react";
+import { Plus, Ticket, MessageSquare, Clock, HelpCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
@@ -74,7 +74,8 @@ export default function Tickets() {
   const [form, setForm] = useState<TicketForm>(emptyForm);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [comment, setComment] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showHelp, setShowHelp] = useState(false);
 
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["tickets", statusFilter],
@@ -296,11 +297,15 @@ export default function Tickets() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-2xl font-bold">Заявки</h1>
         <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => setShowHelp(true)} title="Справка по статусам">
+            <HelpCircle className="h-4 w-4" />
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Все</SelectItem>
               <SelectItem value="active">Активные</SelectItem>
               <SelectItem value="open">Открытые</SelectItem>
               <SelectItem value="in_progress">В работе</SelectItem>
@@ -308,7 +313,6 @@ export default function Tickets() {
               <SelectItem value="overdue">Просроченные</SelectItem>
               <SelectItem value="resolved">Решённые</SelectItem>
               <SelectItem value="closed">Закрытые</SelectItem>
-              <SelectItem value="all">Все</SelectItem>
             </SelectContent>
           </Select>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(emptyForm); }}>
@@ -447,6 +451,85 @@ export default function Tickets() {
           </Table>
         </Card>
       )}
+
+      {/* Status help dialog */}
+      <Dialog open={showHelp} onOpenChange={setShowHelp}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Справка по статусам заявок</DialogTitle>
+            <DialogDescription>Описание жизненного цикла заявки и значение каждого статуса</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-red-500/30 bg-red-500/5">
+                <Badge className={statusColors.open}>Открыта</Badge>
+                <div>
+                  <p className="font-medium mb-1">Заявка зарегистрирована и ожидает реакции исполнителя</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> заявка принята в обработку. Ожидайте назначения инженера.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> необходимо взять заявку в работу до истечения SLA-дедлайна. Если время реакции превышено — заявка автоматически получит статус «Просрочена».</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-blue-400/30 bg-blue-400/5">
+                <Badge className={statusColors.in_progress}>В работе</Badge>
+                <div>
+                  <p className="font-medium mb-1">Инженер приступил к выполнению работ</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> специалист работает над вашей заявкой. Вы можете добавлять комментарии для уточнения.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> заявка активна, выполняйте работы. По завершении переведите в статус «Решена» или «Ожидание» если требуется информация от заказчика.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
+                <Badge className={statusColors.waiting}>Ожидание</Badge>
+                <div>
+                  <p className="font-medium mb-1">Работы приостановлены — ожидается действие заказчика или третьей стороны</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> от вас требуется дополнительная информация или подтверждение. Ответьте в комментариях к заявке.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> заявка на паузе. После получения информации верните в статус «В работе».</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                <Badge className={statusColors.overdue}>Просрочена</Badge>
+                <div>
+                  <p className="font-medium mb-1">Время реакции по SLA превышено</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> исполнитель не успел отреагировать в установленный срок. Заявка находится на контроле.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> критический статус — необходимо немедленно взять заявку в работу. Факт просрочки фиксируется в журнале аудита.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                <Badge className={statusColors.resolved}>Решена</Badge>
+                <div>
+                  <p className="font-medium mb-1">Исполнитель завершил работы, ожидается подтверждение заказчика</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> проверьте результат работ. Если всё в порядке — закройте заявку. Если нет — верните в статус «Открыта» с комментарием.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> работы выполнены. Заказчик должен подтвердить и закрыть заявку.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-400/30 bg-gray-400/5">
+                <Badge className={statusColors.closed}>Закрыта</Badge>
+                <div>
+                  <p className="font-medium mb-1">Заявка полностью завершена</p>
+                  <p className="text-muted-foreground"><strong>Заказчик:</strong> вы подтвердили выполнение работ. Заявка перенесена в архив. Связанный протокол обслуживания также закрывается автоматически.</p>
+                  <p className="text-muted-foreground"><strong>Исполнитель:</strong> заявка закрыта заказчиком. Дальнейшие действия не требуются.</p>
+                  <p className="text-muted-foreground mt-1"><em>Закрыть заявку может только заказчик, создавший её.</em></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-3 space-y-2">
+              <h4 className="font-medium">Время реакции (SLA)</h4>
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                <div><Badge className={priorityColors.P1}>P1</Badge> — 30 минут (24/7)</div>
+                <div><Badge className={priorityColors.P2}>P2</Badge> — 60 минут (09:00–18:00)</div>
+                <div><Badge className={priorityColors.P3}>P3</Badge> — 120 минут (09:00–18:00)</div>
+                <div><Badge className={priorityColors.P4}>P4</Badge> — 180 минут (09:00–18:00)</div>
+              </div>
+              <p className="text-muted-foreground text-xs">Если заявка не переведена в статус «В работе» до истечения SLA — она автоматически получает статус «Просрочена».</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Ticket detail dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={(v) => { if (!v) setSelectedTicket(null); }}>
