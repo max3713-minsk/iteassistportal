@@ -104,10 +104,11 @@ export default function AuditLog() {
       ) : (
         <Card>
           <Table>
-            <TableHeader>
+             <TableHeader>
               <TableRow>
                 <TableHead className="w-[160px]">Дата и время</TableHead>
                 <TableHead>Пользователь</TableHead>
+                <TableHead>Организация</TableHead>
                 <TableHead>Модуль</TableHead>
                 <TableHead>Действие</TableHead>
                 <TableHead className="hidden md:table-cell">Подробности</TableHead>
@@ -120,6 +121,7 @@ export default function AuditLog() {
                     {format(new Date(log.created_at), "dd.MM.yyyy HH:mm:ss", { locale: ru })}
                   </TableCell>
                   <TableCell className="font-medium">{log.user_name || "—"}</TableCell>
+                  <TableCell className="text-sm">{log.organization || "—"}</TableCell>
                   <TableCell>
                     <span className="text-sm">{moduleLabels[log.module] || log.module}</span>
                   </TableCell>
