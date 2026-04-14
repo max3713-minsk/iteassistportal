@@ -50,7 +50,15 @@ const [moduleFilter, setModuleFilter] = useState("all");
     enabled: hasRole("admin"),
   });
 
-  const organizations = [...new Set(logs.map((l: any) => l.organization).filter(Boolean))].sort();
+  const { data: allOrgs = [] } = useQuery({
+    queryKey: ["audit-logs-orgs"],
+    queryFn: async () => {
+      const { data } = await supabase.from("audit_logs").select("organization");
+      const orgs = [...new Set((data ?? []).map((r: any) => r.organization).filter(Boolean))].sort();
+      return orgs as string[];
+    },
+    enabled: hasRole("admin"),
+  });
 
   if (!hasRole("admin")) {
     return (
