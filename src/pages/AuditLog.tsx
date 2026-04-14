@@ -96,6 +96,16 @@ const [moduleFilter, setModuleFilter] = useState("all");
             </SelectContent>
           </Select>
         </div>
+        <div className="w-56">
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger><SelectValue placeholder="Все организации" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все организации</SelectItem>
+              {organizations.map((org: string) => (
+                <SelectItem key={org} value={org}>{org}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
       </div>
 
       {isLoading ? (
