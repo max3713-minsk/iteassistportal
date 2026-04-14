@@ -115,6 +115,7 @@ export default function Tickets() {
     })();
   }, [tickets, qc]);
 
+  const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
     queryFn: async () => {
       const { data } = await supabase.from("sites").select("id, name").order("name");
