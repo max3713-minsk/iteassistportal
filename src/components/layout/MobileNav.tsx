@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
@@ -19,6 +19,7 @@ const navItems = [
   { to: "/tickets", icon: Ticket, label: "Заявки" },
   { to: "/documents", icon: FileArchive, label: "Документация" },
   { to: "/users", icon: Users, label: "Пользователи" },
+  { to: "/audit", icon: ScrollText, label: "Журнал событий" },
 ];
 
 export default function MobileNav() {

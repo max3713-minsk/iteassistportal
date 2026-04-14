@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { logAudit } from "@/lib/audit";
 
 const priorityColors: Record<string, string> = {
   P1: "bg-destructive text-destructive-foreground",
@@ -33,11 +35,19 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-500 text-white",
-  in_progress: "bg-primary text-primary-foreground",
+  open: "bg-red-500 text-white",
+  in_progress: "bg-blue-400 text-white",
   waiting: "bg-yellow-500 text-white",
-  resolved: "bg-green-500 text-white",
-  closed: "bg-muted text-muted-foreground",
+  resolved: "bg-emerald-500 text-white",
+  closed: "bg-gray-400 text-white",
+};
+
+const rowStatusClasses: Record<string, string> = {
+  open: "border-l-4 border-l-red-500",
+  in_progress: "border-l-4 border-l-blue-400",
+  waiting: "border-l-4 border-l-yellow-500",
+  resolved: "border-l-4 border-l-emerald-500",
+  closed: "bg-muted/40 border-l-4 border-l-gray-400 opacity-70",
 };
 
 interface TicketForm {
@@ -51,7 +61,8 @@ interface TicketForm {
 const emptyForm: TicketForm = { title: "", description: "", priority: "P3", site_id: "", equipment_id: "" };
 
 export default function Tickets() {
-  const { user, isStaff } = useAuth();
+  const { user, isStaff, hasRole } = useAuth();
+  const isCustomer = hasRole("customer");
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -121,7 +132,6 @@ export default function Tickets() {
 
   const createMutation = useMutation({
     mutationFn: async (f: TicketForm) => {
-      // Create ticket
       const { data: ticket, error } = await supabase.from("tickets").insert({
         title: f.title,
         description: f.description || null,
@@ -132,10 +142,10 @@ export default function Tickets() {
       }).select("id, site_id").single();
       if (error) throw error;
 
-      // Auto-create on_request protocol linked to this ticket
+      // Auto-create on_request protocol (no task items for on_request)
       if (ticket && ticket.site_id) {
         const todayStr = formatDate(new Date(), "yyyy-MM-dd");
-        const { data: protocol } = await supabase
+        await supabase
           .from("maintenance_protocols")
           .insert({
             site_id: ticket.site_id,
@@ -146,27 +156,10 @@ export default function Tickets() {
             created_by: user!.id,
             ticket_id: ticket.id,
             notes: `Заявка: ${f.title}`,
-          })
-          .select("id")
-          .single();
-
-        // If equipment is specified, get on_request tasks and create items
-        if (protocol && f.equipment_id) {
-          const { data: tasks } = await supabase
-            .from("maintenance_tasks")
-            .select("id")
-            .eq("frequency", "on_request");
-
-          if (tasks?.length) {
-            const items = tasks.map((t) => ({
-              protocol_id: protocol.id,
-              equipment_id: f.equipment_id,
-              task_id: t.id,
-            }));
-            await supabase.from("protocol_items").insert(items);
-          }
-        }
+          });
       }
+
+      await logAudit({ action: "Создание заявки", module: "tickets", entityId: ticket.id, details: f.title });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
@@ -180,15 +173,35 @@ export default function Tickets() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, title }: { id: string; status: string; title?: string }) => {
       const payload: any = { status };
       if (status === "resolved" || status === "closed") payload.resolved_at = new Date().toISOString();
       const { error } = await supabase.from("tickets").update(payload).eq("id", id);
       if (error) throw error;
+
+      // When ticket is closed, also close linked protocol
+      if (status === "closed") {
+        const { data: linkedProtocols } = await supabase
+          .from("maintenance_protocols")
+          .select("id")
+          .eq("ticket_id", id);
+        if (linkedProtocols?.length) {
+          for (const p of linkedProtocols) {
+            await supabase.from("maintenance_protocols").update({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+              completed_by: user!.id,
+            }).eq("id", p.id);
+          }
+        }
+      }
+
+      await logAudit({ action: `Смена статуса → ${statusLabels[status]}`, module: "tickets", entityId: id, details: title });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
       qc.invalidateQueries({ queryKey: ["open-tickets-count"] });
+      qc.invalidateQueries({ queryKey: ["protocols"] });
       if (selectedTicket) {
         setSelectedTicket((prev: any) => prev ? { ...prev, status: "updated" } : null);
       }
@@ -200,6 +213,7 @@ export default function Tickets() {
     mutationFn: async ({ id, assigned_to }: { id: string; assigned_to: string }) => {
       const { error } = await supabase.from("tickets").update({ assigned_to }).eq("id", id);
       if (error) throw error;
+      await logAudit({ action: "Назначение инженера", module: "tickets", entityId: id });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
@@ -216,6 +230,7 @@ export default function Tickets() {
         content: comment.trim(),
       });
       if (error) throw error;
+      await logAudit({ action: "Добавление комментария", module: "tickets", entityId: selectedTicket.id });
     },
     onSuccess: () => {
       setComment("");
@@ -227,6 +242,24 @@ export default function Tickets() {
   const filteredEquipment = form.site_id
     ? equipment.filter((e: any) => e.site_id === form.site_id)
     : equipment;
+
+  // Available status transitions
+  const getAvailableStatuses = (ticket: any) => {
+    const all = [
+      { value: "open", label: "Открыта" },
+      { value: "in_progress", label: "В работе" },
+      { value: "waiting", label: "Ожидание" },
+      { value: "resolved", label: "Решена" },
+    ];
+    // Only customer who created the ticket can close it
+    if (isCustomer && ticket.created_by === user?.id) {
+      all.push({ value: "closed", label: "Закрыта" });
+    }
+    // Staff cannot close, only customer can
+    return isStaff ? all : [
+      ...all.filter(s => s.value !== "in_progress" && s.value !== "waiting"),
+    ];
+  };
 
   return (
     <div>
@@ -326,12 +359,12 @@ export default function Tickets() {
                 <TableHead>Статус</TableHead>
                 <TableHead className="hidden md:table-cell">Создана</TableHead>
                 {isStaff && <TableHead>Назначен</TableHead>}
-                {isStaff && <TableHead className="w-32">Действия</TableHead>}
+                <TableHead className="w-32">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tickets.map((t: any) => (
-                <TableRow key={t.id} className="cursor-pointer" onClick={() => setSelectedTicket(t)}>
+                <TableRow key={t.id} className={cn("cursor-pointer", rowStatusClasses[t.status])} onClick={() => setSelectedTicket(t)}>
                   <TableCell>
                     <Badge className={priorityColors[t.priority]}>{t.priority}</Badge>
                   </TableCell>
@@ -362,25 +395,21 @@ export default function Tickets() {
                       </Select>
                     </TableCell>
                   )}
-                  {isStaff && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={t.status}
-                        onValueChange={(v) => updateStatusMutation.mutate({ id: t.id, status: v })}
-                      >
-                        <SelectTrigger className="h-8 w-[120px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Открыта</SelectItem>
-                          <SelectItem value="in_progress">В работе</SelectItem>
-                          <SelectItem value="waiting">Ожидание</SelectItem>
-                          <SelectItem value="resolved">Решена</SelectItem>
-                          <SelectItem value="closed">Закрыта</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  )}
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={t.status}
+                      onValueChange={(v) => updateStatusMutation.mutate({ id: t.id, status: v, title: t.title })}
+                    >
+                      <SelectTrigger className="h-8 w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableStatuses(t).map((s) => (
+                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -415,6 +444,19 @@ export default function Tickets() {
                   <Clock className="h-4 w-4" />
                   SLA: {format(new Date(selectedTicket.sla_deadline), "dd.MM.yyyy HH:mm")}
                 </div>
+              )}
+
+              {/* Close button for customer */}
+              {isCustomer && selectedTicket.created_by === user?.id && selectedTicket.status !== "closed" && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    updateStatusMutation.mutate({ id: selectedTicket.id, status: "closed", title: selectedTicket.title });
+                    setSelectedTicket(null);
+                  }}
+                >
+                  Закрыть заявку
+                </Button>
               )}
 
               <div className="space-y-3">

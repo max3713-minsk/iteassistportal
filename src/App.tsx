@@ -14,6 +14,7 @@ import Schedules from "@/pages/Schedules";
 import Protocols from "@/pages/Protocols";
 import Documents from "@/pages/Documents";
 import UsersAdmin from "@/pages/UsersAdmin";
+import AuditLog from "@/pages/AuditLog";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/protocols" element={<Protocols />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/users" element={<UsersAdmin />} />
+              <Route path="/audit" element={<AuditLog />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

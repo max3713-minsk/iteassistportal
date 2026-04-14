@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card";
 import { Eye, ClipboardList } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
+import { cn } from "@/lib/utils";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -14,11 +15,18 @@ const statusLabels: Record<string, string> = {
   overdue: "Просрочен",
 };
 
-const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  in_progress: "secondary",
-  completed: "default",
-  overdue: "destructive",
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-500 text-white",
+  in_progress: "bg-blue-400 text-white",
+  completed: "bg-emerald-500 text-white",
+  overdue: "bg-red-500 text-white",
+};
+
+const rowStatusClasses: Record<string, string> = {
+  pending: "border-l-4 border-l-yellow-500",
+  in_progress: "border-l-4 border-l-blue-400",
+  completed: "border-l-4 border-l-emerald-500 bg-muted/30",
+  overdue: "border-l-4 border-l-red-500",
 };
 
 interface Protocol {
@@ -63,7 +71,7 @@ export default function ProtocolList({ protocols, onSelect }: Props) {
         </TableHeader>
         <TableBody>
           {protocols.map((p) => (
-            <TableRow key={p.id}>
+            <TableRow key={p.id} className={cn(rowStatusClasses[p.status])}>
               <TableCell className="font-medium">{p.sites?.name ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant="outline">{frequencyLabels[p.frequency] ?? p.frequency}</Badge>
@@ -72,7 +80,7 @@ export default function ProtocolList({ protocols, onSelect }: Props) {
                 {format(new Date(p.period_start), "dd.MM.yyyy")} — {format(new Date(p.period_end), "dd.MM.yyyy")}
               </TableCell>
               <TableCell>
-                <Badge variant={statusVariants[p.status] ?? "outline"}>
+                <Badge className={statusColors[p.status] ?? "bg-gray-400 text-white"}>
                   {statusLabels[p.status] ?? p.status}
                 </Badge>
               </TableCell>
