@@ -50,8 +50,16 @@ export default function Protocols() {
     },
   });
 
-  const filtered = useMemo(() => {
-    let result = protocols;
+  const activeProtocols = useMemo(() => {
+    return protocols.filter((p) => p.status !== "completed");
+  }, [protocols]);
+
+  const archivedProtocols = useMemo(() => {
+    return protocols.filter((p) => p.status === "completed");
+  }, [protocols]);
+
+  const applyFilters = (list: typeof protocols) => {
+    let result = list;
     if (filterSite !== "all") result = result.filter((p) => p.site_id === filterSite);
     if (filterFrequency !== "all") result = result.filter((p) => p.frequency === filterFrequency);
     if (filterStatus !== "all") result = result.filter((p) => p.status === filterStatus);
@@ -59,7 +67,12 @@ export default function Protocols() {
       result = result.filter((p) => p.period_start <= dateParam && p.period_end >= dateParam);
     }
     return result;
-  }, [protocols, filterSite, filterFrequency, filterStatus, dateParam]);
+  };
+
+  const filtered = useMemo(() => {
+    const base = activeTab === "active" ? activeProtocols : archivedProtocols;
+    return applyFilters(base);
+  }, [activeProtocols, archivedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam]);
 
   const fetchProtocolData = async (protocolId: string) => {
     const { data: protocol } = await supabase
