@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +25,7 @@ export default function Protocols() {
   const [filterSite, setFilterSite] = useState("all");
   const [filterFrequency, setFilterFrequency] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState("active");
 
   // Auto-create protocols for today
   useAutoProtocols();
@@ -48,8 +50,16 @@ export default function Protocols() {
     },
   });
 
-  const filtered = useMemo(() => {
-    let result = protocols;
+  const activeProtocols = useMemo(() => {
+    return protocols.filter((p) => p.status !== "completed");
+  }, [protocols]);
+
+  const archivedProtocols = useMemo(() => {
+    return protocols.filter((p) => p.status === "completed");
+  }, [protocols]);
+
+  const applyFilters = (list: typeof protocols) => {
+    let result = list;
     if (filterSite !== "all") result = result.filter((p) => p.site_id === filterSite);
     if (filterFrequency !== "all") result = result.filter((p) => p.frequency === filterFrequency);
     if (filterStatus !== "all") result = result.filter((p) => p.status === filterStatus);
@@ -57,7 +67,12 @@ export default function Protocols() {
       result = result.filter((p) => p.period_start <= dateParam && p.period_end >= dateParam);
     }
     return result;
-  }, [protocols, filterSite, filterFrequency, filterStatus, dateParam]);
+  };
+
+  const filtered = useMemo(() => {
+    const base = activeTab === "active" ? activeProtocols : archivedProtocols;
+    return applyFilters(base);
+  }, [activeProtocols, archivedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam]);
 
   const fetchProtocolData = async (protocolId: string) => {
     const { data: protocol } = await supabase
@@ -191,6 +206,13 @@ export default function Protocols() {
         {isStaff && <CreateProtocolDialog defaultDate={dateParam} />}
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="active">Активные ({activeProtocols.length})</TabsTrigger>
+          <TabsTrigger value="archive">Архив ({archivedProtocols.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="w-56">
@@ -220,17 +242,19 @@ export default function Protocols() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-48">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger><SelectValue placeholder="Все статусы" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="pending">Ожидает</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="completed">Завершён</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {activeTab === "active" && (
+          <div className="w-48">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger><SelectValue placeholder="Все статусы" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="pending">Ожидает</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="overdue">Просрочен</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {dateParam && (
