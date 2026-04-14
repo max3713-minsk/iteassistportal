@@ -209,12 +209,13 @@ export default function Tickets() {
       const { error } = await supabase.from("tickets").update(payload).eq("id", id);
       if (error) throw error;
 
-      // When ticket is closed, also close linked protocol
-      if (status === "closed") {
+      // When ticket is closed or resolved, also close linked protocol
+      if (status === "closed" || status === "resolved") {
         const { data: linkedProtocols } = await supabase
           .from("maintenance_protocols")
           .select("id")
-          .eq("ticket_id", id);
+          .eq("ticket_id", id)
+          .neq("status", "completed");
         if (linkedProtocols?.length) {
           for (const p of linkedProtocols) {
             await supabase.from("maintenance_protocols").update({
