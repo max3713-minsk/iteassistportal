@@ -90,7 +90,7 @@ function useTicketsByPriority() {
       const { data } = await supabase
         .from("tickets")
         .select("priority")
-        .in("status", ["open", "in_progress", "waiting"]);
+        .in("status", ["open", "in_progress", "waiting", "overdue"]);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((t) => {
         counts[t.priority] = (counts[t.priority] || 0) + 1;
