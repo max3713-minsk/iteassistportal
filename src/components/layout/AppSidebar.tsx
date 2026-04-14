@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const navItems = [
   { to: "/tickets", icon: Ticket, label: "Заявки", roles: [] },
   { to: "/documents", icon: FileArchive, label: "Документация", roles: [] },
   { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"] },
+  { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"] },
 ];
 
 export default function AppSidebar() {
