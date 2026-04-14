@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
+import { logAudit } from "@/lib/audit";
 import { useState } from "react";
 
 const statusLabels: Record<string, string> = {
@@ -157,10 +158,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         })
         .eq("id", protocolId);
       if (error) throw error;
+
+      // If on_request protocol is linked to a ticket, resolve the ticket
+      if (protocol?.ticket_id) {
+        await supabase
+          .from("tickets")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", protocol.ticket_id);
+      }
+
+      await logAudit({
+        action: "Завершение протокола",
+        module: "protocols",
+        entityId: protocolId,
+        details: `${(protocol as any)?.sites?.name} — ${frequencyLabels[protocol?.frequency ?? ""]}`,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
+      qc.invalidateQueries({ queryKey: ["tickets"] });
       toast({ title: "Протокол завершён" });
     },
   });
@@ -211,7 +228,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
-        {isStaff && !isCompleted && allCompleted && (
+        {isStaff && !isCompleted && (allCompleted || isOnRequest) && (
           <Button onClick={() => completeProtocol.mutate()} disabled={completeProtocol.isPending}>
             <Check className="h-4 w-4 mr-2" />
             Завершить протокол

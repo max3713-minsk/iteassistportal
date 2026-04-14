@@ -227,12 +227,13 @@ export default function Tickets() {
 
       await logAudit({ action: `Смена статуса → ${statusLabels[status]}`, module: "tickets", entityId: id, details: title });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
       qc.invalidateQueries({ queryKey: ["open-tickets-count"] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
       if (selectedTicket) {
-        setSelectedTicket((prev: any) => prev ? { ...prev, status: "updated" } : null);
+        const { data: updated } = await supabase.from("tickets").select("*, sites(name), equipment(name)").eq("id", selectedTicket.id).single();
+        if (updated) setSelectedTicket(updated);
       }
       toast({ title: "Статус обновлён" });
     },
