@@ -106,7 +106,7 @@ const [moduleFilter, setModuleFilter] = useState("all");
               ))}
             </SelectContent>
           </Select>
-      </div>
+        </div>
 
       {isLoading ? (
         <p className="text-muted-foreground">Загрузка...</p>
