@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format as formatDate } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +60,8 @@ interface TicketForm {
   site_id: string;
   equipment_id: string;
 }
+
+const SLA_MINUTES: Record<string, number> = { P1: 30, P2: 60, P3: 120, P4: 180 };
 
 const emptyForm: TicketForm = { title: "", description: "", priority: "P3", site_id: "", equipment_id: "" };
 
