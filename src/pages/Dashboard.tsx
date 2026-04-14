@@ -69,6 +69,7 @@ function useTicketsByStatus() {
         open: "Открыта",
         in_progress: "В работе",
         waiting: "Ожидание",
+        overdue: "Просрочена",
         resolved: "Решена",
         closed: "Закрыта",
       };
@@ -245,11 +246,12 @@ function useRecentTickets() {
 
 /* ─── Colors ─── */
 const STATUS_COLORS = [
-  "hsl(217 91% 60%)",   // blue
-  "hsl(38 92% 50%)",    // amber
-  "hsl(142 71% 45%)",   // green
-  "hsl(0 72% 51%)",     // red
-  "hsl(262 83% 58%)",   // violet
+  "hsl(217 91% 60%)",   // blue - open
+  "hsl(38 92% 50%)",    // amber - in_progress
+  "hsl(262 83% 58%)",   // violet - waiting
+  "hsl(0 72% 51%)",     // red - overdue
+  "hsl(142 71% 45%)",   // green - resolved
+  "hsl(160 84% 39%)",   // teal - closed
 ];
 const PRIORITY_COLORS = [
   "hsl(0 72% 51%)",     // red – P1
@@ -312,6 +314,7 @@ export default function Dashboard() {
     open: "Открыта",
     in_progress: "В работе",
     waiting: "Ожидание",
+    overdue: "Просрочена",
     resolved: "Решена",
     closed: "Закрыта",
   };
