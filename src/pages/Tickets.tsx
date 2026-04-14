@@ -304,6 +304,7 @@ export default function Tickets() {
               <SelectItem value="open">Открытые</SelectItem>
               <SelectItem value="in_progress">В работе</SelectItem>
               <SelectItem value="waiting">Ожидание</SelectItem>
+              <SelectItem value="overdue">Просроченные</SelectItem>
               <SelectItem value="resolved">Решённые</SelectItem>
               <SelectItem value="closed">Закрытые</SelectItem>
               <SelectItem value="all">Все</SelectItem>
