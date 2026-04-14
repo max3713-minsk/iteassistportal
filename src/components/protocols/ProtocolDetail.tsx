@@ -157,10 +157,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         })
         .eq("id", protocolId);
       if (error) throw error;
+
+      // If on_request protocol is linked to a ticket, resolve the ticket
+      if (protocol?.ticket_id) {
+        await supabase
+          .from("tickets")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", protocol.ticket_id);
+      }
+
+      await logAudit({
+        action: "Завершение протокола",
+        module: "protocols",
+        entityId: protocolId,
+        details: `${(protocol as any)?.sites?.name} — ${frequencyLabels[protocol?.frequency ?? ""]}`,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
+      qc.invalidateQueries({ queryKey: ["tickets"] });
       toast({ title: "Протокол завершён" });
     },
   });
