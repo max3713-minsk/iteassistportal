@@ -206,6 +206,13 @@ export default function Protocols() {
         {isStaff && <CreateProtocolDialog defaultDate={dateParam} />}
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="active">Активные ({activeProtocols.length})</TabsTrigger>
+          <TabsTrigger value="archive">Архив ({archivedProtocols.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="w-56">
@@ -235,17 +242,19 @@ export default function Protocols() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-48">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger><SelectValue placeholder="Все статусы" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="pending">Ожидает</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="completed">Завершён</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {activeTab === "active" && (
+          <div className="w-48">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger><SelectValue placeholder="Все статусы" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="pending">Ожидает</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="overdue">Просрочен</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {dateParam && (
