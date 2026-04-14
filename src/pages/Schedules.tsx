@@ -63,13 +63,18 @@ export default function Schedules() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Calendar */}
-          <Card className="lg:col-span-3 p-4">
-            <MaintenanceCalendar
-              tasks={tasks}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-            />
-          </Card>
+          <div className="lg:col-span-3 space-y-4">
+            <Card className="p-4">
+              <MaintenanceCalendar
+                tasks={tasks}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+              />
+            </Card>
+            {selectedDate && (
+              <DayStats date={selectedDate} tasks={tasks} />
+            )}
+          </div>
 
           {/* Day detail */}
           <div className="lg:col-span-2">
