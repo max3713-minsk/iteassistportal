@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format as formatDate } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ const statusLabels: Record<string, string> = {
   open: "Открыта",
   in_progress: "В работе",
   waiting: "Ожидание",
+  overdue: "Просрочена",
   resolved: "Решена",
   closed: "Закрыта",
 };
@@ -38,6 +39,7 @@ const statusColors: Record<string, string> = {
   open: "bg-red-500 text-white",
   in_progress: "bg-blue-400 text-white",
   waiting: "bg-yellow-500 text-white",
+  overdue: "bg-destructive text-destructive-foreground",
   resolved: "bg-emerald-500 text-white",
   closed: "bg-gray-400 text-white",
 };
@@ -46,6 +48,7 @@ const rowStatusClasses: Record<string, string> = {
   open: "border-l-4 border-l-red-500",
   in_progress: "border-l-4 border-l-blue-400",
   waiting: "border-l-4 border-l-yellow-500",
+  overdue: "border-l-4 border-l-destructive bg-destructive/5",
   resolved: "border-l-4 border-l-emerald-500",
   closed: "bg-muted/40 border-l-4 border-l-gray-400 opacity-70",
 };
@@ -57,6 +60,8 @@ interface TicketForm {
   site_id: string;
   equipment_id: string;
 }
+
+const SLA_MINUTES: Record<string, number> = { P1: 30, P2: 60, P3: 120, P4: 180 };
 
 const emptyForm: TicketForm = { title: "", description: "", priority: "P3", site_id: "", equipment_id: "" };
 
@@ -80,7 +85,7 @@ export default function Tickets() {
         .order("created_at", { ascending: false });
 
       if (statusFilter === "active") {
-        q = q.in("status", ["open", "in_progress", "waiting"]);
+        q = q.in("status", ["open", "in_progress", "waiting", "overdue"]);
       } else if (statusFilter !== "all") {
         q = q.eq("status", statusFilter as any);
       }
@@ -90,6 +95,25 @@ export default function Tickets() {
       return data;
     },
   });
+
+  // Auto-mark overdue tickets
+  const overdueChecked = useRef(false);
+  useEffect(() => {
+    if (overdueChecked.current || !tickets.length) return;
+    overdueChecked.current = true;
+    const now = new Date();
+    const overdueTickets = tickets.filter(
+      (t: any) => t.status === "open" && t.sla_deadline && new Date(t.sla_deadline) < now
+    );
+    if (overdueTickets.length === 0) return;
+    (async () => {
+      for (const t of overdueTickets) {
+        await supabase.from("tickets").update({ status: "overdue" }).eq("id", t.id);
+        await logAudit({ action: "Автоматическая просрочка SLA", module: "tickets", entityId: t.id, details: t.title });
+      }
+      qc.invalidateQueries({ queryKey: ["tickets"] });
+    })();
+  }, [tickets, qc]);
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -132,6 +156,10 @@ export default function Tickets() {
 
   const createMutation = useMutation({
     mutationFn: async (f: TicketForm) => {
+      const now = new Date();
+      const slaMinutes = SLA_MINUTES[f.priority] ?? 120;
+      const slaDeadline = new Date(now.getTime() + slaMinutes * 60 * 1000);
+
       const { data: ticket, error } = await supabase.from("tickets").insert({
         title: f.title,
         description: f.description || null,
@@ -139,6 +167,7 @@ export default function Tickets() {
         site_id: f.site_id || null,
         equipment_id: f.equipment_id || null,
         created_by: user!.id,
+        sla_deadline: slaDeadline.toISOString(),
       }).select("id, site_id").single();
       if (error) throw error;
 
@@ -275,6 +304,7 @@ export default function Tickets() {
               <SelectItem value="open">Открытые</SelectItem>
               <SelectItem value="in_progress">В работе</SelectItem>
               <SelectItem value="waiting">Ожидание</SelectItem>
+              <SelectItem value="overdue">Просроченные</SelectItem>
               <SelectItem value="resolved">Решённые</SelectItem>
               <SelectItem value="closed">Закрытые</SelectItem>
               <SelectItem value="all">Все</SelectItem>
