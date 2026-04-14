@@ -96,7 +96,25 @@ export default function Tickets() {
     },
   });
 
-  const { data: sites = [] } = useQuery({
+  // Auto-mark overdue tickets
+  const overdueChecked = useRef(false);
+  useEffect(() => {
+    if (overdueChecked.current || !tickets.length) return;
+    overdueChecked.current = true;
+    const now = new Date();
+    const overdueTickets = tickets.filter(
+      (t: any) => t.status === "open" && t.sla_deadline && new Date(t.sla_deadline) < now
+    );
+    if (overdueTickets.length === 0) return;
+    (async () => {
+      for (const t of overdueTickets) {
+        await supabase.from("tickets").update({ status: "overdue" }).eq("id", t.id);
+        await logAudit({ action: "Автоматическая просрочка SLA", module: "tickets", entityId: t.id, details: t.title });
+      }
+      qc.invalidateQueries({ queryKey: ["tickets"] });
+    })();
+  }, [tickets, qc]);
+
     queryKey: ["sites"],
     queryFn: async () => {
       const { data } = await supabase.from("sites").select("id, name").order("name");
