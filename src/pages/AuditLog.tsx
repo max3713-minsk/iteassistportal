@@ -28,7 +28,7 @@ const [moduleFilter, setModuleFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["audit-logs", moduleFilter],
+    queryKey: ["audit-logs", moduleFilter, orgFilter],
     queryFn: async () => {
       let q = supabase
         .from("audit_logs")
@@ -39,6 +39,9 @@ const [moduleFilter, setModuleFilter] = useState("all");
       if (moduleFilter !== "all") {
         q = q.eq("module", moduleFilter);
       }
+      if (orgFilter !== "all") {
+        q = q.eq("organization", orgFilter);
+      }
 
       const { data, error } = await q;
       if (error) throw error;
@@ -46,6 +49,8 @@ const [moduleFilter, setModuleFilter] = useState("all");
     },
     enabled: hasRole("admin"),
   });
+
+  const organizations = [...new Set(logs.map((l: any) => l.organization).filter(Boolean))].sort();
 
   if (!hasRole("admin")) {
     return (
