@@ -137,6 +137,10 @@ export default function Tickets() {
 
   const createMutation = useMutation({
     mutationFn: async (f: TicketForm) => {
+      const now = new Date();
+      const slaMinutes = SLA_MINUTES[f.priority] ?? 120;
+      const slaDeadline = new Date(now.getTime() + slaMinutes * 60 * 1000);
+
       const { data: ticket, error } = await supabase.from("tickets").insert({
         title: f.title,
         description: f.description || null,
@@ -144,6 +148,7 @@ export default function Tickets() {
         site_id: f.site_id || null,
         equipment_id: f.equipment_id || null,
         created_by: user!.id,
+        sla_deadline: slaDeadline.toISOString(),
       }).select("id, site_id").single();
       if (error) throw error;
 
