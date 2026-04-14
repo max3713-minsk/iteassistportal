@@ -39,7 +39,7 @@ function useSummary() {
         supabase
           .from("tickets")
           .select("*", { count: "exact", head: true })
-          .in("status", ["open", "in_progress"]),
+          .in("status", ["open", "in_progress", "waiting", "overdue"]),
         supabase
           .from("maintenance_protocols")
           .select("*", { count: "exact", head: true })
@@ -69,6 +69,7 @@ function useTicketsByStatus() {
         open: "Открыта",
         in_progress: "В работе",
         waiting: "Ожидание",
+        overdue: "Просрочена",
         resolved: "Решена",
         closed: "Закрыта",
       };
@@ -89,7 +90,7 @@ function useTicketsByPriority() {
       const { data } = await supabase
         .from("tickets")
         .select("priority")
-        .in("status", ["open", "in_progress", "waiting"]);
+        .in("status", ["open", "in_progress", "waiting", "overdue"]);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((t) => {
         counts[t.priority] = (counts[t.priority] || 0) + 1;
@@ -245,11 +246,12 @@ function useRecentTickets() {
 
 /* ─── Colors ─── */
 const STATUS_COLORS = [
-  "hsl(217 91% 60%)",   // blue
-  "hsl(38 92% 50%)",    // amber
-  "hsl(142 71% 45%)",   // green
-  "hsl(0 72% 51%)",     // red
-  "hsl(262 83% 58%)",   // violet
+  "hsl(217 91% 60%)",   // blue - open
+  "hsl(38 92% 50%)",    // amber - in_progress
+  "hsl(262 83% 58%)",   // violet - waiting
+  "hsl(0 72% 51%)",     // red - overdue
+  "hsl(142 71% 45%)",   // green - resolved
+  "hsl(160 84% 39%)",   // teal - closed
 ];
 const PRIORITY_COLORS = [
   "hsl(0 72% 51%)",     // red – P1
@@ -312,6 +314,7 @@ export default function Dashboard() {
     open: "Открыта",
     in_progress: "В работе",
     waiting: "Ожидание",
+    overdue: "Просрочена",
     resolved: "Решена",
     closed: "Закрыта",
   };
