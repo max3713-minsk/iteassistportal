@@ -37,7 +37,7 @@ const MODULES = [
   { key: "documents", label: "Документация" },
   { key: "help", label: "Справка" },
 ];
-
+const roleBadgeVariant: Record<AppRole, "default" | "secondary" | "outline"> = {
   admin: "default",
   engineer: "secondary",
   customer: "outline",
