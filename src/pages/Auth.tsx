@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
-import logoLight from "@/assets/logo-light.svg";
+import logoLight from "@/assets/logo-light-hd.png";
 import { useTheme } from "next-themes";
 import { Phone, Mail, Globe, Clock } from "lucide-react";
 
