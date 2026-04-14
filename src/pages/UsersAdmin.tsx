@@ -27,7 +27,17 @@ const roleLabels: Record<AppRole, string> = {
   customer: "Заказчик",
 };
 
-const roleBadgeVariant: Record<AppRole, "default" | "secondary" | "outline"> = {
+const MODULES = [
+  { key: "dashboard", label: "Панель управления" },
+  { key: "sites", label: "ЦОД" },
+  { key: "equipment", label: "Оборудование" },
+  { key: "schedules", label: "Календарь ТО" },
+  { key: "protocols", label: "Протоколы" },
+  { key: "tickets", label: "Заявки" },
+  { key: "documents", label: "Документация" },
+  { key: "help", label: "Справка" },
+];
+
   admin: "default",
   engineer: "secondary",
   customer: "outline",
