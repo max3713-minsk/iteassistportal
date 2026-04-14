@@ -389,6 +389,34 @@ export default function UsersAdmin() {
                   </Button>
                 </div>
               </div>
+
+              {/* Module permissions (only for non-admins) */}
+              {!editUser.roles.includes("admin") && (
+                <div className="space-y-2">
+                  <Label>Доступ к модулям</Label>
+                  <p className="text-xs text-muted-foreground">Отметьте модули, к которым пользователь будет иметь доступ</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MODULES.map((m) => (
+                      <div key={m.key} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`module-${m.key}`}
+                          checked={editModules.includes(m.key)}
+                          onCheckedChange={(checked) => {
+                            setEditModules((prev) =>
+                              checked
+                                ? [...prev, m.key]
+                                : prev.filter((k) => k !== m.key)
+                            );
+                          }}
+                        />
+                        <label htmlFor={`module-${m.key}`} className="text-sm cursor-pointer">
+                          {m.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
