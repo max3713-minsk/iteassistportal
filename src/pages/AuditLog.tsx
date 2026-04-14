@@ -23,11 +23,12 @@ const moduleLabels: Record<string, string> = {
 
 export default function AuditLog() {
   const { hasRole } = useAuth();
-  const [moduleFilter, setModuleFilter] = useState("all");
+const [moduleFilter, setModuleFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["audit-logs", moduleFilter],
+    queryKey: ["audit-logs", moduleFilter, orgFilter],
     queryFn: async () => {
       let q = supabase
         .from("audit_logs")
@@ -38,10 +39,23 @@ export default function AuditLog() {
       if (moduleFilter !== "all") {
         q = q.eq("module", moduleFilter);
       }
+      if (orgFilter !== "all") {
+        q = q.eq("organization", orgFilter);
+      }
 
       const { data, error } = await q;
       if (error) throw error;
       return data as any[];
+    },
+    enabled: hasRole("admin"),
+  });
+
+  const { data: allOrgs = [] } = useQuery({
+    queryKey: ["audit-logs-orgs"],
+    queryFn: async () => {
+      const { data } = await supabase.from("audit_logs").select("organization");
+      const orgs = [...new Set((data ?? []).map((r: any) => r.organization).filter(Boolean))].sort();
+      return orgs as string[];
     },
     enabled: hasRole("admin"),
   });
@@ -86,6 +100,17 @@ export default function AuditLog() {
               <SelectItem value="all">Все модули</SelectItem>
               {Object.entries(moduleLabels).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-56">
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger><SelectValue placeholder="Все организации" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все организации</SelectItem>
+              {allOrgs.map((org: string) => (
+                <SelectItem key={org} value={org}>{org}</SelectItem>
               ))}
             </SelectContent>
           </Select>
