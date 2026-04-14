@@ -30,6 +30,7 @@ const statusLabels: Record<string, string> = {
   open: "Открыта",
   in_progress: "В работе",
   waiting: "Ожидание",
+  overdue: "Просрочена",
   resolved: "Решена",
   closed: "Закрыта",
 };
@@ -38,6 +39,7 @@ const statusColors: Record<string, string> = {
   open: "bg-red-500 text-white",
   in_progress: "bg-blue-400 text-white",
   waiting: "bg-yellow-500 text-white",
+  overdue: "bg-destructive text-destructive-foreground",
   resolved: "bg-emerald-500 text-white",
   closed: "bg-gray-400 text-white",
 };
@@ -46,6 +48,7 @@ const rowStatusClasses: Record<string, string> = {
   open: "border-l-4 border-l-red-500",
   in_progress: "border-l-4 border-l-blue-400",
   waiting: "border-l-4 border-l-yellow-500",
+  overdue: "border-l-4 border-l-destructive bg-destructive/5",
   resolved: "border-l-4 border-l-emerald-500",
   closed: "bg-muted/40 border-l-4 border-l-gray-400 opacity-70",
 };
