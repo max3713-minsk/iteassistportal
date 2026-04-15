@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Activity, AlertTriangle, CheckCircle2, Server, Wifi, WifiOff, RefreshCw,
-  Play, Loader2, Terminal, Shield, HardDrive,
+  Play, Loader2, Terminal, Shield, HardDrive, Settings,
 } from "lucide-react";
+import HostManagement from "@/components/monitoring/HostManagement";
 
 /* ─── Zabbix hooks ─── */
 function useZabbixData(action: string, enabled = true) {
