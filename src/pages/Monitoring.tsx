@@ -201,6 +201,10 @@ export default function Monitoring() {
           <TabsTrigger value="problems">Проблемы</TabsTrigger>
           <TabsTrigger value="alerts">Алерты</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
+          <TabsTrigger value="config" className="flex items-center gap-1">
+            <Settings className="h-3.5 w-3.5" />
+            Настройка
+          </TabsTrigger>
         </TabsList>
 
         {/* Hosts */}
