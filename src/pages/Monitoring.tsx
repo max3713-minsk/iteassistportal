@@ -392,6 +392,11 @@ export default function Monitoring() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Host Configuration */}
+        <TabsContent value="config">
+          <HostManagement />
+        </TabsContent>
       </Tabs>
     </div>
   );
