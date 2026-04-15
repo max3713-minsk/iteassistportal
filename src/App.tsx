@@ -16,6 +16,7 @@ import Documents from "@/pages/Documents";
 import UsersAdmin from "@/pages/UsersAdmin";
 import AuditLog from "@/pages/AuditLog";
 import HelpReference from "@/pages/HelpReference";
+import Monitoring from "@/pages/Monitoring";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/documents" element={<Documents />} />
               <Route path="/users" element={<UsersAdmin />} />
               <Route path="/audit" element={<AuditLog />} />
+              <Route path="/monitoring" element={<Monitoring />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />
