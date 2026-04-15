@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Activity, AlertTriangle, CheckCircle2, Server, Wifi, WifiOff, RefreshCw,
-  Play, Loader2, Terminal, Shield, HardDrive,
+  Play, Loader2, Terminal, Shield, HardDrive, Settings,
 } from "lucide-react";
+import HostManagement from "@/components/monitoring/HostManagement";
 
 /* ─── Zabbix hooks ─── */
 function useZabbixData(action: string, enabled = true) {
@@ -200,6 +201,10 @@ export default function Monitoring() {
           <TabsTrigger value="problems">Проблемы</TabsTrigger>
           <TabsTrigger value="alerts">Алерты</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
+          <TabsTrigger value="config" className="flex items-center gap-1">
+            <Settings className="h-3.5 w-3.5" />
+            Настройка
+          </TabsTrigger>
         </TabsList>
 
         {/* Hosts */}
@@ -386,6 +391,11 @@ export default function Monitoring() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Host Configuration */}
+        <TabsContent value="config">
+          <HostManagement />
         </TabsContent>
       </Tabs>
     </div>

@@ -330,6 +330,68 @@ export type Database = {
           },
         ]
       }
+      monitored_hosts: {
+        Row: {
+          created_at: string
+          credentials_login: string | null
+          credentials_password: string | null
+          device_type: Database["public"]["Enums"]["device_type"]
+          enabled: boolean
+          id: string
+          ip_address: string
+          name: string
+          notes: string | null
+          port: number | null
+          protocol: Database["public"]["Enums"]["monitoring_protocol"]
+          site_id: string | null
+          snmp_community: string | null
+          updated_at: string
+          zabbix_host_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credentials_login?: string | null
+          credentials_password?: string | null
+          device_type?: Database["public"]["Enums"]["device_type"]
+          enabled?: boolean
+          id?: string
+          ip_address: string
+          name: string
+          notes?: string | null
+          port?: number | null
+          protocol?: Database["public"]["Enums"]["monitoring_protocol"]
+          site_id?: string | null
+          snmp_community?: string | null
+          updated_at?: string
+          zabbix_host_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credentials_login?: string | null
+          credentials_password?: string | null
+          device_type?: Database["public"]["Enums"]["device_type"]
+          enabled?: boolean
+          id?: string
+          ip_address?: string
+          name?: string
+          notes?: string | null
+          port?: number | null
+          protocol?: Database["public"]["Enums"]["monitoring_protocol"]
+          site_id?: string | null
+          snmp_community?: string | null
+          updated_at?: string
+          zabbix_host_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitored_hosts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -619,6 +681,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "engineer" | "customer"
+      device_type:
+        | "server"
+        | "bmc"
+        | "switch"
+        | "storage"
+        | "firewall"
+        | "ups"
+        | "router"
+        | "other"
       maintenance_frequency:
         | "daily"
         | "weekly"
@@ -626,6 +697,7 @@ export type Database = {
         | "quarterly"
         | "semi_annual"
         | "on_request"
+      monitoring_protocol: "SNMP" | "IPMI" | "SSH" | "HTTP" | "HTTPS" | "Agent"
       protocol_status: "pending" | "in_progress" | "completed" | "overdue"
       ticket_priority: "P1" | "P2" | "P3" | "P4"
       ticket_status:
@@ -763,6 +835,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "engineer", "customer"],
+      device_type: [
+        "server",
+        "bmc",
+        "switch",
+        "storage",
+        "firewall",
+        "ups",
+        "router",
+        "other",
+      ],
       maintenance_frequency: [
         "daily",
         "weekly",
@@ -771,6 +853,7 @@ export const Constants = {
         "semi_annual",
         "on_request",
       ],
+      monitoring_protocol: ["SNMP", "IPMI", "SSH", "HTTP", "HTTPS", "Agent"],
       protocol_status: ["pending", "in_progress", "completed", "overdue"],
       ticket_priority: ["P1", "P2", "P3", "P4"],
       ticket_status: [
