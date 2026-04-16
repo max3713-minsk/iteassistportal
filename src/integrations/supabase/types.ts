@@ -567,6 +567,47 @@ export type Database = {
           },
         ]
       }
+      ticket_status_history: {
+        Row: {
+          changed_by: string
+          changed_by_name: string | null
+          comment: string | null
+          created_at: string
+          id: string
+          new_status: string
+          old_status: string | null
+          ticket_id: string
+        }
+        Insert: {
+          changed_by: string
+          changed_by_name?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          new_status: string
+          old_status?: string | null
+          ticket_id: string
+        }
+        Update: {
+          changed_by?: string
+          changed_by_name?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_status_history_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           assigned_to: string | null
@@ -576,11 +617,15 @@ export type Database = {
           equipment_id: string | null
           first_response_at: string | null
           id: string
+          incident_category: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
+          product_code: string | null
+          request_type: string | null
           resolved_at: string | null
           site_id: string | null
           sla_deadline: string | null
           status: Database["public"]["Enums"]["ticket_status"]
+          subcategory: string | null
           title: string
           updated_at: string
         }
@@ -592,11 +637,15 @@ export type Database = {
           equipment_id?: string | null
           first_response_at?: string | null
           id?: string
+          incident_category?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          product_code?: string | null
+          request_type?: string | null
           resolved_at?: string | null
           site_id?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          subcategory?: string | null
           title: string
           updated_at?: string
         }
@@ -608,11 +657,15 @@ export type Database = {
           equipment_id?: string | null
           first_response_at?: string | null
           id?: string
+          incident_category?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          product_code?: string | null
+          request_type?: string | null
           resolved_at?: string | null
           site_id?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          subcategory?: string | null
           title?: string
           updated_at?: string
         }
@@ -746,6 +799,8 @@ export type Database = {
         | "overdue"
         | "resolved"
         | "closed"
+        | "assigned"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -902,6 +957,8 @@ export const Constants = {
         "overdue",
         "resolved",
         "closed",
+        "assigned",
+        "cancelled",
       ],
     },
   },
