@@ -30,12 +30,36 @@ Deno.serve(async (req) => {
     })
   }
 
-  const ZABBIX_URL = Deno.env.get('ZABBIX_URL')
-  const ZABBIX_USER = Deno.env.get('ZABBIX_USER')
-  const ZABBIX_PASSWORD = Deno.env.get('ZABBIX_PASSWORD')
+  // Read Zabbix settings from DB (using service role to bypass RLS for reading credentials)
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  const { data: settings, error: settingsError } = await supabaseAdmin
+    .from('zabbix_settings')
+    .select('*')
+    .limit(1)
+    .single()
+
+  if (settingsError || !settings) {
+    return new Response(JSON.stringify({ error: 'Настройки Zabbix не сконфигурированы. Перейдите в Мониторинг → Настройка.' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  if (!settings.is_active) {
+    return new Response(JSON.stringify({ error: 'Подключение к Zabbix отключено в настройках.' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const ZABBIX_URL = settings.zabbix_url
+  const ZABBIX_USER = settings.zabbix_user
+  const ZABBIX_PASSWORD = settings.zabbix_password
 
   if (!ZABBIX_URL || !ZABBIX_USER || !ZABBIX_PASSWORD) {
-    return new Response(JSON.stringify({ error: 'Zabbix credentials not configured' }), {
+    return new Response(JSON.stringify({ error: 'Заполните все поля подключения к Zabbix в настройках.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
@@ -61,7 +85,7 @@ Deno.serve(async (req) => {
     const authToken = authData.result
 
     if (!authToken) {
-      return new Response(JSON.stringify({ error: 'Zabbix auth failed', details: authData.error }), {
+      return new Response(JSON.stringify({ error: 'Ошибка авторизации Zabbix. Проверьте логин/пароль в настройках.', details: authData.error }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -112,8 +136,27 @@ Deno.serve(async (req) => {
           selectInterfaces: ['ip'],
         }
         break
-      default:
+      case 'testConnection':
+        // Just return Zabbix API version to verify connectivity
+        zabbixMethod = 'apiinfo.version'
+        zabbixParams = {}
+        // apiinfo.version doesn't need auth, but we already have it
+        const versionRes = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'apiinfo.version', params: {}, id: 3 }),
+        })
+        const versionData = await versionRes.json()
         // Logout
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'user.logout', params: [], auth: authToken, id: 99 }),
+        }).then(r => r.text())
+        return new Response(JSON.stringify({ result: { version: versionData.result, authenticated: true } }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      default:
         await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
