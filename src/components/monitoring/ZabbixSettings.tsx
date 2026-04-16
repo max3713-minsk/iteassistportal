@@ -8,9 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Wifi, Shield, Globe } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Wifi, Shield, Globe, Circle } from "lucide-react";
+
+type TestResult = {
+  ok: boolean;
+  data?: { version: string };
+  error?: string;
+  message?: string;
+  rawLogin?: unknown;
+};
 
 export default function ZabbixSettings() {
   const { toast } = useToast();
@@ -26,6 +35,9 @@ export default function ZabbixSettings() {
   const [showPassword, setShowPassword] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
+  const [debugData, setDebugData] = useState<unknown>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [lastConnectedVersion, setLastConnectedVersion] = useState<string | null>(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["zabbix-settings"],
@@ -84,24 +96,77 @@ export default function ZabbixSettings() {
   });
 
   const testConnection = async () => {
+    // Save first so edge function uses latest values
+    const payload = {
+      zabbix_url: url.replace(/\/+$/, ""),
+      zabbix_user: user,
+      zabbix_password: password,
+      vpn_info: vpnInfo,
+      is_active: true, // must be active to test
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      if (settings?.id) {
+        await supabase.from("zabbix_settings").update(payload).eq("id", settings.id);
+      } else {
+        await supabase.from("zabbix_settings").insert(payload);
+      }
+      queryClient.invalidateQueries({ queryKey: ["zabbix-settings"] });
+    } catch {
+      // continue with test anyway
+    }
+
     setTestStatus("loading");
     setTestMessage("");
+    setDebugData(null);
+
     try {
       const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
         body: { action: "testConnection" },
       });
-      if (error) throw error;
-      if (data?.result?.authenticated) {
-        setTestStatus("success");
-        setTestMessage(`Подключено. Zabbix версия: ${data.result.version}`);
-      } else if (data?.error) {
+
+      if (error) {
         setTestStatus("error");
-        setTestMessage(data.error);
+        const msg = typeof error === "object" && "message" in error ? (error as { message: string }).message : String(error);
+        setTestMessage(`Ошибка вызова функции: ${msg}`);
+        setDebugData(error);
+        return;
       }
-    } catch (e: any) {
+
+      const result = data as TestResult;
+      setDebugData(result);
+
+      if (result.ok) {
+        setTestStatus("success");
+        setLastConnectedVersion(result.data?.version || "unknown");
+        setTestMessage(`Подключение установлено. Версия Zabbix: ${result.data?.version}`);
+        toast({ title: "✅ Подключение к Zabbix установлено", description: `Версия: ${result.data?.version}` });
+      } else {
+        setTestStatus("error");
+        setLastConnectedVersion(null);
+
+        let userMessage = result.message || "Неизвестная ошибка";
+        const errCode = result.error;
+
+        if (errCode === "timeout") {
+          userMessage = "Таймаут соединения (10 сек). Сервер недоступен. Проверьте VPN-подключение (BelVPN) и доступность адреса.";
+        } else if (errCode === "network_error") {
+          userMessage += " Проверьте VPN-подключение (BelVPN) и доступность адреса.";
+        } else if (errCode === "auth_failed") {
+          userMessage = `Неверное имя пользователя или пароль. ${result.message || ""}`;
+        } else if (errCode === "invalid_url") {
+          userMessage = result.message || "Неверный URL. Убедитесь, что путь содержит /zabbix.";
+        }
+
+        setTestMessage(userMessage);
+        toast({ title: "❌ Ошибка подключения к Zabbix", description: userMessage, variant: "destructive" });
+      }
+    } catch (e: unknown) {
       setTestStatus("error");
-      const msg = typeof e === "object" && e?.message ? e.message : String(e);
-      setTestMessage(msg);
+      const msg = e instanceof Error ? e.message : String(e);
+      setTestMessage(`Ошибка: ${msg}`);
+      setDebugData(e);
     }
   };
 
@@ -125,13 +190,32 @@ export default function ZabbixSettings() {
     );
   }
 
+  const statusIndicator = testStatus === "success"
+    ? <Circle className="h-3 w-3 fill-green-500 text-green-500" />
+    : testStatus === "error"
+      ? <Circle className="h-3 w-3 fill-red-500 text-red-500" />
+      : <Circle className="h-3 w-3 fill-muted text-muted-foreground" />;
+
+  const statusLabel = testStatus === "success"
+    ? <span className="text-xs text-green-600 dark:text-green-400">Подключено (v{lastConnectedVersion})</span>
+    : testStatus === "error"
+      ? <span className="text-xs text-red-600 dark:text-red-400">Не подключено</span>
+      : <span className="text-xs text-muted-foreground">Не проверено</span>;
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle
+            className="text-base flex items-center gap-2 cursor-default select-none"
+            onDoubleClick={() => debugData && setShowDebug(true)}
+          >
             <Globe className="h-4 w-4" />
             Подключение к Zabbix
+            <span className="ml-2 flex items-center gap-1.5">
+              {statusIndicator}
+              {statusLabel}
+            </span>
           </CardTitle>
           <CardDescription>
             Укажите адрес и учётные данные Zabbix API. Подключение будет проксироваться через серверную функцию.
@@ -204,26 +288,41 @@ export default function ZabbixSettings() {
               disabled={testStatus === "loading" || !url || !user || !password}
             >
               {testStatus === "loading" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Проверка...
+                </>
               ) : (
-                <Wifi className="h-4 w-4 mr-2" />
+                <>
+                  <Wifi className="h-4 w-4 mr-2" />
+                  Проверить подключение
+                </>
               )}
-              Проверить подключение
             </Button>
           </div>
 
           {testStatus !== "idle" && testStatus !== "loading" && (
-            <div className={`flex items-center gap-2 text-sm p-3 rounded-md ${
+            <div className={`flex items-start gap-2 text-sm p-3 rounded-md ${
               testStatus === "success"
                 ? "bg-green-500/10 text-green-600 dark:text-green-400"
                 : "bg-red-500/10 text-red-600 dark:text-red-400"
             }`}>
               {testStatus === "success" ? (
-                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0 mt-0.5" />
               ) : (
-                <XCircle className="h-4 w-4 flex-shrink-0" />
+                <XCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               )}
-              {testMessage}
+              <div>
+                <p>{testMessage}</p>
+                {testStatus === "error" && debugData && (
+                  <button
+                    className="text-xs underline opacity-60 hover:opacity-100 mt-1"
+                    onClick={() => setShowDebug(true)}
+                  >
+                    Показать техническую информацию
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -253,6 +352,18 @@ export default function ZabbixSettings() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Debug modal — double-click title or click "Показать техническую информацию" */}
+      <Dialog open={showDebug} onOpenChange={setShowDebug}>
+        <DialogContent className="max-w-2xl max-h-[70vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Диагностика подключения Zabbix</DialogTitle>
+          </DialogHeader>
+          <pre className="text-xs bg-muted p-4 rounded-md overflow-auto whitespace-pre-wrap">
+            {JSON.stringify(debugData, null, 2)}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
