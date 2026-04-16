@@ -23,6 +23,7 @@ export type Database = {
           id: string
           module: string
           organization: string | null
+          target_user_id: string | null
           user_id: string
           user_name: string | null
         }
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           module: string
           organization?: string | null
+          target_user_id?: string | null
           user_id: string
           user_name?: string | null
         }
@@ -45,6 +47,7 @@ export type Database = {
           id?: string
           module?: string
           organization?: string | null
+          target_user_id?: string | null
           user_id?: string
           user_name?: string | null
         }
@@ -397,6 +400,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_active: boolean
           organization: string | null
           phone: string | null
           updated_at: string
@@ -406,6 +410,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean
           organization?: string | null
           phone?: string | null
           updated_at?: string
@@ -415,6 +420,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean
           organization?: string | null
           phone?: string | null
           updated_at?: string
