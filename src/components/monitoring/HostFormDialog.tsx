@@ -120,7 +120,7 @@ export function HostFormDialog({ open, onOpenChange, host }: Props) {
         snmp_community: values.snmp_community || null,
         credentials_login: values.credentials_login || null,
         credentials_password: values.credentials_password || null,
-        site_id: values.site_id || null,
+        site_id: values.site_id && values.site_id !== "none" ? values.site_id : null,
         enabled: values.enabled,
         notes: values.notes || null,
       };
@@ -242,7 +242,7 @@ export function HostFormDialog({ open, onOpenChange, host }: Props) {
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="">Не указан</SelectItem>
+                        <SelectItem value="none">Не указан</SelectItem>
                         {sites?.map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
