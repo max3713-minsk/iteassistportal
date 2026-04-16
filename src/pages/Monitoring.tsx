@@ -328,7 +328,9 @@ export default function Monitoring() {
           <CardContent className="py-4 flex items-center justify-between">
             <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
-              Нет связи с сервером мониторинга. Данные могут быть неактуальны.
+              {!isZabbixConfigured
+                ? "Zabbix не сконфигурирован. Перейдите в Настройка для подключения."
+                : "Нет связи с сервером мониторинга. Данные могут быть неактуальны."}
             </p>
             <Button size="sm" variant="outline" onClick={() => setTab("config")}>
               Проверить настройки
