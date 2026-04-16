@@ -157,10 +157,12 @@ export default function Monitoring() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("dashboard");
 
-  // Zabbix data
-  const { data: hosts, isLoading: hostsLoading, error: hostsError, refetch: refetchHosts } = useZabbixData("getHosts");
-  const { data: problems, isLoading: problemsLoading, refetch: refetchProblems } = useZabbixData("getProblems");
-  const { data: alerts, isLoading: alertsLoading, refetch: refetchAlerts } = useZabbixData("getAlerts");
+  const { data: isZabbixConfigured = false } = useZabbixConfigured();
+
+  // Zabbix data — only fetch when configured
+  const { data: hosts, isLoading: hostsLoading, error: hostsError, refetch: refetchHosts } = useZabbixData("getHosts", isZabbixConfigured);
+  const { data: problems, isLoading: problemsLoading, refetch: refetchProblems } = useZabbixData("getProblems", isZabbixConfigured);
+  const { data: alerts, isLoading: alertsLoading, refetch: refetchAlerts } = useZabbixData("getAlerts", isZabbixConfigured);
   const { data: playbooks } = useAnsiblePlaybooks();
 
   // Filters
@@ -169,7 +171,7 @@ export default function Monitoring() {
   const [problemPriorityFilter, setProblemPriorityFilter] = useState("all");
   const [problemHostFilter, setProblemHostFilter] = useState("");
 
-  const connectionError = hostsError != null;
+  const connectionError = !isZabbixConfigured || hostsError != null;
 
   /* ── Computed stats ── */
   const hostsArr = Array.isArray(hosts) ? hosts : [];
