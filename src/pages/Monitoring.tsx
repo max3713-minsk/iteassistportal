@@ -19,6 +19,7 @@ import {
   ExternalLink, MessageSquarePlus, Check, Router, AlertCircle,
 } from "lucide-react";
 import HostManagement from "@/components/monitoring/HostManagement";
+import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 
 /* ─── Zabbix data hook ─── */
 function useZabbixData(action: string, enabled = true) {
@@ -779,7 +780,8 @@ export default function Monitoring() {
         </TabsContent>
 
         {/* ═══ TAB 6: Config ═══ */}
-        <TabsContent value="config">
+        <TabsContent value="config" className="space-y-6">
+          <ZabbixSettings />
           <HostManagement />
         </TabsContent>
       </Tabs>
