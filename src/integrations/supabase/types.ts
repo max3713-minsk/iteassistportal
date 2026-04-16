@@ -53,6 +53,42 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_logs: {
+        Row: {
+          created_at: string
+          host_id: string | null
+          host_name: string | null
+          id: string
+          result: string | null
+          script_id: string | null
+          script_name: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          host_id?: string | null
+          host_name?: string | null
+          id?: string
+          result?: string | null
+          script_id?: string | null
+          script_name: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          host_id?: string | null
+          host_name?: string | null
+          id?: string
+          result?: string | null
+          script_id?: string | null
+          script_name?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           created_at: string
