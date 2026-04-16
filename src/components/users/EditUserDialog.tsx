@@ -139,7 +139,7 @@ export function EditUserDialog({ userId, users, organizations, onClose }: EditUs
           </div>
           <div className="space-y-2">
             <Label>Телефон</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 (___) ___-__-__" />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+375 (__) ___-__-__" />
           </div>
 
           {/* Roles */}
