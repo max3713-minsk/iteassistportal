@@ -120,7 +120,7 @@ export function HostFormDialog({ open, onOpenChange, host }: Props) {
         snmp_community: values.snmp_community || null,
         credentials_login: values.credentials_login || null,
         credentials_password: values.credentials_password || null,
-        site_id: values.site_id || null,
+        site_id: values.site_id && values.site_id !== "none" ? values.site_id : null,
         enabled: values.enabled,
         notes: values.notes || null,
       };
