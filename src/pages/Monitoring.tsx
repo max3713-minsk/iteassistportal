@@ -779,7 +779,8 @@ export default function Monitoring() {
         </TabsContent>
 
         {/* ═══ TAB 6: Config ═══ */}
-        <TabsContent value="config">
+        <TabsContent value="config" className="space-y-6">
+          <ZabbixSettings />
           <HostManagement />
         </TabsContent>
       </Tabs>

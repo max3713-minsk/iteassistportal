@@ -14,7 +14,8 @@ import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Wifi, Shield, Globe } from
 
 export default function ZabbixSettings() {
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const queryClient = useQueryClient();
 
   const [url, setUrl] = useState("");
