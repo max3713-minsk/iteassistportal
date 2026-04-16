@@ -39,7 +39,7 @@ export function ResetPasswordDialog({ open, userName, newPassword, loading, onCo
           <div className="flex gap-2 items-center">
             <Input value={newPassword} readOnly className="font-mono text-sm" />
             <Button variant="outline" size="icon" onClick={handleCopy} title="Скопировать">
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
         )}
