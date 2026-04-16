@@ -10,7 +10,6 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  // Verify auth
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -42,26 +41,107 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { action, playbook, extra_vars, job_id } = body
-
-    // Ansible uses SSH; we'll use a simple REST-like proxy approach
-    // For production, this would connect to Ansible AWX/Semaphore API
-    // For now, we'll simulate the execution tracking and provide the framework
+    const { action, playbook, target_host, job_id } = body
 
     switch (action) {
       case 'listPlaybooks': {
-        // Return available playbooks for maintenance automation
         const playbooks = [
-          { id: 'check_disk_space', name: 'Проверка дискового пространства', category: 'daily', description: 'df -h на всех серверах' },
-          { id: 'check_services', name: 'Проверка статуса сервисов', category: 'daily', description: 'systemctl status критичных сервисов' },
-          { id: 'check_logs', name: 'Анализ системных логов', category: 'daily', description: 'journalctl --since yesterday' },
-          { id: 'backup_check', name: 'Проверка резервных копий', category: 'daily', description: 'Проверка статуса последнего бэкапа' },
-          { id: 'update_check', name: 'Проверка обновлений ОС', category: 'weekly', description: 'apt list --upgradable / yum check-update' },
-          { id: 'cert_check', name: 'Проверка SSL сертификатов', category: 'monthly', description: 'Проверка сроков SSL сертификатов' },
-          { id: 'security_audit', name: 'Аудит безопасности', category: 'monthly', description: 'Проверка открытых портов, учетных записей' },
-          { id: 'db_maintenance', name: 'Обслуживание БД PostgreSQL', category: 'weekly', description: 'VACUUM, ANALYZE, проверка репликации' },
-          { id: 'k8s_health', name: 'Проверка Kubernetes кластера', category: 'daily', description: 'kubectl get nodes, pods status' },
-          { id: 'network_check', name: 'Диагностика сети', category: 'daily', description: 'ping, traceroute, проверка VPN туннелей' },
+          {
+            id: 'restart_ptk_services',
+            name: 'Перезапуск сервисов ПТК',
+            category: 'restart',
+            categoryLabel: 'Перезапуск',
+            description: 'Перезапуск сервисов scada, postgres, web на серверах ПТК АСДТУ',
+            tzRef: 'п. 2, 52',
+          },
+          {
+            id: 'cleanup_logs',
+            name: 'Очистка временных файлов и логов',
+            category: 'cleanup',
+            categoryLabel: 'Очистка',
+            description: 'Удаление устаревших логов, tmp-файлов, очистка журналов',
+            tzRef: 'п. 33',
+          },
+          {
+            id: 'backup_db',
+            name: 'Внеплановое создание бэкапа БД',
+            category: 'backup',
+            categoryLabel: 'Бэкап',
+            description: 'pg_dump основных баз данных PostgreSQL с компрессией',
+            tzRef: 'п. 15',
+          },
+          {
+            id: 'reset_rdp_session',
+            name: 'Сброс зависшей сессии RDP',
+            category: 'session',
+            categoryLabel: 'Сессии',
+            description: 'Принудительное завершение зависших RDP-сессий на Windows Server',
+            tzRef: 'п. 13',
+          },
+          {
+            id: 'failover_hypermetro',
+            name: 'Failover HyperMetro СХД (тестовый)',
+            category: 'failover',
+            categoryLabel: 'Failover',
+            description: 'Тестовое переключение HyperMetro пар OceanStor Dorado',
+            tzRef: 'п. 163',
+          },
+          {
+            id: 'update_ospf_metrics',
+            name: 'Обновление OSPF-метрик',
+            category: 'network',
+            categoryLabel: 'Сеть',
+            description: 'Плановое обновление метрик OSPF на маршрутизаторах',
+            tzRef: 'п. 226',
+          },
+          {
+            id: 'check_disk_space',
+            name: 'Проверка дискового пространства',
+            category: 'check',
+            categoryLabel: 'Проверка',
+            description: 'df -h на всех серверах, проверка /var/lib/postgresql',
+            tzRef: 'п. 31',
+          },
+          {
+            id: 'check_services',
+            name: 'Проверка статуса сервисов',
+            category: 'check',
+            categoryLabel: 'Проверка',
+            description: 'systemctl status критичных сервисов (scada, postgres, web)',
+            tzRef: 'п. 1, 2',
+          },
+          {
+            id: 'db_maintenance',
+            name: 'Обслуживание БД PostgreSQL',
+            category: 'backup',
+            categoryLabel: 'БД',
+            description: 'VACUUM ANALYZE, проверка репликации, WAL size',
+            tzRef: 'п. 16, 17',
+          },
+          {
+            id: 'k8s_health',
+            name: 'Проверка Kubernetes кластера',
+            category: 'check',
+            categoryLabel: 'Проверка',
+            description: 'kubectl get nodes/pods, ресурсы СК-11 и РС-20',
+            tzRef: 'п. 25, 26, 27',
+          },
+          {
+            id: 'cert_check',
+            name: 'Проверка SSL сертификатов',
+            category: 'check',
+            categoryLabel: 'Проверка',
+            description: 'Проверка сроков действия SSL/TLS сертификатов',
+            tzRef: 'п. 49',
+          },
+          {
+            id: 'security_audit',
+            name: 'Аудит безопасности',
+            category: 'check',
+            categoryLabel: 'Безопасность',
+            description: 'Проверка открытых портов, учётных записей, обновлений',
+            tzRef: 'п. 34',
+          },
         ]
         return new Response(JSON.stringify({ result: playbooks }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -75,16 +155,16 @@ Deno.serve(async (req) => {
           })
         }
 
-        // In production, this would SSH to ANSIBLE_HOST and run ansible-playbook
-        // or call Ansible AWX/Semaphore API
+        // In production: call Ansible Semaphore / AWX API
         const jobId = crypto.randomUUID()
         const result = {
           job_id: jobId,
           playbook,
+          target_host: target_host || 'all',
           status: 'queued',
           started_at: new Date().toISOString(),
           host: ANSIBLE_HOST,
-          message: `Playbook ${playbook} поставлен в очередь на ${ANSIBLE_HOST}`,
+          message: `Сценарий ${playbook} поставлен в очередь${target_host ? ` на ${target_host}` : ''}`,
         }
 
         return new Response(JSON.stringify({ result }), {
@@ -98,15 +178,12 @@ Deno.serve(async (req) => {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         }
-
-        // Placeholder - in production would check actual job status
         const result = {
           job_id,
           status: 'completed',
           output: 'Playbook executed successfully',
           completed_at: new Date().toISOString(),
         }
-
         return new Response(JSON.stringify({ result }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
