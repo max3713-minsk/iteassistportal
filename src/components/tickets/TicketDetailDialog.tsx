@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Clock, MessageSquare, History, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
