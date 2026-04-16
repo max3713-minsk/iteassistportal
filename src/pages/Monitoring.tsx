@@ -21,6 +21,22 @@ import {
 import HostManagement from "@/components/monitoring/HostManagement";
 import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 
+/* ─── Check if Zabbix is configured ─── */
+function useZabbixConfigured() {
+  return useQuery({
+    queryKey: ["zabbix-settings-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("zabbix_settings")
+        .select("id, is_active")
+        .limit(1)
+        .maybeSingle();
+      return data?.is_active === true;
+    },
+    staleTime: 60000,
+  });
+}
+
 /* ─── Zabbix data hook ─── */
 function useZabbixData(action: string, enabled = true) {
   return useQuery({
@@ -30,6 +46,7 @@ function useZabbixData(action: string, enabled = true) {
         body: { action },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data?.result ?? [];
     },
     enabled,
@@ -140,10 +157,12 @@ export default function Monitoring() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("dashboard");
 
-  // Zabbix data
-  const { data: hosts, isLoading: hostsLoading, error: hostsError, refetch: refetchHosts } = useZabbixData("getHosts");
-  const { data: problems, isLoading: problemsLoading, refetch: refetchProblems } = useZabbixData("getProblems");
-  const { data: alerts, isLoading: alertsLoading, refetch: refetchAlerts } = useZabbixData("getAlerts");
+  const { data: isZabbixConfigured = false } = useZabbixConfigured();
+
+  // Zabbix data — only fetch when configured
+  const { data: hosts, isLoading: hostsLoading, error: hostsError, refetch: refetchHosts } = useZabbixData("getHosts", isZabbixConfigured);
+  const { data: problems, isLoading: problemsLoading, refetch: refetchProblems } = useZabbixData("getProblems", isZabbixConfigured);
+  const { data: alerts, isLoading: alertsLoading, refetch: refetchAlerts } = useZabbixData("getAlerts", isZabbixConfigured);
   const { data: playbooks } = useAnsiblePlaybooks();
 
   // Filters
@@ -152,7 +171,7 @@ export default function Monitoring() {
   const [problemPriorityFilter, setProblemPriorityFilter] = useState("all");
   const [problemHostFilter, setProblemHostFilter] = useState("");
 
-  const connectionError = hostsError != null;
+  const connectionError = !isZabbixConfigured || hostsError != null;
 
   /* ── Computed stats ── */
   const hostsArr = Array.isArray(hosts) ? hosts : [];
@@ -309,7 +328,9 @@ export default function Monitoring() {
           <CardContent className="py-4 flex items-center justify-between">
             <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
-              Нет связи с сервером мониторинга. Данные могут быть неактуальны.
+              {!isZabbixConfigured
+                ? "Zabbix не сконфигурирован. Перейдите в Настройка для подключения."
+                : "Нет связи с сервером мониторинга. Данные могут быть неактуальны."}
             </p>
             <Button size="sm" variant="outline" onClick={() => setTab("config")}>
               Проверить настройки
