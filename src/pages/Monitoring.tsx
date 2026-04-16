@@ -21,6 +21,22 @@ import {
 import HostManagement from "@/components/monitoring/HostManagement";
 import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 
+/* ─── Check if Zabbix is configured ─── */
+function useZabbixConfigured() {
+  return useQuery({
+    queryKey: ["zabbix-settings-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("zabbix_settings")
+        .select("id, is_active")
+        .limit(1)
+        .maybeSingle();
+      return data?.is_active === true;
+    },
+    staleTime: 60000,
+  });
+}
+
 /* ─── Zabbix data hook ─── */
 function useZabbixData(action: string, enabled = true) {
   return useQuery({
@@ -30,6 +46,7 @@ function useZabbixData(action: string, enabled = true) {
         body: { action },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data?.result ?? [];
     },
     enabled,
