@@ -584,6 +584,59 @@ Deno.serve(async (req) => {
       return ok({ result: data.result?.[0] || null });
     }
 
+    /* ─── Get template detail (items + linked hosts count) ─── */
+    if (action === "getTemplateDetail") {
+      const { templateid } = extraParams || {};
+      if (!templateid) return fail("templateid обязателен", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "template.get",
+          params: {
+            templateids: [templateid],
+            output: "extend",
+            selectItems: ["itemid", "name", "key_"],
+            selectTriggers: ["triggerid", "description", "priority"],
+            selectHosts: ["hostid", "name"],
+            selectMacros: "extend",
+          },
+          auth: authToken, id: 30,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`template.get error: ${data.error.data || data.error.message}`);
+      return ok({ result: data.result?.[0] || null });
+    }
+
+    /* ─── Get items for a specific host (efficient, cached 30s) ─── */
+    if (action === "getItemsByHost") {
+      const { hostid } = extraParams || {};
+      if (!hostid) return fail("hostid обязателен", 400);
+      const cacheKey = `getItemsByHost:${hostid}`;
+      const cached = getCached(cacheKey, 30000);
+      if (cached !== null) return ok({ result: cached, cached: true });
+
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "item.get",
+          params: {
+            hostids: [hostid],
+            output: ["itemid", "name", "key_", "lastvalue", "lastclock", "units", "value_type", "state", "status"],
+            sortfield: "name",
+            limit: 1000,
+          },
+          auth: authToken, id: 31,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`item.get error: ${data.error.data || data.error.message}`);
+      setCache(cacheKey, data.result || []);
+      return ok({ result: data.result || [] });
+    }
+
     /* ─── Close Event (admin) — uses event.acknowledge with action=1 (close) ─── */
     if (action === "closeEvent") {
       const { eventids, message: closeMessage } = extraParams || {};
