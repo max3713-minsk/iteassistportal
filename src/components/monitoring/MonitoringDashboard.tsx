@@ -1,60 +1,70 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  Server, Wifi, WifiOff, AlertTriangle, CheckCircle2,
-  Cpu, Monitor, Database, Terminal, BarChart3,
+  Server, Wifi, WifiOff, AlertTriangle,
+  Cpu, Monitor, Database, Terminal, FileText,
 } from "lucide-react";
-import { duration, priorityLabel } from "./monitoringUtils";
+import RecentEventsFeed from "./RecentEventsFeed";
+import FavoriteGraphs from "./FavoriteGraphs";
 
 interface Props {
-  hosts: any[];
-  alerts: any[];
-  problems: any[];
-  playbooks: any[];
+  hosts: { hostid?: string; name?: string; available?: string; groups?: { name: string }[] }[];
+  alerts: { priority?: string; severity?: string; hosts?: { hostid: string; name: string }[]; description?: string; lastchange?: string; triggerid?: string }[];
+  problems: unknown[];
+  playbooks: unknown[];
   hostsLoading: boolean;
   alertsLoading: boolean;
   connectionError: boolean;
   onTabChange: (tab: string) => void;
   onFilterProblems: (severity: string) => void;
+  graphs: { graphid: string; name: string; hosts?: { hostid: string }[] }[];
 }
 
 export default function MonitoringDashboard({
   hosts, alerts, problems, playbooks,
   hostsLoading, alertsLoading, connectionError,
-  onTabChange, onFilterProblems,
+  onTabChange, onFilterProblems, graphs,
 }: Props) {
   const hostsArr = Array.isArray(hosts) ? hosts : [];
   const alertsArr = Array.isArray(alerts) ? alerts : [];
   const problemsArr = Array.isArray(problems) ? problems : [];
 
-  const hostsAvailable = hostsArr.filter((h: any) => h.available === "1").length;
-  const hostsUnavailable = hostsArr.filter((h: any) => h.available === "2").length;
+  const hostsAvailable = hostsArr.filter((h) => h.available === "1").length;
+  const hostsUnavailable = hostsArr.filter((h) => h.available === "2").length;
 
   const problemsByCategory = useMemo(() => {
-    const p1 = alertsArr.filter((a: any) => parseInt(a.priority) >= 4).length;
-    const p2 = alertsArr.filter((a: any) => parseInt(a.priority) === 3).length;
-    const p3 = alertsArr.filter((a: any) => parseInt(a.priority) === 2).length;
-    const p4 = alertsArr.filter((a: any) => parseInt(a.priority) <= 1).length;
+    const p1 = alertsArr.filter((a) => parseInt(a.priority || "0") >= 4).length;
+    const p2 = alertsArr.filter((a) => parseInt(a.priority || "0") === 3).length;
+    const p3 = alertsArr.filter((a) => parseInt(a.priority || "0") === 2).length;
+    const p4 = alertsArr.filter((a) => parseInt(a.priority || "0") <= 1).length;
     return { p1, p2, p3, p4 };
   }, [alertsArr]);
 
-  const topProblemHosts = useMemo(() => {
-    const map: Record<string, { name: string; count: number; lastProblem: string; lastClock: string }> = {};
-    for (const a of alertsArr) {
-      const name = a.hosts?.[0]?.name || "—";
-      const id = a.hosts?.[0]?.hostid || a.triggerid;
-      if (!map[id]) map[id] = { name, count: 0, lastProblem: "", lastClock: "0" };
-      map[id].count++;
-      if (a.lastchange > map[id].lastClock) {
-        map[id].lastProblem = a.description;
-        map[id].lastClock = a.lastchange;
-      }
-    }
-    return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 5);
-  }, [alertsArr]);
+  // TZ coverage stats
+  const { data: tzStats } = useQuery({
+    queryKey: ["tz-coverage-stats"],
+    queryFn: async () => {
+      const [reqsRes, covRes] = await Promise.all([
+        supabase.from("tz_requirements").select("id"),
+        supabase.from("tz_coverage").select("requirement_id, status"),
+      ]);
+      const total = reqsRes.data?.length || 0;
+      const covered = new Set<string>();
+      const partial = new Set<string>();
+      (covRes.data || []).forEach((c) => {
+        if (c.status === "covered") covered.add(c.requirement_id);
+        else if (c.status === "partial") partial.add(c.requirement_id);
+      });
+      const percent = total > 0 ? Math.round(((covered.size + partial.size * 0.5) / total) * 100) : 0;
+      return { total, covered: covered.size, partial: partial.size, percent };
+    },
+    refetchInterval: 60000,
+  });
 
   const counters = [
     { key: "5", label: "П1 — Критический", emoji: "🔴", count: problemsByCategory.p1, color: "text-red-500", border: "border-red-500/30", desc: "Disaster + High" },
@@ -91,7 +101,7 @@ export default function MonitoringDashboard({
       </div>
 
       {/* Summary row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("hosts")}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Хосты</CardTitle>
@@ -116,111 +126,60 @@ export default function MonitoringDashboard({
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("automation")}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Сценарии автоматизации</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Автоматизация</CardTitle>
             <Terminal className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-heading font-bold">{Array.isArray(playbooks) ? playbooks.length : 0}</div>
           </CardContent>
         </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("tz")}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Покрытие ТЗ</CardTitle>
+            <FileText className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-heading font-bold">{tzStats?.percent ?? 0}%</div>
+            <Progress value={tzStats?.percent ?? 0} className="h-1.5 mt-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {tzStats?.covered ?? 0} из {tzStats?.total ?? 0} пунктов
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Top-5 problematic hosts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Топ-5 проблемных узлов</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {alertsLoading ? (
-            <div className="space-y-3 py-4">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-            </div>
-          ) : topProblemHosts.length === 0 ? (
-            <div className="text-center py-6">
-              <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-              <p className="text-muted-foreground text-sm">Проблемных узлов нет</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Хост</TableHead>
-                  <TableHead>Последняя проблема</TableHead>
-                  <TableHead>Кол-во</TableHead>
-                  <TableHead>Длительность</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topProblemHosts.map((h, i) => (
-                  <TableRow key={i} className="cursor-pointer" onClick={() => onTabChange("hosts")}>
-                    <TableCell className="font-medium">{h.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[300px] truncate">{h.lastProblem}</TableCell>
-                    <TableCell><Badge variant="destructive">{h.count}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{duration(h.lastClock)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Recent alerts feed (replaced top-5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RecentEventsFeed isZabbixConfigured={!connectionError} />
 
-      {/* Cluster status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {clusters.map(({ name, icon: Icon }) => (
-          <Card key={name}>
-            <CardContent className="py-4 flex items-center gap-3">
-              <Icon className="h-6 w-6 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">{name}</p>
-                <p className="text-xs text-muted-foreground">Данные из Zabbix</p>
-              </div>
-              {connectionError ? (
-                <Badge variant="outline" className="text-muted-foreground">—</Badge>
-              ) : (
-                <Badge variant="default" className="bg-green-600">✅ Норма</Badge>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Daily checks widget */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            Статус ежедневных проверок (по ТЗ)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[
-              { id: 1, label: "Проверка загрузки CPU серверов", status: hostsArr.length > 0 },
-              { id: 2, label: "Проверка использования оперативной памяти", status: hostsArr.length > 0 },
-              { id: 3, label: "Проверка системных журналов (логов)", status: false },
-              { id: 4, label: "Проверка доступности сервисов", status: hostsAvailable > 0 },
-              { id: 5, label: "Проверка состояния СХД и дисков", status: false },
-            ].map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-2 p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => onTabChange("graphs")}
-              >
-                {item.status ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Состояние кластеров</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {clusters.map(({ name, icon: Icon }) => (
+              <div key={name} className="flex items-center gap-3 p-2 rounded border">
+                <Icon className="h-5 w-5 text-muted-foreground" />
+                <p className="text-sm flex-1">{name}</p>
+                {connectionError ? (
+                  <Badge variant="outline" className="text-muted-foreground">—</Badge>
                 ) : (
-                  <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 flex-shrink-0" />
+                  <Badge variant="default" className="bg-green-600">✅ Норма</Badge>
                 )}
-                <span className="text-sm">{item.label}</span>
               </div>
             ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            💡 Статусы обновляются автоматически из данных Zabbix при наличии подключения.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Favorite graphs */}
+      <FavoriteGraphs hosts={hostsArr as { hostid: string; name: string }[]} graphs={graphs} />
+
+      {hostsLoading && (
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-full" />
+        </div>
+      )}
     </div>
   );
 }
