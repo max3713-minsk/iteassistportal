@@ -17,6 +17,7 @@ import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
 import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 import HostManagement from "@/components/monitoring/HostManagement";
+import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
 
 /* ─── Zabbix configured check ─── */
@@ -243,6 +244,7 @@ export default function Monitoring() {
         <TabsContent value="config" className="space-y-6">
           <ZabbixSettings />
           <HostManagement />
+          <TemplateLibrary />
         </TabsContent>
       </Tabs>
     </div>

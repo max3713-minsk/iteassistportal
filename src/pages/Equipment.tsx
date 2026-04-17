@@ -14,6 +14,7 @@ import { Plus, Server, Pencil, Trash2, Filter, Activity } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
 const EQUIPMENT_STATUSES = [
   { value: "active", label: "Активно" },
   { value: "maintenance", label: "На обслуживании" },
@@ -307,15 +308,18 @@ export default function Equipment() {
                     <TableCell>{eq.quantity}</TableCell>
                     <TableCell>
                       {monLink ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="success" className="gap-1 cursor-help">
-                              <Activity className="h-3 w-3" />
-                              {monLink.host_name}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>Связано с Zabbix-хостом #{monLink.zabbix_host_id}</TooltipContent>
-                        </Tooltip>
+                        <div className="flex flex-col gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="success" className="gap-1 cursor-help w-fit">
+                                <Activity className="h-3 w-3" />
+                                {monLink.host_name}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>Связано с Zabbix-хостом #{monLink.zabbix_host_id}</TooltipContent>
+                          </Tooltip>
+                          <EquipmentMonitoringMetrics zabbixHostId={monLink.zabbix_host_id} />
+                        </div>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">Не подключён</Badge>
                       )}
