@@ -117,7 +117,7 @@ export default function MonitoringProblems({
                     <TableHead>Серьёзность</TableHead>
                     <TableHead>Время</TableHead>
                     <TableHead>Длительность</TableHead>
-                    <TableHead>Признано</TableHead>
+                    <TableHead>Подтверждено</TableHead>
                     {isStaff && <TableHead className="text-right">Действия</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -150,7 +150,7 @@ export default function MonitoringProblems({
                         {isStaff && (
                           <TableCell className="text-right space-x-1">
                             {!isAcknowledged && (
-                              <Button size="sm" variant="ghost" title="Признать" onClick={() => onAcknowledge(p.eventid)}>
+                              <Button size="sm" variant="ghost" title="Подтвердить" onClick={() => onAcknowledge(p.eventid)}>
                                 <Check className="h-4 w-4" />
                               </Button>
                             )}
