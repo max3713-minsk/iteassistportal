@@ -105,6 +105,10 @@ export default function HostManagement() {
         </CardTitle>
         {isStaff && (
           <div className="flex gap-2">
+            <Button size="sm" variant="default" onClick={() => setCmdbSyncOpen(true)}>
+              <Link2 className="h-4 w-4 mr-1.5" />
+              Синхронизировать с CMDB
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setWizardOpen(true)}>
               <Plus className="h-4 w-4 mr-1.5" />
               Мастер добавления
