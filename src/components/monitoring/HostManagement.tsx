@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router } from "lucide-react";
 import { HostFormDialog } from "./HostFormDialog";
-import HostWizardDialog from "./HostWizardDialog";
+import { HostWizardDialog } from "./HostWizardDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
