@@ -4,6 +4,7 @@ import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Cartesia
 import { Loader2, AlertCircle, Download, FileImage, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
+import { formatRaw } from "./formatMetric";
 
 interface Series {
   hostid: string;
@@ -213,7 +214,12 @@ export default function GraphChart({
           <ChartComp data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
             <XAxis dataKey="clock" tickFormatter={formatTime} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+            <YAxis
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickFormatter={(v: number) => formatRaw(v, series[0]?.units)}
+              width={70}
+            />
             <Tooltip
               contentStyle={{
                 background: "hsl(var(--card))",
@@ -225,7 +231,7 @@ export default function GraphChart({
               formatter={(value: any, name: string) => {
                 const idx = parseInt(name.replace("s", ""));
                 const s = series[idx];
-                return [`${typeof value === "number" ? value.toFixed(2) : value} ${s?.units || ""}`, s?.itemName || name];
+                return [formatRaw(value, s?.units), s?.itemName || name];
               }}
             />
             <Legend
