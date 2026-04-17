@@ -670,18 +670,42 @@ Deno.serve(async (req) => {
       const ids = Array.isArray(eventids) ? eventids : [eventids];
 
       const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
-      // Action bitmap: 1=close, 2=ack, 4=add_message
-      const res = await fetchWithTimeout(apiUrl, {
-        method: "POST", headers,
-        body: JSON.stringify({
-          jsonrpc: "2.0", method: "event.acknowledge",
-          params: { eventids: ids, action: 7, message: closeMessage || "Закрыто через портал ITEA" }, // 1+2+4=7
-          auth: authToken, id: 23,
-        }),
-      });
-      const data = await res.json();
+      const msg = closeMessage || "Закрыто через портал ITEA";
+
+      const callAck = async (actionBitmap: number) => {
+        const r = await fetchWithTimeout(apiUrl, {
+          method: "POST", headers,
+          body: JSON.stringify({
+            jsonrpc: "2.0", method: "event.acknowledge",
+            params: { eventids: ids, action: actionBitmap, message: msg },
+            auth: authToken, id: 23,
+          }),
+        });
+        return r.json();
+      };
+
+      // Try full close (1=close + 2=ack + 4=msg = 7)
+      let data = await callAck(7);
+
+      // Fallback: if the trigger doesn't allow manual closing, just acknowledge (2+4=6)
+      const errStr = data?.error ? String(data.error.data || data.error.message || "") : "";
+      const noManualClose = /manual closing|manual_close|does not allow.*clos/i.test(errStr);
+
+      if (data.error && noManualClose) {
+        data = await callAck(6);
+        if (data.error) {
+          return fail(`Триггер не позволяет ручное закрытие, и подтверждение тоже не удалось: ${data.error.data || data.error.message}`);
+        }
+        cache.delete(`getProblems:${JSON.stringify({})}`);
+        cache.delete(`getRecentEvents:${JSON.stringify({})}`);
+        return ok({
+          result: data.result,
+          partial: true,
+          message: "Триггер не разрешает ручное закрытие в Zabbix. Событие подтверждено (acknowledged). Закроется автоматически, когда условие триггера станет ложным.",
+        });
+      }
+
       if (data.error) return fail(`event.close error: ${data.error.data || data.error.message}`);
-      // Invalidate problem caches
       cache.delete(`getProblems:${JSON.stringify({})}`);
       cache.delete(`getRecentEvents:${JSON.stringify({})}`);
       return ok({ result: data.result });

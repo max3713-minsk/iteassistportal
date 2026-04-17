@@ -77,9 +77,13 @@ export default function MonitoringProblems({
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: async (_d, eventid) => {
+    onSuccess: async (data: any, eventid) => {
       await logAudit({ action: "Закрытие события Zabbix", module: "monitoring", details: `eventid=${eventid}` });
-      toast({ title: "Событие закрыто" });
+      if (data?.partial) {
+        toast({ title: "Событие подтверждено", description: data.message, duration: 7000 });
+      } else {
+        toast({ title: "Событие закрыто" });
+      }
       qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
     },
     onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
