@@ -75,12 +75,66 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
     retry: 1,
   });
 
+  /**
+   * "Actual" alert lifecycle (custom rule):
+   * - Active in Zabbix → always shown.
+   * - Acknowledged + linked to a still-open ticket → kept in "actual" view.
+   *   The link is recorded in audit_logs (action="Привязка алерта к заявке", entity_id=eventid, details="ticket=<uuid>;eventid=<id>").
+   * - Acknowledged + ticket closed/resolved/cancelled → drop from "actual".
+   */
+  const { data: alertTicketLinks = {} } = useQuery({
+    queryKey: ["alert-ticket-links"],
+    queryFn: async () => {
+      const { data: links } = await supabase
+        .from("audit_logs")
+        .select("entity_id, details")
+        .eq("module", "monitoring")
+        .eq("action", "Привязка алерта к заявке")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      const map: Record<string, { ticketId: string; status?: string }> = {};
+      const ticketIds = new Set<string>();
+      (links || []).forEach((l) => {
+        const eid = l.entity_id;
+        const m = (l.details || "").match(/ticket=([0-9a-f-]+)/i);
+        if (eid && m) {
+          map[eid] = { ticketId: m[1] };
+          ticketIds.add(m[1]);
+        }
+      });
+      if (ticketIds.size > 0) {
+        const { data: tickets } = await supabase
+          .from("tickets")
+          .select("id, status")
+          .in("id", [...ticketIds]);
+        (tickets || []).forEach((t) => {
+          for (const eid of Object.keys(map)) {
+            if (map[eid].ticketId === t.id) map[eid].status = t.status;
+          }
+        });
+      }
+      return map;
+    },
+    enabled: isZabbixConfigured,
+    refetchInterval: 30000,
+  });
+
   const events = useMemo(() => {
-    if (actualOnly) return activeEvents;
+    if (actualOnly) {
+      // Keep all active events. If acknowledged AND linked ticket is closed/resolved/cancelled → hide.
+      return activeEvents.filter((e) => {
+        if (e.acknowledged !== "1") return true;
+        const link = alertTicketLinks[e.eventid];
+        if (!link) return true; // ack but no ticket → still actual per legacy behavior
+        const closedStatuses = new Set(["resolved", "closed", "cancelled"]);
+        return !closedStatuses.has(link.status || "");
+      });
+    }
     const map = new Map<string, ZbxEvent>();
     [...activeEvents, ...closedEvents].forEach((e) => map.set(e.eventid, e));
     return [...map.values()].sort((a, b) => parseInt(b.clock) - parseInt(a.clock));
-  }, [activeEvents, closedEvents, actualOnly]);
+  }, [activeEvents, closedEvents, actualOnly, alertTicketLinks]);
 
   const isLoading = loadingActive || (!actualOnly && loadingClosed);
   const limit = compact ? 8 : 30;
