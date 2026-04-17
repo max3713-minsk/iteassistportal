@@ -261,6 +261,7 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
                       <TableHead>Группа</TableHead>
                       <TableHead>Доступность</TableHead>
                       <TableHead>Проблемы</TableHead>
+                      <TableHead className="w-32 text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
