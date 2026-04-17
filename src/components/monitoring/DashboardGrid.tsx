@@ -245,15 +245,8 @@ export default function DashboardGrid({
           </Card>
         </div>
 
-        <div key="graphs">
-          <Card className="h-full flex flex-col overflow-hidden">
-            <CardHeader className="widget-drag-handle cursor-move pb-2">
-              <CardTitle className="text-base">Избранные графики</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              <FavoriteGraphs hosts={hostsArr as { hostid: string; name: string }[]} graphs={graphs} />
-            </CardContent>
-          </Card>
+        <div key="graphs" className="overflow-auto">
+          <FavoriteGraphs hosts={hostsArr as { hostid: string; name: string }[]} graphs={graphs} />
         </div>
       </ResponsiveGridLayout>
     </div>
