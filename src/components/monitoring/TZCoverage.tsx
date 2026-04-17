@@ -161,6 +161,8 @@ export default function TZCoverage() {
     setEditStatus(first?.status || "none");
     setEditHostId(first?.host_id || "none");
     setEditNotes(first?.notes || "");
+    const ri = first?.related_items as any;
+    setEditTools(Array.isArray(ri?.tools) ? ri.tools : []);
   };
 
   const saveMutation = useMutation({
