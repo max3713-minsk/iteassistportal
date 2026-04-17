@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Wifi, Shield, Globe, Circle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Wifi, Shield, Globe, Circle, RefreshCw } from "lucide-react";
 
 type TestResult = {
   ok: boolean;
@@ -277,7 +277,7 @@ export default function ZabbixSettings() {
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 flex-wrap">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Сохранить настройки
@@ -298,6 +298,19 @@ export default function ZabbixSettings() {
                   Проверить подключение
                 </>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ["zabbix"] });
+                queryClient.invalidateQueries({ queryKey: ["zbx-all-templates"] });
+                queryClient.invalidateQueries({ queryKey: ["zbx-host-detail"] });
+                queryClient.invalidateQueries({ queryKey: ["zabbix-settings-active"] });
+                toast({ title: "Синхронизация всех данных Zabbix..." });
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Синхронизировать всё с Zabbix
             </Button>
           </div>
 

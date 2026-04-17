@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Library, Search, Loader2, Eye, Server, Activity, Link2, Download } from "lucide-react";
+import { Library, Search, Loader2, Eye, Server, Activity, Link2, Download, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
@@ -205,6 +205,17 @@ export default function TemplateLibrary() {
           <Badge variant="outline" className="ml-1">{templates.length}</Badge>
         </CardTitle>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ["zbx-all-templates"] });
+              toast({ title: "Синхронизация шаблонов с Zabbix..." });
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Синхронизировать
+          </Button>
           {isStaff && selectedTemplates.size > 0 && (
             <Button size="sm" onClick={() => setBulkLinkOpen(true)}>
               <Link2 className="h-3.5 w-3.5 mr-1" />
