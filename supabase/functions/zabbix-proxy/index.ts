@@ -609,6 +609,32 @@ Deno.serve(async (req) => {
       return ok({ result: data.result?.[0] || null });
     }
 
+    /* ─── Get active (unresolved) problems for a specific host ─── */
+    if (action === "getActiveProblemsByHost") {
+      const { hostid } = extraParams || {};
+      if (!hostid) return fail("hostid обязателен", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "problem.get",
+          params: {
+            hostids: [hostid],
+            output: "extend",
+            selectAcknowledges: "extend",
+            recent: false,
+            sortfield: ["eventid"],
+            sortorder: "DESC",
+            limit: 100,
+          },
+          auth: authToken, id: 33,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`problem.get error: ${data.error.data || data.error.message}`);
+      return ok({ result: data.result || [] });
+    }
+
     /* ─── Get items for a specific host (efficient, cached 30s) ─── */
     if (action === "getItemsByHost") {
       const { hostid } = extraParams || {};

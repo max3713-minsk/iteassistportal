@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import RecentEventsFeed from "./RecentEventsFeed";
-import FavoriteGraphs from "./FavoriteGraphs";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -38,7 +37,6 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: "tz", x: 9, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
   { i: "alerts", x: 0, y: 4, w: 7, h: 6, minW: 4, minH: 4 },
   { i: "clusters", x: 7, y: 4, w: 5, h: 6, minW: 3, minH: 3 },
-  { i: "graphs", x: 0, y: 10, w: 12, h: 6, minW: 4, minH: 4 },
 ];
 
 const STORAGE_KEY = "monitoring-dashboard-layout-v1";
@@ -245,9 +243,6 @@ export default function DashboardGrid({
           </Card>
         </div>
 
-        <div key="graphs" className="overflow-auto">
-          <FavoriteGraphs hosts={hostsArr as { hostid: string; name: string }[]} graphs={graphs} />
-        </div>
       </ResponsiveGridLayout>
     </div>
   );
