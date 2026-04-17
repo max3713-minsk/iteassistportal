@@ -10,7 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { Activity, AlertTriangle, RefreshCw, Settings } from "lucide-react";
 import { priorityToIncident, priorityLabel } from "@/components/monitoring/monitoringUtils";
 
-import MonitoringDashboard from "@/components/monitoring/MonitoringDashboard";
+import DashboardGrid from "@/components/monitoring/DashboardGrid";
 import MonitoringHosts from "@/components/monitoring/MonitoringHosts";
 import MonitoringProblems from "@/components/monitoring/MonitoringProblems";
 import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
@@ -183,13 +183,11 @@ export default function Monitoring() {
         </TabsList>
 
         <TabsContent value="dashboard">
-          <MonitoringDashboard
+          <DashboardGrid
             hosts={hosts}
             alerts={alerts}
             problems={problems}
             playbooks={playbooks}
-            hostsLoading={hostsLoading}
-            alertsLoading={alertsLoading}
             connectionError={connectionError}
             onTabChange={setTab}
             onFilterProblems={setProblemPriorityFilter}
