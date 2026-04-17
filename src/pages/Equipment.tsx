@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -79,6 +79,19 @@ export default function Equipment() {
       return data ?? [];
     },
   });
+
+  const { data: hostLinks = [] } = useQuery({
+    queryKey: ["monitoring-host-links"],
+    queryFn: async () => {
+      const { data } = await supabase.from("monitoring_host_links").select("equipment_id, host_name, zabbix_host_id");
+      return data ?? [];
+    },
+  });
+  const linkByEqId = useMemo(() => {
+    const map = new Map<string, { host_name: string; zabbix_host_id: string }>();
+    for (const l of hostLinks) map.set(l.equipment_id, l);
+    return map;
+  }, [hostLinks]);
 
   const saveMutation = useMutation({
     mutationFn: async (f: EquipForm) => {
@@ -274,12 +287,14 @@ export default function Equipment() {
                 <TableHead className="hidden md:table-cell">Категория</TableHead>
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
+                <TableHead>Мониторинг</TableHead>
                 <TableHead>Статус</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEquipment.map((eq: any) => {
+                const monLink = linkByEqId.get(eq.id);
                 const row = (
                   <TableRow key={eq.id}>
                     <TableCell className="font-medium">{eq.name}</TableCell>
@@ -290,6 +305,21 @@ export default function Equipment() {
                     <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
+                    <TableCell>
+                      {monLink ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="success" className="gap-1 cursor-help">
+                              <Activity className="h-3 w-3" />
+                              {monLink.host_name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>Связано с Zabbix-хостом #{monLink.zabbix_host_id}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Не подключён</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[eq.status ?? "active"] ?? "outline"}>
                         {EQUIPMENT_STATUSES.find((s) => s.value === (eq.status ?? "active"))?.label ?? eq.status}

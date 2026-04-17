@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router, Link2 } from "lucide-react";
 import { HostFormDialog } from "./HostFormDialog";
 import { HostWizardDialog } from "./HostWizardDialog";
+import CMDBSyncDialog from "./CMDBSyncDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -54,6 +55,7 @@ export default function HostManagement() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [cmdbSyncOpen, setCmdbSyncOpen] = useState(false);
   const [editingHost, setEditingHost] = useState<MonitoredHost | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -103,6 +105,10 @@ export default function HostManagement() {
         </CardTitle>
         {isStaff && (
           <div className="flex gap-2">
+            <Button size="sm" variant="default" onClick={() => setCmdbSyncOpen(true)}>
+              <Link2 className="h-4 w-4 mr-1.5" />
+              Синхронизировать с CMDB
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setWizardOpen(true)}>
               <Plus className="h-4 w-4 mr-1.5" />
               Мастер добавления
@@ -186,6 +192,11 @@ export default function HostManagement() {
       <HostWizardDialog
         open={wizardOpen}
         onOpenChange={setWizardOpen}
+      />
+
+      <CMDBSyncDialog
+        open={cmdbSyncOpen}
+        onOpenChange={setCmdbSyncOpen}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
