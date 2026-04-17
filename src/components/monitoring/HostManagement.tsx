@@ -55,6 +55,7 @@ export default function HostManagement() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [cmdbSyncOpen, setCmdbSyncOpen] = useState(false);
   const [editingHost, setEditingHost] = useState<MonitoredHost | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
