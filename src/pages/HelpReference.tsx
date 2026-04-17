@@ -67,8 +67,12 @@ export default function HelpReference() {
     <div className="space-y-6">
       <h1 className="font-heading text-2xl font-bold">Справка</h1>
 
-      <Tabs defaultValue="sla" className="w-full">
+      <Tabs defaultValue="manual" className="w-full">
         <TabsList>
+          <TabsTrigger value="manual" className="gap-1.5">
+            <BookOpen className="h-4 w-4" />
+            Руководство
+          </TabsTrigger>
           <TabsTrigger value="sla" className="gap-1.5">
             <Clock className="h-4 w-4" />
             SLA и приоритеты
@@ -78,6 +82,10 @@ export default function HelpReference() {
             Состав работ
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="manual" className="mt-4">
+          <UserManual />
+        </TabsContent>
 
         <TabsContent value="sla" className="space-y-6 mt-4">
           <Card>
