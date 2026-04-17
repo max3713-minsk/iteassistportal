@@ -454,6 +454,104 @@ export default function TZCoverage() {
                 <Label>Заметки</Label>
                 <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} />
               </div>
+
+              {editStatus !== "covered" && (
+                <div className="space-y-2 border-t pt-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <Wrench className="h-3.5 w-3.5" />
+                      Инструменты для закрытия пункта
+                    </Label>
+                    <Button
+                      type="button" size="sm" variant="outline"
+                      onClick={() =>
+                        setEditTools([
+                          ...editTools,
+                          { name: "", type: "zabbix", config: "", responsible: "", status: "planned" },
+                        ])
+                      }
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />Добавить
+                    </Button>
+                  </div>
+                  {editTools.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Опишите, какие инструменты будут использоваться для покрытия этого требования
+                      (шаблоны Zabbix, скрипты Ansible, ручные процедуры, внешние системы и т.д.).
+                    </p>
+                  )}
+                  {editTools.map((t, i) => (
+                    <div key={i} className="border rounded p-2 space-y-2 bg-muted/20">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Название инструмента"
+                          value={t.name}
+                          onChange={(e) => {
+                            const next = [...editTools]; next[i] = { ...t, name: e.target.value }; setEditTools(next);
+                          }}
+                          className="flex-1"
+                        />
+                        <Select
+                          value={t.type}
+                          onValueChange={(v) => {
+                            const next = [...editTools]; next[i] = { ...t, type: v }; setEditTools(next);
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="zabbix">Zabbix шаблон/итем</SelectItem>
+                            <SelectItem value="ansible">Ansible playbook</SelectItem>
+                            <SelectItem value="script">Скрипт</SelectItem>
+                            <SelectItem value="manual">Ручная процедура</SelectItem>
+                            <SelectItem value="external">Внешняя система</SelectItem>
+                            <SelectItem value="other">Другое</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button" size="icon" variant="ghost"
+                          onClick={() => setEditTools(editTools.filter((_, j) => j !== i))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        placeholder="Конфигурация / ключи метрик / шаги"
+                        value={t.config}
+                        onChange={(e) => {
+                          const next = [...editTools]; next[i] = { ...t, config: e.target.value }; setEditTools(next);
+                        }}
+                        rows={2}
+                        className="text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Ответственный"
+                          value={t.responsible}
+                          onChange={(e) => {
+                            const next = [...editTools]; next[i] = { ...t, responsible: e.target.value }; setEditTools(next);
+                          }}
+                          className="flex-1 text-xs"
+                        />
+                        <Select
+                          value={t.status}
+                          onValueChange={(v) => {
+                            const next = [...editTools]; next[i] = { ...t, status: v }; setEditTools(next);
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planned">Запланировано</SelectItem>
+                            <SelectItem value="in_progress">В работе</SelectItem>
+                            <SelectItem value="configured">Настроено</SelectItem>
+                            <SelectItem value="blocked">Заблокировано</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setEditingReq(null)}>Отмена</Button>
                 <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
