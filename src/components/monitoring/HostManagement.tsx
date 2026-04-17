@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router } from "lucide-react";
 import { HostFormDialog } from "./HostFormDialog";
+import HostWizardDialog from "./HostWizardDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -52,6 +53,7 @@ export default function HostManagement() {
   const { isStaff } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [editingHost, setEditingHost] = useState<MonitoredHost | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -100,10 +102,16 @@ export default function HostManagement() {
           Настройка хостов мониторинга
         </CardTitle>
         {isStaff && (
-          <Button size="sm" onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Добавить хост
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setWizardOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Мастер добавления
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleAdd}>
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Быстрое добавление
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -173,6 +181,11 @@ export default function HostManagement() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         host={editingHost}
+      />
+
+      <HostWizardDialog
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

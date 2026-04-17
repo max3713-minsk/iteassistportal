@@ -310,3 +310,19 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
     </div>
   );
 }
+
+function HostItemsViewWrapper({ zabbixHostId, items }: { zabbixHostId: string; items: any[] }) {
+  const { data: localHost } = useQuery({
+    queryKey: ["monitored-host-by-zbx", zabbixHostId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("monitored_hosts")
+        .select("id")
+        .eq("zabbix_host_id", zabbixHostId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!zabbixHostId,
+  });
+  return <HostItemsView hostId={localHost?.id || ""} zabbixHostId={zabbixHostId} items={items} />;
+}
