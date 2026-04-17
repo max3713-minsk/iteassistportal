@@ -189,6 +189,43 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
         },
         cacheTtl: 30000,
       };
+    case "getRecentEvents":
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 10,
+          value: 1,
+          ...extraParams,
+        },
+        cacheTtl: 15000,
+      };
+    case "getTemplates":
+      return {
+        method: "template.get",
+        params: {
+          output: ["templateid", "host", "name", "description"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 300000,
+      };
+    case "getHistory":
+      return {
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     default:
       return null;
   }
@@ -367,6 +404,88 @@ Deno.serve(async (req) => {
           note: "Для доступа к графику напрямую требуется VPN и авторизация в Zabbix.",
         },
       });
+    }
+
+    /* ─── Create Host in Zabbix ─── */
+    if (action === "createHost") {
+      const { name, visible_name, ip, port, group_name, templates, protocol_type } = extraParams || {};
+      if (!name || !ip) return fail("name и ip обязательны", 400);
+
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+
+      // 1) Get or create host group
+      let groupId: string | null = null;
+      if (group_name) {
+        const grpRes = await fetchWithTimeout(apiUrl, {
+          method: "POST", headers,
+          body: JSON.stringify({ jsonrpc: "2.0", method: "hostgroup.get", params: { filter: { name: [group_name] } }, auth: authToken, id: 10 }),
+        });
+        const grpData = await grpRes.json();
+        if (grpData.result?.length) {
+          groupId = grpData.result[0].groupid;
+        } else {
+          const createRes = await fetchWithTimeout(apiUrl, {
+            method: "POST", headers,
+            body: JSON.stringify({ jsonrpc: "2.0", method: "hostgroup.create", params: { name: group_name }, auth: authToken, id: 11 }),
+          });
+          const createData = await createRes.json();
+          if (createData.error) return fail(`Group create error: ${createData.error.data || createData.error.message}`);
+          groupId = createData.result.groupids[0];
+        }
+      }
+
+      // 2) Build interface config based on protocol_type
+      const ptype = protocol_type || "Agent";
+      const ifaceTypeMap: Record<string, number> = { Agent: 1, SNMP: 2, IPMI: 3, JMX: 4 };
+      const ifaceType = ifaceTypeMap[ptype] || 1;
+      const defaultPorts: Record<string, string> = { Agent: "10050", SNMP: "161", IPMI: "623" };
+
+      const hostParams: Record<string, unknown> = {
+        host: name,
+        name: visible_name || name,
+        interfaces: [{
+          type: ifaceType,
+          main: 1,
+          useip: 1,
+          ip,
+          dns: "",
+          port: String(port || defaultPorts[ptype] || "10050"),
+          ...(ifaceType === 2 ? { details: { version: 2, bulk: 1, community: "{$SNMP_COMMUNITY}" } } : {}),
+        }],
+        groups: groupId ? [{ groupid: groupId }] : [],
+      };
+      if (Array.isArray(templates) && templates.length > 0) {
+        hostParams.templates = templates.map((t: string) => ({ templateid: t }));
+      }
+
+      const createHostRes = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({ jsonrpc: "2.0", method: "host.create", params: hostParams, auth: authToken, id: 12 }),
+      });
+      const createHostData = await createHostRes.json();
+      if (createHostData.error) {
+        return fail(`Zabbix host.create error: ${createHostData.error.data || createHostData.error.message}`);
+      }
+      return ok({ result: createHostData.result });
+    }
+
+    /* ─── Test Host Connectivity (ICMP via Zabbix item) ─── */
+    if (action === "testHostConnectivity") {
+      const { hostid } = extraParams || {};
+      if (!hostid) return fail("hostid обязателен", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const itemsRes = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "item.get",
+          params: { hostids: [hostid], output: ["itemid","name","key_","lastvalue","lastclock","state"], limit: 5 },
+          auth: authToken, id: 13,
+        }),
+      });
+      const itemsData = await itemsRes.json();
+      const items = itemsData.result || [];
+      const alive = items.some((i: { lastclock?: string }) => i.lastclock && parseInt(i.lastclock) > Date.now()/1000 - 3600);
+      return ok({ result: { alive, items_count: items.length, sample: items.slice(0,3) } });
     }
 
     /* ─── Standard cached actions ─── */
