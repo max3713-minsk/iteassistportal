@@ -26,7 +26,7 @@ export default function Protocols() {
   const [filterSite, setFilterSite] = useState("all");
   const [filterFrequency, setFilterFrequency] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
 
   // Auto-create protocols for today
   useAutoProtocols();
@@ -51,11 +51,21 @@ export default function Protocols() {
     },
   });
 
-  const activeProtocols = useMemo(() => {
-    return protocols.filter((p) => p.status !== "completed");
-  }, [protocols]);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  const archivedProtocols = useMemo(() => {
+  const activeProtocols = useMemo(() => {
+    return protocols.filter(
+      (p) => p.status !== "completed" && p.period_end >= todayStr
+    );
+  }, [protocols, todayStr]);
+
+  const overdueProtocols = useMemo(() => {
+    return protocols.filter(
+      (p) => p.status !== "completed" && p.period_end < todayStr
+    );
+  }, [protocols, todayStr]);
+
+  const completedProtocols = useMemo(() => {
     return protocols.filter((p) => p.status === "completed");
   }, [protocols]);
 
@@ -71,9 +81,14 @@ export default function Protocols() {
   };
 
   const filtered = useMemo(() => {
-    const base = activeTab === "active" ? activeProtocols : archivedProtocols;
+    const base =
+      activeTab === "active"
+        ? activeProtocols
+        : activeTab === "overdue"
+        ? overdueProtocols
+        : completedProtocols;
     return applyFilters(base);
-  }, [activeProtocols, archivedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam]);
+  }, [activeProtocols, overdueProtocols, completedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam]);
 
   const fetchProtocolData = async (protocolId: string) => {
     const { data: protocol } = await supabase
@@ -216,10 +231,11 @@ export default function Protocols() {
         {isStaff && <CreateProtocolDialog defaultDate={dateParam} />}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mb-4">
         <TabsList>
           <TabsTrigger value="active">Активные ({activeProtocols.length})</TabsTrigger>
-          <TabsTrigger value="archive">Архив ({archivedProtocols.length})</TabsTrigger>
+          <TabsTrigger value="overdue">Просрочены ({overdueProtocols.length})</TabsTrigger>
+          <TabsTrigger value="completed">Завершённые ({completedProtocols.length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
