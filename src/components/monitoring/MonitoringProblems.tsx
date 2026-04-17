@@ -68,6 +68,23 @@ export default function MonitoringProblems({
     return list;
   }, [alertsArr, priorityFilter, hostFilter]);
 
+  const closeMutation = useMutation({
+    mutationFn: async (eventid: string) => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "closeEvent", params: { eventids: [eventid] } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: async (_d, eventid) => {
+      await logAudit({ action: "Закрытие события Zabbix", module: "monitoring", details: `eventid=${eventid}` });
+      toast({ title: "Событие закрыто" });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex gap-3 flex-wrap items-center">
