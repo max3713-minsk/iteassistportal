@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_thresholds: {
+        Row: {
+          auto_create_ticket: boolean
+          comparison: string
+          created_at: string
+          created_by: string | null
+          critical_value: number | null
+          display_name: string | null
+          enabled: boolean
+          host_id: string | null
+          id: string
+          item_key: string
+          notes: string | null
+          updated_at: string
+          warning_value: number | null
+          zabbix_host_id: string | null
+        }
+        Insert: {
+          auto_create_ticket?: boolean
+          comparison?: string
+          created_at?: string
+          created_by?: string | null
+          critical_value?: number | null
+          display_name?: string | null
+          enabled?: boolean
+          host_id?: string | null
+          id?: string
+          item_key: string
+          notes?: string | null
+          updated_at?: string
+          warning_value?: number | null
+          zabbix_host_id?: string | null
+        }
+        Update: {
+          auto_create_ticket?: boolean
+          comparison?: string
+          created_at?: string
+          created_by?: string | null
+          critical_value?: number | null
+          display_name?: string | null
+          enabled?: boolean
+          host_id?: string | null
+          id?: string
+          item_key?: string
+          notes?: string | null
+          updated_at?: string
+          warning_value?: number | null
+          zabbix_host_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_thresholds_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_hosts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -487,6 +546,47 @@ export type Database = {
           },
         ]
       }
+      monitoring_host_links: {
+        Row: {
+          auto_matched: boolean
+          created_at: string
+          created_by: string | null
+          equipment_id: string
+          host_name: string
+          id: string
+          updated_at: string
+          zabbix_host_id: string
+        }
+        Insert: {
+          auto_matched?: boolean
+          created_at?: string
+          created_by?: string | null
+          equipment_id: string
+          host_name: string
+          id?: string
+          updated_at?: string
+          zabbix_host_id: string
+        }
+        Update: {
+          auto_matched?: boolean
+          created_at?: string
+          created_by?: string | null
+          equipment_id?: string
+          host_name?: string
+          id?: string
+          updated_at?: string
+          zabbix_host_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitoring_host_links_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: true
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -590,6 +690,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_graphs: {
+        Row: {
+          aggregation: string | null
+          chart_type: string
+          config: Json | null
+          created_at: string
+          description: string | null
+          host_ids: Json
+          id: string
+          is_shared: boolean
+          is_template: boolean
+          item_keys: Json
+          name: string
+          time_range: string
+          tz_requirement_codes: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aggregation?: string | null
+          chart_type?: string
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          host_ids?: Json
+          id?: string
+          is_shared?: boolean
+          is_template?: boolean
+          item_keys?: Json
+          name: string
+          time_range?: string
+          tz_requirement_codes?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aggregation?: string | null
+          chart_type?: string
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          host_ids?: Json
+          id?: string
+          is_shared?: boolean
+          is_template?: boolean
+          item_keys?: Json
+          name?: string
+          time_range?: string
+          tz_requirement_codes?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       sites: {
         Row: {

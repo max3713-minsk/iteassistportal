@@ -50,9 +50,9 @@ const fail = (error: string, status = 500) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-/* ─── Zabbix auth session (cached) ─── */
+/* ─── Zabbix auth session (cached for 1 hour per ТЗ) ─── */
 let authTokenCache: { token: string; ts: number } | null = null;
-const AUTH_TTL = 5 * 60 * 1000; // 5 min
+const AUTH_TTL = 60 * 60 * 1000; // 1 hour
 
 async function getAuthToken(apiUrl: string, user: string, password: string): Promise<string> {
   if (authTokenCache && Date.now() - authTokenCache.ts < AUTH_TTL) {
@@ -222,6 +222,43 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
           sortfield: "clock",
           sortorder: "DESC",
           limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
+    case "getTrends":
+      return {
+        method: "trend.get",
+        params: {
+          output: "extend",
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 1000,
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
+    case "getClosedEvents":
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged", "r_eventid"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 200,
+          value: 0, // recovered
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
+    case "getTriggerCounts":
+      return {
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "priority"],
+          filter: { value: 1, status: 0 },
+          countOutput: false,
           ...extraParams,
         },
         cacheTtl: 30000,
@@ -488,7 +525,110 @@ Deno.serve(async (req) => {
       return ok({ result: { alive, items_count: items.length, sample: items.slice(0,3) } });
     }
 
-    /* ─── Standard cached actions ─── */
+    /* ─── Update Host Templates (link / unlink) ─── */
+    if (action === "updateHostTemplates") {
+      const { hostid, templateids, mode } = extraParams || {};
+      if (!hostid || !Array.isArray(templateids)) return fail("hostid и templateids обязательны", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+
+      // mode: "link" | "unlink" | "replace" (default replace)
+      const params: Record<string, unknown> = { hostid };
+      const tplObjs = templateids.map((t: string) => ({ templateid: t }));
+      if (mode === "unlink") {
+        params.templates_clear = tplObjs;
+      } else if (mode === "link") {
+        // Need to merge with existing
+        const curRes = await fetchWithTimeout(apiUrl, {
+          method: "POST", headers,
+          body: JSON.stringify({ jsonrpc: "2.0", method: "host.get", params: { hostids: [hostid], selectParentTemplates: ["templateid"] }, auth: authToken, id: 20 }),
+        });
+        const curData = await curRes.json();
+        const existing = curData.result?.[0]?.parentTemplates?.map((t: { templateid: string }) => ({ templateid: t.templateid })) || [];
+        const merged = [...existing, ...tplObjs.filter((n: { templateid: string }) => !existing.find((e: { templateid: string }) => e.templateid === n.templateid))];
+        params.templates = merged;
+      } else {
+        params.templates = tplObjs;
+      }
+
+      const updateRes = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({ jsonrpc: "2.0", method: "host.update", params, auth: authToken, id: 21 }),
+      });
+      const updateData = await updateRes.json();
+      if (updateData.error) return fail(`host.update error: ${updateData.error.data || updateData.error.message}`);
+      return ok({ result: updateData.result });
+    }
+
+    /* ─── Get host details with templates ─── */
+    if (action === "getHostDetail") {
+      const { hostid } = extraParams || {};
+      if (!hostid) return fail("hostid обязателен", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "host.get",
+          params: {
+            hostids: [hostid],
+            output: "extend",
+            selectInterfaces: "extend",
+            selectGroups: "extend",
+            selectParentTemplates: ["templateid", "name", "host"],
+            selectTriggers: ["triggerid", "description", "priority", "value"],
+          },
+          auth: authToken, id: 22,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`host.get error: ${data.error.data || data.error.message}`);
+      return ok({ result: data.result?.[0] || null });
+    }
+
+    /* ─── Close Event (admin) — uses event.acknowledge with action=1 (close) ─── */
+    if (action === "closeEvent") {
+      const { eventids, message: closeMessage } = extraParams || {};
+      if (!eventids) return fail("eventids обязателен", 400);
+      const ids = Array.isArray(eventids) ? eventids : [eventids];
+
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      // Action bitmap: 1=close, 2=ack, 4=add_message
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "event.acknowledge",
+          params: { eventids: ids, action: 7, message: closeMessage || "Закрыто через портал ITEA" }, // 1+2+4=7
+          auth: authToken, id: 23,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`event.close error: ${data.error.data || data.error.message}`);
+      // Invalidate problem caches
+      cache.delete(`getProblems:${JSON.stringify({})}`);
+      cache.delete(`getRecentEvents:${JSON.stringify({})}`);
+      return ok({ result: data.result });
+    }
+
+    /* ─── Mass Acknowledge / Close ─── */
+    if (action === "massAcknowledge") {
+      const { eventids, message: ackMessage, close } = extraParams || {};
+      if (!Array.isArray(eventids) || eventids.length === 0) return fail("eventids[] обязателен", 400);
+      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const actionBitmap = close ? 7 : 6; // close ? close+ack+msg : ack+msg
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "event.acknowledge",
+          params: { eventids, action: actionBitmap, message: ackMessage || "Массовое действие через портал" },
+          auth: authToken, id: 24,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`mass acknowledge error: ${data.error.data || data.error.message}`);
+      cache.delete(`getProblems:${JSON.stringify({})}`);
+      return ok({ result: data.result, count: eventids.length });
+    }
+
+
     const actionDef = getActionDef(action, extraParams);
     if (!actionDef) return fail("Unknown action", 400);
 
