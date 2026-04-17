@@ -237,7 +237,7 @@ export default function Monitoring() {
         </TabsContent>
 
         <TabsContent value="tz">
-          <TZCoverage hosts={hosts} />
+          <TZCoverage />
         </TabsContent>
 
         <TabsContent value="config" className="space-y-6">
