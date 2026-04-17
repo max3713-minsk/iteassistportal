@@ -1,7 +1,7 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
-  Header, Footer, PageNumber,
+  Header, Footer, PageNumber, ImageRun,
 } from "docx";
 import { saveAs } from "file-saver";
 import { format } from "date-fns";
@@ -21,6 +21,7 @@ interface ProtocolData {
     notes: string | null;
     completedAt: string | null;
   }[];
+  graphs?: { name: string; pngBase64: string; widthPx: number; heightPx: number }[];
 }
 
 const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
@@ -108,6 +109,37 @@ export async function exportProtocolDocx(data: ProtocolData) {
         rows: [headerRow, ...rows],
       })
     );
+  }
+
+  // Embedded monitoring graphs
+  if (data.graphs && data.graphs.length > 0) {
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 400, after: 100 },
+        children: [new TextRun({ text: "Графики мониторинга", bold: true, size: 24, font: "Arial" })],
+      })
+    );
+    for (const g of data.graphs) {
+      try {
+        const base64 = g.pngBase64.split(",")[1] || g.pngBase64;
+        const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const ratio = g.heightPx / Math.max(1, g.widthPx);
+        const w = 600;
+        const h = Math.round(w * ratio);
+        children.push(
+          new Paragraph({
+            spacing: { before: 200 },
+            children: [new TextRun({ text: g.name, bold: true, size: 22, font: "Arial" })],
+          }),
+          new Paragraph({
+            children: [new ImageRun({ data: bin, transformation: { width: w, height: h }, type: "png" } as any)],
+          })
+        );
+      } catch {
+        /* skip broken image */
+      }
+    }
   }
 
   // Signature area

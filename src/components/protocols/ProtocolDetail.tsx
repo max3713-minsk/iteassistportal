@@ -14,6 +14,7 @@ import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { useState } from "react";
+import ProtocolGraphs from "@/components/monitoring/ProtocolGraphs";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -277,6 +278,9 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           </CardContent>
         </Card>
       )}
+
+      {/* Attached monitoring graphs */}
+      <ProtocolGraphs protocolId={protocolId} readonly={isCompleted || !isStaff} />
 
       {/* Checklist */}
       <ScrollArea className="h-[calc(100vh-380px)] min-h-[300px]">
