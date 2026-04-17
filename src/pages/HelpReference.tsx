@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, Clock, AlertTriangle, ListChecks } from "lucide-react";
+import { Info, Clock, AlertTriangle, ListChecks, BookOpen } from "lucide-react";
 import WorkScopeReference from "@/components/help/WorkScopeReference";
+import UserManual from "@/components/help/UserManual";
 
 const priorities = [
   {
@@ -66,8 +67,12 @@ export default function HelpReference() {
     <div className="space-y-6">
       <h1 className="font-heading text-2xl font-bold">Справка</h1>
 
-      <Tabs defaultValue="sla" className="w-full">
+      <Tabs defaultValue="manual" className="w-full">
         <TabsList>
+          <TabsTrigger value="manual" className="gap-1.5">
+            <BookOpen className="h-4 w-4" />
+            Руководство
+          </TabsTrigger>
           <TabsTrigger value="sla" className="gap-1.5">
             <Clock className="h-4 w-4" />
             SLA и приоритеты
@@ -77,6 +82,10 @@ export default function HelpReference() {
             Состав работ
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="manual" className="mt-4">
+          <UserManual />
+        </TabsContent>
 
         <TabsContent value="sla" className="space-y-6 mt-4">
           <Card>

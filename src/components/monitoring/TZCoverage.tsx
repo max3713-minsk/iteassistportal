@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText, RefreshCw, Sparkles, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText, RefreshCw, Sparkles, Loader2, Wrench, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
@@ -65,6 +65,7 @@ export default function TZCoverage() {
   const [editStatus, setEditStatus] = useState("none");
   const [editHostId, setEditHostId] = useState<string>("none");
   const [editNotes, setEditNotes] = useState("");
+  const [editTools, setEditTools] = useState<Array<{ name: string; type: string; config: string; responsible: string; status: string }>>([]);
 
   const { data: reqs } = useQuery({
     queryKey: ["tz-requirements"],
@@ -160,6 +161,8 @@ export default function TZCoverage() {
     setEditStatus(first?.status || "none");
     setEditHostId(first?.host_id || "none");
     setEditNotes(first?.notes || "");
+    const ri = first?.related_items as any;
+    setEditTools(Array.isArray(ri?.tools) ? ri.tools : []);
   };
 
   const saveMutation = useMutation({
@@ -167,15 +170,17 @@ export default function TZCoverage() {
       if (!editingReq) return;
       const list = coverageMap.get(editingReq.id) || [];
       const existing = list[0];
+      const existingRelated = (existing?.related_items as any) || {};
       const payload = {
         requirement_id: editingReq.id,
         host_id: editHostId === "none" ? null : editHostId,
         status: editStatus,
         notes: editNotes || null,
+        related_items: { ...existingRelated, tools: editTools } as any,
       };
       if (existing) {
         await supabase.from("tz_coverage").update(payload).eq("id", existing.id);
-      } else if (editStatus !== "none" || editHostId !== "none" || editNotes) {
+      } else if (editStatus !== "none" || editHostId !== "none" || editNotes || editTools.length) {
         await supabase.from("tz_coverage").insert(payload);
       }
     },
@@ -401,7 +406,7 @@ export default function TZCoverage() {
       </Card>
 
       <Dialog open={!!editingReq} onOpenChange={(o) => !o && setEditingReq(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Пункт {editingReq?.code}</DialogTitle>
           </DialogHeader>
@@ -449,6 +454,104 @@ export default function TZCoverage() {
                 <Label>Заметки</Label>
                 <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={2} />
               </div>
+
+              {editStatus !== "covered" && (
+                <div className="space-y-2 border-t pt-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <Wrench className="h-3.5 w-3.5" />
+                      Инструменты для закрытия пункта
+                    </Label>
+                    <Button
+                      type="button" size="sm" variant="outline"
+                      onClick={() =>
+                        setEditTools([
+                          ...editTools,
+                          { name: "", type: "zabbix", config: "", responsible: "", status: "planned" },
+                        ])
+                      }
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />Добавить
+                    </Button>
+                  </div>
+                  {editTools.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Опишите, какие инструменты будут использоваться для покрытия этого требования
+                      (шаблоны Zabbix, скрипты Ansible, ручные процедуры, внешние системы и т.д.).
+                    </p>
+                  )}
+                  {editTools.map((t, i) => (
+                    <div key={i} className="border rounded p-2 space-y-2 bg-muted/20">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Название инструмента"
+                          value={t.name}
+                          onChange={(e) => {
+                            const next = [...editTools]; next[i] = { ...t, name: e.target.value }; setEditTools(next);
+                          }}
+                          className="flex-1"
+                        />
+                        <Select
+                          value={t.type}
+                          onValueChange={(v) => {
+                            const next = [...editTools]; next[i] = { ...t, type: v }; setEditTools(next);
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="zabbix">Zabbix шаблон/итем</SelectItem>
+                            <SelectItem value="ansible">Ansible playbook</SelectItem>
+                            <SelectItem value="script">Скрипт</SelectItem>
+                            <SelectItem value="manual">Ручная процедура</SelectItem>
+                            <SelectItem value="external">Внешняя система</SelectItem>
+                            <SelectItem value="other">Другое</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button" size="icon" variant="ghost"
+                          onClick={() => setEditTools(editTools.filter((_, j) => j !== i))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        placeholder="Конфигурация / ключи метрик / шаги"
+                        value={t.config}
+                        onChange={(e) => {
+                          const next = [...editTools]; next[i] = { ...t, config: e.target.value }; setEditTools(next);
+                        }}
+                        rows={2}
+                        className="text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Ответственный"
+                          value={t.responsible}
+                          onChange={(e) => {
+                            const next = [...editTools]; next[i] = { ...t, responsible: e.target.value }; setEditTools(next);
+                          }}
+                          className="flex-1 text-xs"
+                        />
+                        <Select
+                          value={t.status}
+                          onValueChange={(v) => {
+                            const next = [...editTools]; next[i] = { ...t, status: v }; setEditTools(next);
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planned">Запланировано</SelectItem>
+                            <SelectItem value="in_progress">В работе</SelectItem>
+                            <SelectItem value="configured">Настроено</SelectItem>
+                            <SelectItem value="blocked">Заблокировано</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setEditingReq(null)}>Отмена</Button>
                 <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
