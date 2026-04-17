@@ -189,6 +189,43 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
         },
         cacheTtl: 30000,
       };
+    case "getRecentEvents":
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 10,
+          value: 1,
+          ...extraParams,
+        },
+        cacheTtl: 15000,
+      };
+    case "getTemplates":
+      return {
+        method: "template.get",
+        params: {
+          output: ["templateid", "host", "name", "description"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 300000,
+      };
+    case "getHistory":
+      return {
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     default:
       return null;
   }
