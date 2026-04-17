@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Cpu, MemoryStick, HardDrive, Loader2, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatItemValue, toPercent, percentColor } from "./formatMetric";
 
 interface Props {
   zabbixHostId: string;
@@ -22,22 +23,6 @@ function findMetric(items: ZabbixItem[], patterns: RegExp[]): ZabbixItem | null 
     if (found) return found;
   }
   return null;
-}
-
-function formatPct(v: string | undefined): string {
-  if (!v) return "—";
-  const n = parseFloat(v);
-  if (Number.isNaN(n)) return "—";
-  return n.toFixed(0) + "%";
-}
-
-function thresholdColor(v: string | undefined): string {
-  if (!v) return "text-muted-foreground";
-  const n = parseFloat(v);
-  if (Number.isNaN(n)) return "text-muted-foreground";
-  if (n >= 90) return "text-destructive";
-  if (n >= 75) return "text-amber-500";
-  return "text-emerald-500";
 }
 
 export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
@@ -89,12 +74,14 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
 
   return (
     <div className="flex items-center gap-2.5 text-xs">
-      {metrics.map(({ icon: Icon, label, item }) => (
+      {metrics.map(({ icon: Icon, label, item }) => {
+        const pct = toPercent(item ? { ...item, units: "%" } : null);
+        return (
         <Tooltip key={label}>
           <TooltipTrigger asChild>
-            <span className={`inline-flex items-center gap-1 ${thresholdColor(item?.lastvalue)} cursor-help`}>
+            <span className={`inline-flex items-center gap-1 ${percentColor(pct)} cursor-help`}>
               <Icon className="h-3 w-3" />
-              <span className="font-mono font-medium">{formatPct(item?.lastvalue)}</span>
+              <span className="font-mono font-medium">{pct == null ? "—" : `${pct.toFixed(0)}%`}</span>
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -102,6 +89,7 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
               <div className="text-xs">
                 <div className="font-medium">{item.name}</div>
                 <div className="font-mono text-muted-foreground">{item.key_}</div>
+                <div className="mt-1">Текущее: <span className="font-mono">{formatItemValue(item)}</span></div>
                 {item.lastclock && (
                   <div className="text-muted-foreground mt-1">
                     {new Date(parseInt(item.lastclock) * 1000).toLocaleString("ru-RU")}
@@ -113,7 +101,9 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
             )}
           </TooltipContent>
         </Tooltip>
-      ))}
+        );
+      })}
     </div>
   );
 }
+

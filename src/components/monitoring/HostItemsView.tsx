@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Pencil, BarChart3, Thermometer, Fan, Zap, Network, Cpu, HardDrive, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { formatItemValue } from "./formatMetric";
 
 interface ItemAlias {
   id: string;
@@ -193,7 +194,7 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                       </div>
                       <div className="text-right">
                         <p className="font-mono text-sm font-medium">
-                          {it.lastvalue} <span className="text-muted-foreground text-xs">{it.units}</span>
+                          {formatItemValue(it)}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           {it.lastclock ? new Date(parseInt(it.lastclock) * 1000).toLocaleTimeString("ru-RU") : "—"}

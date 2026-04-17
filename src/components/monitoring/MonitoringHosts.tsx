@@ -17,6 +17,7 @@ import {
   hostGroupType, groupTypeConfig, availabilityBadge,
   priorityColor, priorityLabel, duration,
 } from "./monitoringUtils";
+import { formatItemValue } from "./formatMetric";
 
 interface Props {
   hosts: any[];
@@ -328,18 +329,10 @@ function HostDetailView({
   const upItem = findItem([/system\.uptime/i, /uptime/i, /агент.*время.*работы/i]);
   const pingItem = findItem([/icmpping/i, /agent\.ping/i]);
 
-  const fmt = (it: any | null, suffix = "") => {
-    if (!it || it.lastvalue == null) return "—";
-    const n = parseFloat(it.lastvalue);
-    if (Number.isNaN(n)) return String(it.lastvalue).slice(0, 12);
-    if (suffix === "s") {
-      const s = Math.floor(n);
-      const d = Math.floor(s / 86400);
-      const h = Math.floor((s % 86400) / 3600);
-      return d > 0 ? `${d}д ${h}ч` : `${h}ч ${Math.floor((s % 3600) / 60)}м`;
-    }
-    return `${n.toFixed(1)}${suffix || it.units || ""}`;
-  };
+  // Используем единый форматтер. Для CPU/RAM/Disk принудительно проценты,
+  // для uptime — длительность, для ping — текст ниже.
+  const fmtPercent = (it: any | null) =>
+    formatItemValue(it ? { ...it, units: "%" } : null);
 
   return (
     <div className="space-y-4">
@@ -394,9 +387,10 @@ function HostDetailView({
                   <CardContent className="py-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">{label}</p>
                     <p className="text-2xl font-heading font-bold">
-                      {isUptime ? fmt(item, "s") : isPing
-                        ? (item ? (parseFloat(item.lastvalue) > 0 ? "🟢 OK" : "🔴 нет") : "—")
-                        : fmt(item, "%")}
+                      {isUptime ? formatItemValue(item ? { ...item, units: "uptime" } : null)
+                        : isPing
+                          ? (item ? (parseFloat(item.lastvalue) > 0 ? "🟢 OK" : "🔴 нет") : "—")
+                          : fmtPercent(item)}
                     </p>
                     {item && (
                       <p className="text-[10px] text-muted-foreground mt-1 truncate" title={item.name}>

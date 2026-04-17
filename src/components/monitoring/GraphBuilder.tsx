@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Save, Plus, X, Loader2, Search } from "lucide-react";
 import GraphChart from "./GraphChart";
+import { formatItemValue } from "./formatMetric";
 
 interface Props {
   hosts: any[];
@@ -241,7 +242,7 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
                           <div className="flex items-center gap-2 ml-2">
                             {it.lastvalue && (
                               <Badge variant="outline" className="text-xs">
-                                {it.lastvalue} {it.units}
+                                {formatItemValue(it)}
                               </Badge>
                             )}
                             <Checkbox checked={isSelected} />
