@@ -114,3 +114,19 @@
     font-family: 'Space Grotesk', system-ui, sans-serif;
   }
 }
+
+/* ─── react-grid-layout overrides ─── */
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.15) !important;
+  border: 2px dashed hsl(var(--primary) / 0.5);
+  border-radius: var(--radius);
+  opacity: 1;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-right-color: hsl(var(--muted-foreground));
+  border-bottom-color: hsl(var(--muted-foreground));
+}
+.react-grid-item.react-draggable-dragging {
+  z-index: 50;
+  cursor: grabbing;
+}
