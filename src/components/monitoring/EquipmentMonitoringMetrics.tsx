@@ -106,28 +106,4 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
     </div>
   );
 }
-            <span className={`inline-flex items-center gap-1 ${thresholdColor(item?.lastvalue)} cursor-help`}>
-              <Icon className="h-3 w-3" />
-              <span className="font-mono font-medium">{formatPct(item?.lastvalue)}</span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {item ? (
-              <div className="text-xs">
-                <div className="font-medium">{item.name}</div>
-                <div className="font-mono text-muted-foreground">{item.key_}</div>
-                {item.lastclock && (
-                  <div className="text-muted-foreground mt-1">
-                    {new Date(parseInt(item.lastclock) * 1000).toLocaleString("ru-RU")}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span>Метрика {label} не найдена в Zabbix</span>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
-  );
-}
+
