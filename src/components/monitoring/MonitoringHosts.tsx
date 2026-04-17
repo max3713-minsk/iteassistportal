@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, ArrowLeft, BarChart3, AlertTriangle, Clock, Database } from "lucide-react";
+import { Search, ArrowLeft, BarChart3, AlertTriangle, Clock, Database, Settings2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import HostItemsView from "./HostItemsView";
+import HostDetailDialog from "./HostDetailDialog";
 import {
   hostGroupType, groupTypeConfig, availabilityBadge,
   priorityColor, priorityLabel, duration,
@@ -30,6 +31,7 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
   const [selectedHost, setSelectedHost] = useState<any>(null);
+  const [detailHost, setDetailHost] = useState<{ id: string; name: string } | null>(null);
 
   const hostsArr = Array.isArray(hosts) ? hosts : [];
   const alertsArr = Array.isArray(alerts) ? alerts : [];
