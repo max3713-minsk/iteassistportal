@@ -38,14 +38,23 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
   const [actualOnly, setActualOnly] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Use getProblems = current problems (matches Zabbix "Current problems" view)
   const { data: activeEvents = [], isLoading: loadingActive } = useQuery({
-    queryKey: ["zabbix", "getRecentEvents"],
+    queryKey: ["zabbix", "getProblems"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
-        body: { action: "getRecentEvents" },
+        body: { action: "getProblems" },
       });
       if (error) throw error;
-      return (data?.result as ZbxEvent[]) || [];
+      return ((data?.result as any[]) || []).map((p: any) => ({
+        eventid: p.eventid,
+        name: p.name,
+        clock: p.clock,
+        severity: p.severity,
+        value: "1",
+        acknowledged: p.acknowledged,
+        hosts: p.hosts,
+      })) as ZbxEvent[];
     },
     enabled: isZabbixConfigured,
     refetchInterval: 30000,
@@ -68,7 +77,6 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
 
   const events = useMemo(() => {
     if (actualOnly) return activeEvents;
-    // merge unique by eventid, sort by clock desc
     const map = new Map<string, ZbxEvent>();
     [...activeEvents, ...closedEvents].forEach((e) => map.set(e.eventid, e));
     return [...map.values()].sort((a, b) => parseInt(b.clock) - parseInt(a.clock));
