@@ -406,7 +406,7 @@ export default function TZCoverage() {
       </Card>
 
       <Dialog open={!!editingReq} onOpenChange={(o) => !o && setEditingReq(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Пункт {editingReq?.code}</DialogTitle>
           </DialogHeader>
