@@ -220,6 +220,50 @@ export type Database = {
         }
         Relationships: []
       }
+      item_aliases: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          host_id: string | null
+          id: string
+          item_key: string
+          updated_at: string
+          zabbix_host_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          host_id?: string | null
+          id?: string
+          item_key: string
+          updated_at?: string
+          zabbix_host_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          host_id?: string | null
+          id?: string
+          item_key?: string
+          updated_at?: string
+          zabbix_host_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_aliases_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_hosts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_protocols: {
         Row: {
           completed_at: string | null
@@ -376,15 +420,19 @@ export type Database = {
           credentials_password: string | null
           device_type: Database["public"]["Enums"]["device_type"]
           enabled: boolean
+          host_group: string | null
           id: string
           ip_address: string
           name: string
           notes: string | null
           port: number | null
           protocol: Database["public"]["Enums"]["monitoring_protocol"]
+          protocols_config: Json | null
           site_id: string | null
           snmp_community: string | null
+          templates: Json | null
           updated_at: string
+          visible_name: string | null
           zabbix_host_id: string | null
         }
         Insert: {
@@ -393,15 +441,19 @@ export type Database = {
           credentials_password?: string | null
           device_type?: Database["public"]["Enums"]["device_type"]
           enabled?: boolean
+          host_group?: string | null
           id?: string
           ip_address: string
           name: string
           notes?: string | null
           port?: number | null
           protocol?: Database["public"]["Enums"]["monitoring_protocol"]
+          protocols_config?: Json | null
           site_id?: string | null
           snmp_community?: string | null
+          templates?: Json | null
           updated_at?: string
+          visible_name?: string | null
           zabbix_host_id?: string | null
         }
         Update: {
@@ -410,15 +462,19 @@ export type Database = {
           credentials_password?: string | null
           device_type?: Database["public"]["Enums"]["device_type"]
           enabled?: boolean
+          host_group?: string | null
           id?: string
           ip_address?: string
           name?: string
           notes?: string | null
           port?: number | null
           protocol?: Database["public"]["Enums"]["monitoring_protocol"]
+          protocols_config?: Json | null
           site_id?: string | null
           snmp_community?: string | null
+          templates?: Json | null
           updated_at?: string
+          visible_name?: string | null
           zabbix_host_id?: string | null
         }
         Relationships: [
@@ -721,6 +777,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tz_coverage: {
+        Row: {
+          created_at: string
+          host_id: string | null
+          id: string
+          notes: string | null
+          related_items: Json | null
+          requirement_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          host_id?: string | null
+          id?: string
+          notes?: string | null
+          related_items?: Json | null
+          requirement_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          host_id?: string | null
+          id?: string
+          notes?: string | null
+          related_items?: Json | null
+          requirement_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tz_coverage_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_hosts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tz_coverage_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "tz_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tz_requirements: {
+        Row: {
+          category: string | null
+          check_type: string | null
+          code: string
+          created_at: string
+          id: string
+          notes: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          check_type?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          check_type?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_dashboard_widgets: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          position: number
+          title: string
+          updated_at: string
+          user_id: string
+          widget_type: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          position?: number
+          title: string
+          updated_at?: string
+          user_id: string
+          widget_type: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+          widget_type?: string
+        }
+        Relationships: []
       }
       user_module_permissions: {
         Row: {
