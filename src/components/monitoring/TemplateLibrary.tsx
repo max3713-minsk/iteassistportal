@@ -173,10 +173,10 @@ export default function TemplateLibrary() {
         category: tpl.name,
         description: `Импортировано из шаблона ${tpl.name}`,
       }));
-      // upsert by item_key (no host) — fallback: insert and ignore conflict
+      // Upsert by item_key for global aliases (host_id IS NULL)
       const { error } = await supabase
         .from("item_aliases")
-        .upsert(rows, { onConflict: "item_key", ignoreDuplicates: false });
+        .upsert(rows, { onConflict: "item_key", ignoreDuplicates: true });
       if (error) throw error;
       return { count: rows.length, user: user?.id };
     },
