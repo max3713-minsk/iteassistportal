@@ -65,6 +65,7 @@ export default function TZCoverage() {
   const [editStatus, setEditStatus] = useState("none");
   const [editHostId, setEditHostId] = useState<string>("none");
   const [editNotes, setEditNotes] = useState("");
+  const [editTools, setEditTools] = useState<Array<{ name: string; type: string; config: string; responsible: string; status: string }>>([]);
 
   const { data: reqs } = useQuery({
     queryKey: ["tz-requirements"],
