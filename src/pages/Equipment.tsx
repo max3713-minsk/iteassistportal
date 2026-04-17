@@ -287,6 +287,7 @@ export default function Equipment() {
                 <TableHead className="hidden md:table-cell">Категория</TableHead>
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
+                <TableHead>Мониторинг</TableHead>
                 <TableHead>Статус</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
               </TableRow>
