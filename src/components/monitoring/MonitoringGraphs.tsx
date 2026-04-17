@@ -1,5 +1,8 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import GraphBuilder from "./GraphBuilder";
 import SavedGraphsLibrary from "./SavedGraphsLibrary";
 
@@ -10,6 +13,8 @@ interface Props {
 }
 
 export default function MonitoringGraphs({ hosts, connectionError }: Props) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const hostsArr = Array.isArray(hosts) ? hosts : [];
 
   if (connectionError) {
@@ -25,8 +30,22 @@ export default function MonitoringGraphs({ hosts, connectionError }: Props) {
     );
   }
 
+  const handleSync = () => {
+    qc.invalidateQueries({ queryKey: ["zabbix"] });
+    qc.invalidateQueries({ queryKey: ["graph-data"] });
+    qc.invalidateQueries({ queryKey: ["saved-graphs"] });
+    qc.invalidateQueries({ queryKey: ["zabbix-items-for-host"] });
+    toast({ title: "Обновление графиков и метрик из Zabbix..." });
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleSync}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+          Синхронизация с Zabbix
+        </Button>
+      </div>
       <GraphBuilder hosts={hostsArr} />
       <SavedGraphsLibrary />
     </div>
