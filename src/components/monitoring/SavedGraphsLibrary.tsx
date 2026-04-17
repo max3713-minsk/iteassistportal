@@ -125,6 +125,8 @@ export default function SavedGraphsLibrary() {
                           chartType={g.chart_type as any}
                           aggregation={(g.aggregation as any) || "avg"}
                           height={220}
+                          exportable
+                          graphName={g.name}
                         />
                       </CardContent>
                     </Card>

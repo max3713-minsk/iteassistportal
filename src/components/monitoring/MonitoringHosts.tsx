@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,10 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, ArrowLeft, BarChart3, AlertTriangle, Clock, Database, Settings2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { Search, ArrowLeft, Settings2, RefreshCw, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import HostItemsView from "./HostItemsView";
 import HostDetailDialog from "./HostDetailDialog";
 import {
@@ -27,15 +27,44 @@ interface Props {
   isStaff: boolean;
 }
 
-export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, onCreateTicket, isStaff }: Props) {
+type SortKey = "name" | "ip" | "group" | "availability" | "problems";
+
+export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateTicket, isStaff }: Props) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedHost, setSelectedHost] = useState<any>(null);
   const [detailHost, setDetailHost] = useState<{ id: string; name: string } | null>(null);
 
   const hostsArr = Array.isArray(hosts) ? hosts : [];
   const alertsArr = Array.isArray(alerts) ? alerts : [];
-  const itemsArr = Array.isArray(items) ? items : [];
+
+  const handleSync = () => {
+    qc.invalidateQueries({ queryKey: ["zabbix", "getHosts"] });
+    qc.invalidateQueries({ queryKey: ["zabbix", "getAlerts"] });
+    qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+    toast({ title: "Синхронизация с Zabbix..." });
+  };
+
+  const sortHosts = (list: any[]): any[] => {
+    const sorted = [...list].sort((a: any, b: any) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "name") return (a.name || "").localeCompare(b.name || "") * dir;
+      if (sortKey === "ip") return (a.interfaces?.[0]?.ip || "").localeCompare(b.interfaces?.[0]?.ip || "") * dir;
+      if (sortKey === "group") return (a.groups?.[0]?.name || "").localeCompare(b.groups?.[0]?.name || "") * dir;
+      if (sortKey === "availability") return ((a.available || "0").localeCompare(b.available || "0")) * dir;
+      if (sortKey === "problems") {
+        const ap = alertsArr.filter((al: any) => al.hosts?.[0]?.hostid === a.hostid).length;
+        const bp = alertsArr.filter((al: any) => al.hosts?.[0]?.hostid === b.hostid).length;
+        return (ap - bp) * dir;
+      }
+      return 0;
+    });
+    return sorted;
+  };
 
   const groupedHosts = useMemo(() => {
     let filtered = hostsArr;
@@ -43,12 +72,14 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
       const q = search.toLowerCase();
       filtered = filtered.filter((h: any) =>
         h.name.toLowerCase().includes(q) ||
-        (h.interfaces?.[0]?.ip || "").includes(q)
+        (h.interfaces?.[0]?.ip || "").includes(q) ||
+        (h.groups || []).some((g: any) => (g.name || "").toLowerCase().includes(q))
       );
     }
     if (groupFilter !== "all") {
       filtered = filtered.filter((h: any) => hostGroupType(h.groups) === groupFilter);
     }
+    filtered = sortHosts(filtered);
     const groups: Record<string, any[]> = {};
     for (const h of filtered) {
       const type = hostGroupType(h.groups);
@@ -56,168 +87,35 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
       groups[type].push(h);
     }
     return groups;
-  }, [hostsArr, search, groupFilter]);
+  }, [hostsArr, search, groupFilter, sortKey, sortDir, alertsArr]);
 
-  // Get items for selected host
-  const hostItems = useMemo(() => {
-    if (!selectedHost) return [];
-    return itemsArr.filter((item: any) =>
-      item.hosts?.some((h: any) => h.hostid === selectedHost.hostid)
-    );
-  }, [selectedHost, itemsArr]);
-
-  const hostAlerts = useMemo(() => {
-    if (!selectedHost) return [];
-    return alertsArr.filter((a: any) => a.hosts?.[0]?.hostid === selectedHost.hostid);
-  }, [selectedHost, alertsArr]);
-
-  // Extract key metrics
-  const getMetric = (key: string) => {
-    const item = hostItems.find((i: any) =>
-      i.key_.toLowerCase().includes(key.toLowerCase())
-    );
-    return item ? { value: item.lastvalue, units: item.units, name: item.name } : null;
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
   };
 
   if (selectedHost) {
-    const avail = availabilityBadge(selectedHost.available);
-    const cpuMetric = getMetric("cpu.util") || getMetric("system.cpu");
-    const memMetric = getMetric("vm.memory.util") || getMetric("mem.util");
-    const diskMetric = getMetric("vfs.fs.pused") || getMetric("disk");
-    const uptimeMetric = getMetric("system.uptime");
-
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setSelectedHost(null)}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Назад к списку
-        </Button>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                {selectedHost.name}
-                <Badge variant={avail.variant as any}>{avail.label}</Badge>
-              </CardTitle>
-              <span className="text-sm text-muted-foreground font-mono">
-                {selectedHost.interfaces?.[0]?.ip || "—"}
-              </span>
-            </div>
-          </CardHeader>
-        </Card>
-
-        <Tabs defaultValue="overview">
-          <TabsList>
-            <TabsTrigger value="overview">Обзор</TabsTrigger>
-            <TabsTrigger value="problems">Проблемы ({hostAlerts.length})</TabsTrigger>
-            <TabsTrigger value="latest">Последние данные</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: "CPU", metric: cpuMetric, unit: "%" },
-                { label: "Память", metric: memMetric, unit: "%" },
-                { label: "Диск", metric: diskMetric, unit: "%" },
-                { label: "Uptime", metric: uptimeMetric, unit: "" },
-              ].map(({ label, metric, unit }) => (
-                <Card key={label}>
-                  <CardContent className="py-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                    <p className="text-2xl font-heading font-bold">
-                      {metric ? `${parseFloat(metric.value).toFixed(1)}${unit || metric.units}` : "—"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Группы хоста</CardTitle>
-              </CardHeader>
-              <CardContent className="flex gap-2 flex-wrap">
-                {selectedHost.groups?.map((g: any) => (
-                  <Badge key={g.groupid} variant="outline">{g.name}</Badge>
-                )) || <span className="text-muted-foreground text-sm">—</span>}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="py-4">
-                <div className="bg-muted/30 rounded-lg h-48 flex items-center justify-center border border-dashed border-muted-foreground/20">
-                  <div className="text-center text-muted-foreground">
-                    <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-xs">Графики CPU, памяти и сети для данного хоста</p>
-                    <p className="text-xs">Доступно при прямом подключении к Zabbix</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="problems">
-            {hostAlerts.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  Нет активных проблем для этого хоста
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="pt-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Описание</TableHead>
-                        <TableHead>Приоритет</TableHead>
-                        <TableHead>Время</TableHead>
-                        {isStaff && <TableHead className="text-right">Действия</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hostAlerts.map((a: any) => (
-                        <TableRow key={a.triggerid}>
-                          <TableCell>{a.description}</TableCell>
-                          <TableCell>
-                            <Badge variant={priorityColor(a.priority) as any}>{priorityLabel(a.priority)}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {duration(a.lastchange)}
-                          </TableCell>
-                          {isStaff && (
-                            <TableCell className="text-right">
-                              <Button size="sm" variant="ghost" onClick={() => onCreateTicket(a)}>
-                                Создать заявку
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="latest">
-            <HostItemsViewWrapper
-              zabbixHostId={selectedHost.hostid}
-              items={hostItems}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+      <HostDetailView
+        host={selectedHost}
+        isStaff={isStaff}
+        onBack={() => setSelectedHost(null)}
+        onCreateTicket={onCreateTicket}
+      />
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Поиск по имени, IP..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="Поиск по имени, IP, группе..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
           <SelectTrigger className="w-[220px]"><SelectValue placeholder="Все типы" /></SelectTrigger>
@@ -228,6 +126,25 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
             ))}
           </SelectContent>
         </Select>
+        <Select value={`${sortKey}:${sortDir}`} onValueChange={(v) => {
+          const [k, d] = v.split(":") as [SortKey, "asc" | "desc"];
+          setSortKey(k); setSortDir(d);
+        }}>
+          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name:asc">Имя ↑</SelectItem>
+            <SelectItem value="name:desc">Имя ↓</SelectItem>
+            <SelectItem value="ip:asc">IP ↑</SelectItem>
+            <SelectItem value="ip:desc">IP ↓</SelectItem>
+            <SelectItem value="group:asc">Группа ↑</SelectItem>
+            <SelectItem value="problems:desc">Проблемы (макс.)</SelectItem>
+            <SelectItem value="availability:desc">Доступность</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={handleSync}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+          Синхронизация
+        </Button>
       </div>
 
       {hostsLoading ? (
@@ -256,11 +173,19 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Имя хоста</TableHead>
-                      <TableHead>IP</TableHead>
-                      <TableHead>Группа</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                        Имя хоста {sortKey === "name" && (sortDir === "asc" ? "↑" : "↓")}
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("ip")}>
+                        IP {sortKey === "ip" && (sortDir === "asc" ? "↑" : "↓")}
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("group")}>
+                        Группа {sortKey === "group" && (sortDir === "asc" ? "↑" : "↓")}
+                      </TableHead>
                       <TableHead>Доступность</TableHead>
-                      <TableHead>Проблемы</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("problems")}>
+                        Проблемы {sortKey === "problems" && (sortDir === "asc" ? "↑" : "↓")}
+                      </TableHead>
                       <TableHead className="w-32 text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -297,7 +222,7 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
                                 {hAlerts.length > 3 && <Badge variant="outline">+{hAlerts.length - 3}</Badge>}
                               </div>
                             ) : (
-                              <span className="text-xs text-green-500">✓</span>
+                              <span className="text-xs text-emerald-500">✓</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -331,18 +256,236 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
   );
 }
 
-function HostItemsViewWrapper({ zabbixHostId, items }: { zabbixHostId: string; items: any[] }) {
+/* ─── Per-host detail view (Overview / Problems / Items) ─── */
+function HostDetailView({
+  host, isStaff, onBack, onCreateTicket,
+}: { host: any; isStaff: boolean; onBack: () => void; onCreateTicket: (p: any) => void }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const avail = availabilityBadge(host.available);
+
+  const { data: hostItems = [], isLoading: itemsLoading, refetch: refetchItems } = useQuery({
+    queryKey: ["zabbix-host-items-detail", host.hostid],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "getItemsByHost", params: { hostid: host.hostid } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return (data?.result ?? []) as any[];
+    },
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  const { data: hostProblems = [], isLoading: problemsLoading, refetch: refetchProblems } = useQuery({
+    queryKey: ["zabbix-host-problems", host.hostid],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "getActiveProblemsByHost", params: { hostid: host.hostid } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return (data?.result ?? []) as any[];
+    },
+    refetchInterval: 30000,
+  });
+
   const { data: localHost } = useQuery({
-    queryKey: ["monitored-host-by-zbx", zabbixHostId],
+    queryKey: ["monitored-host-by-zbx", host.hostid],
     queryFn: async () => {
       const { data } = await supabase
-        .from("monitored_hosts")
-        .select("id")
-        .eq("zabbix_host_id", zabbixHostId)
-        .maybeSingle();
+        .from("monitored_hosts").select("id").eq("zabbix_host_id", host.hostid).maybeSingle();
       return data;
     },
-    enabled: !!zabbixHostId,
   });
-  return <HostItemsView hostId={localHost?.id || ""} zabbixHostId={zabbixHostId} items={items} />;
+
+  const handleSync = () => {
+    refetchItems();
+    refetchProblems();
+    qc.invalidateQueries({ queryKey: ["zabbix"] });
+    toast({ title: "Обновление данных хоста..." });
+  };
+
+  // Robust metric matchers (key OR name)
+  const findItem = (patterns: RegExp[]): any | null => {
+    for (const p of patterns) {
+      const found = hostItems.find((i: any) => p.test(i.key_ || "") || p.test(i.name || ""));
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const cpuItem = findItem([
+    /system\.cpu\.util/i, /cpu.*util/i, /processor.*load/i, /перегрузка.*процесс/i, /cpu.*usage/i,
+  ]);
+  const memItem = findItem([
+    /vm\.memory\.util/i, /memory.*pused/i, /mem.*util/i, /память.*использ/i, /memory.*usage/i,
+  ]);
+  const diskItem = findItem([
+    /vfs\.fs\.pused/i, /disk.*pused/i, /storage.*used/i, /диск.*заполн/i,
+  ]);
+  const upItem = findItem([/system\.uptime/i, /uptime/i, /агент.*время.*работы/i]);
+  const pingItem = findItem([/icmpping/i, /agent\.ping/i]);
+
+  const fmt = (it: any | null, suffix = "") => {
+    if (!it || it.lastvalue == null) return "—";
+    const n = parseFloat(it.lastvalue);
+    if (Number.isNaN(n)) return String(it.lastvalue).slice(0, 12);
+    if (suffix === "s") {
+      const s = Math.floor(n);
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      return d > 0 ? `${d}д ${h}ч` : `${h}ч ${Math.floor((s % 3600) / 60)}м`;
+    }
+    return `${n.toFixed(1)}${suffix || it.units || ""}`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Назад к списку
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSync}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+          Обновить из Zabbix
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              {host.name}
+              <Badge variant={avail.variant as any}>{avail.label}</Badge>
+            </CardTitle>
+            <span className="text-sm text-muted-foreground font-mono">
+              {host.interfaces?.[0]?.ip || "—"}
+            </span>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Обзор</TabsTrigger>
+          <TabsTrigger value="problems">
+            Активные проблемы ({hostProblems.length})
+          </TabsTrigger>
+          <TabsTrigger value="items">Метрики ({hostItems.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {itemsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[
+                { label: "CPU", item: cpuItem },
+                { label: "Память", item: memItem },
+                { label: "Диск", item: diskItem },
+                { label: "Uptime", item: upItem, isUptime: true },
+                { label: "ICMP ping", item: pingItem, isPing: true },
+              ].map(({ label, item, isUptime, isPing }) => (
+                <Card key={label}>
+                  <CardContent className="py-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                    <p className="text-2xl font-heading font-bold">
+                      {isUptime ? fmt(item, "s") : isPing
+                        ? (item ? (parseFloat(item.lastvalue) > 0 ? "🟢 OK" : "🔴 нет") : "—")
+                        : fmt(item, "%")}
+                    </p>
+                    {item && (
+                      <p className="text-[10px] text-muted-foreground mt-1 truncate" title={item.name}>
+                        {item.name}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Группы хоста</CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-2 flex-wrap">
+              {host.groups?.map((g: any) => (
+                <Badge key={g.groupid} variant="outline">{g.name}</Badge>
+              )) || <span className="text-muted-foreground text-sm">—</span>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="problems">
+          {problemsLoading ? (
+            <Skeleton className="h-32" />
+          ) : hostProblems.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Нет активных проблем для этого хоста
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="pt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Описание</TableHead>
+                      <TableHead>Серьёзность</TableHead>
+                      <TableHead>Время</TableHead>
+                      <TableHead>Длительность</TableHead>
+                      {isStaff && <TableHead className="text-right">Действия</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {hostProblems.map((p: any) => (
+                      <TableRow key={p.eventid}>
+                        <TableCell className="max-w-[400px]">{p.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={priorityColor(p.severity) as any}>{priorityLabel(p.severity)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(parseInt(p.clock) * 1000).toLocaleString("ru-RU")}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{duration(p.clock)}</TableCell>
+                        {isStaff && (
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" onClick={() => onCreateTicket({
+                              ...p, hosts: [{ name: host.name, hostid: host.hostid }],
+                            })}>
+                              Создать заявку
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="items">
+          {itemsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <HostItemsView
+              hostId={localHost?.id || ""}
+              zabbixHostId={host.hostid}
+              items={hostItems}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
