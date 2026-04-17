@@ -103,24 +103,39 @@ export default function Monitoring() {
 
       const severity = parseInt(problem.severity || problem.priority || "2");
       const incident = priorityToIncident(String(severity));
+      const eventid = problem.eventid || problem.triggerid || null;
 
-      const { error } = await supabase.from("tickets").insert({
+      const { data: ticket, error } = await supabase.from("tickets").insert({
         title: `[Мониторинг] ${problem.name || problem.description}`,
-        description: `Автоматически создана из проблемы мониторинга.\n\nОписание: ${problem.name || problem.description}\nСерьёзность: ${priorityLabel(problem.severity || problem.priority)}\nВремя: ${new Date(parseInt(problem.clock || problem.lastchange) * 1000).toLocaleString("ru-RU")}`,
+        description: `Автоматически создана из проблемы мониторинга.\n\nОписание: ${problem.name || problem.description}\nСерьёзность: ${priorityLabel(problem.severity || problem.priority)}\nВремя: ${new Date(parseInt(problem.clock || problem.lastchange) * 1000).toLocaleString("ru-RU")}${eventid ? `\nZabbix eventid: ${eventid}` : ""}`,
         priority: incident.priority as any,
         created_by: session.user.id,
         status: "open" as any,
         request_type: "incident",
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Link Zabbix eventid → ticket via audit_logs (entity_id holds the eventid for cross-ref)
+      if (eventid && ticket?.id) {
+        await logAudit({
+          action: "Привязка алерта к заявке",
+          module: "monitoring",
+          entityId: eventid,
+          details: `ticket=${ticket.id}; eventid=${eventid}`,
+        });
+      }
 
       await logAudit({
         action: "Создание заявки из мониторинга",
         module: "monitoring",
+        entityId: ticket?.id,
         details: problem.name || problem.description,
       });
 
       toast({ title: "Заявка создана", description: `Приоритет: ${incident.priority}` });
+      // Refresh problems & alerts (acknowledged ↔ ticket sync handled in feed)
+      refetchProblems();
+      queryClient.invalidateQueries({ queryKey: ["alert-ticket-links"] });
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     }

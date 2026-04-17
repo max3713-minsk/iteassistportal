@@ -14,6 +14,7 @@ import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
 import { exportProtocolDocx } from "@/lib/export-protocol-docx";
+import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 export default function Protocols() {
   const { isStaff } = useAuth();
@@ -175,6 +176,14 @@ export default function Protocols() {
     if (!result) return;
     const { protocol, siteName, items: mappedItems } = result;
 
+    // Capture currently-rendered graphs (if user is viewing detail)
+    let graphs: { name: string; pngBase64: string; widthPx: number; heightPx: number }[] = [];
+    try {
+      graphs = await snapshotProtocolGraphs();
+    } catch {
+      /* ignore — export without graphs */
+    }
+
     await exportProtocolDocx({
       siteName,
       frequency: protocol.frequency,
@@ -183,6 +192,7 @@ export default function Protocols() {
       status: protocol.status,
       notes: protocol.notes,
       items: mappedItems,
+      graphs,
     });
   };
 
