@@ -300,6 +300,16 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
                               <span className="text-xs text-green-500">✓</span>
                             )}
                           </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setDetailHost({ id: host.hostid, name: host.name })}
+                            >
+                              <Settings2 className="h-3.5 w-3.5 mr-1" />
+                              Подробнее
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -310,6 +320,13 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
           );
         })
       )}
+
+      <HostDetailDialog
+        open={!!detailHost}
+        onOpenChange={(o) => !o && setDetailHost(null)}
+        zabbixHostId={detailHost?.id ?? null}
+        hostName={detailHost?.name}
+      />
     </div>
   );
 }
