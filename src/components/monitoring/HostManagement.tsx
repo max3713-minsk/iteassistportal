@@ -194,6 +194,11 @@ export default function HostManagement() {
         onOpenChange={setWizardOpen}
       />
 
+      <CMDBSyncDialog
+        open={cmdbSyncOpen}
+        onOpenChange={setCmdbSyncOpen}
+      />
+
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
