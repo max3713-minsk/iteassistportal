@@ -32,7 +32,8 @@ interface ZbxEvent {
 
 export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, compact = false }: Props) {
   const { toast } = useToast();
-  const { isAdmin, isStaff } = useAuth();
+  const { hasRole, isStaff } = useAuth();
+  const isAdmin = hasRole("admin");
   const qc = useQueryClient();
   const [actualOnly, setActualOnly] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
