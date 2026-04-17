@@ -6,18 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/lib/audit";
 
 interface TzReq {
   id: string;
@@ -34,13 +31,27 @@ interface TzCov {
   host_id: string | null;
   status: string;
   notes: string | null;
+  related_items: any;
 }
 
-const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; color: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-  covered: { label: "Покрыто", icon: CheckCircle2, color: "text-green-500", variant: "default" },
-  partial: { label: "Частично", icon: AlertTriangle, color: "text-amber-500", variant: "secondary" },
-  none: { label: "Не покрыто", icon: XCircle, color: "text-muted-foreground", variant: "outline" },
+const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
+  covered: { label: "Покрыто", icon: CheckCircle2, color: "text-emerald-500" },
+  partial: { label: "Частично", icon: AlertTriangle, color: "text-amber-500" },
+  none: { label: "Не покрыто", icon: XCircle, color: "text-muted-foreground" },
 };
+
+const freqLabels: Record<string, string> = {
+  daily: "Ежедневно",
+  weekly: "Еженедельно",
+  monthly: "Ежемесячно",
+  quarterly: "Ежеквартально",
+  semi_annual: "Раз в полгода",
+};
+
+function parseNotes(notes: string | null): { f?: string; ip?: string[]; i?: string } {
+  if (!notes) return {};
+  try { return typeof notes === "string" ? JSON.parse(notes) : notes; } catch { return {}; }
+}
 
 export default function TZCoverage() {
   const { toast } = useToast();
@@ -49,8 +60,8 @@ export default function TZCoverage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [freqFilter, setFreqFilter] = useState("all");
   const [editingReq, setEditingReq] = useState<TzReq | null>(null);
-  const [editTitle, setEditTitle] = useState("");
   const [editStatus, setEditStatus] = useState("none");
   const [editHostId, setEditHostId] = useState<string>("none");
   const [editNotes, setEditNotes] = useState("");
@@ -59,9 +70,7 @@ export default function TZCoverage() {
     queryKey: ["tz-requirements"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("tz_requirements")
-        .select("*")
-        .order("code", { ascending: true });
+        .from("tz_requirements").select("*").order("code", { ascending: true });
       return (data as TzReq[]) || [];
     },
   });
@@ -77,9 +86,19 @@ export default function TZCoverage() {
   const { data: hosts } = useQuery({
     queryKey: ["monitored-hosts"],
     queryFn: async () => {
-      const { data } = await supabase.from("monitored_hosts").select("id, name").order("name");
+      const { data } = await supabase.from("monitored_hosts").select("id, name, zabbix_host_id").order("name");
       return data || [];
     },
+  });
+
+  const { data: zabbixHosts = [] } = useQuery({
+    queryKey: ["zabbix", "getHosts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", { body: { action: "getHosts" } });
+      if (error) throw error;
+      return (data?.result ?? []) as any[];
+    },
+    retry: 1,
   });
 
   const coverageMap = useMemo(() => {
@@ -114,9 +133,13 @@ export default function TZCoverage() {
       }
       if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
       if (statusFilter !== "all" && reqStatus(r.id) !== statusFilter) return false;
+      if (freqFilter !== "all") {
+        const f = parseNotes(r.notes).f;
+        if (f !== freqFilter) return false;
+      }
       return true;
     });
-  }, [reqs, search, statusFilter, categoryFilter, coverageMap]);
+  }, [reqs, search, statusFilter, categoryFilter, freqFilter, coverageMap]);
 
   const stats = useMemo(() => {
     if (!reqs) return { total: 0, covered: 0, partial: 0, percent: 0 };
@@ -132,7 +155,6 @@ export default function TZCoverage() {
 
   const openEdit = (req: TzReq) => {
     setEditingReq(req);
-    setEditTitle(req.title);
     const list = coverageMap.get(req.id) || [];
     const first = list[0];
     setEditStatus(first?.status || "none");
@@ -143,13 +165,6 @@ export default function TZCoverage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!editingReq) return;
-
-      // Update requirement title if changed
-      if (editTitle !== editingReq.title) {
-        await supabase.from("tz_requirements").update({ title: editTitle }).eq("id", editingReq.id);
-      }
-
-      // Update or create coverage
       const list = coverageMap.get(editingReq.id) || [];
       const existing = list[0];
       const payload = {
@@ -165,7 +180,6 @@ export default function TZCoverage() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tz-requirements"] });
       qc.invalidateQueries({ queryKey: ["tz-coverage"] });
       toast({ title: "Сохранено" });
       setEditingReq(null);
@@ -173,21 +187,107 @@ export default function TZCoverage() {
     onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
 
+  // ─── Auto-match: traverse all auto requirements, fetch items per host, match by patterns ───
+  const autoMatch = useMutation({
+    mutationFn: async () => {
+      if (!reqs || zabbixHosts.length === 0) throw new Error("Нет данных Zabbix или ТЗ");
+
+      // Pre-fetch items for each host once
+      const hostItems = new Map<string, any[]>();
+      for (const h of zabbixHosts) {
+        const { data } = await supabase.functions.invoke("zabbix-proxy", {
+          body: { action: "getItemsByHost", params: { hostid: h.hostid } },
+        });
+        hostItems.set(h.hostid, data?.result || []);
+      }
+
+      const updates: { req: TzReq; status: string; matched: { hostName: string; keys: string[] }[] }[] = [];
+
+      for (const r of reqs) {
+        if (r.check_type !== "auto") continue;
+        const meta = parseNotes(r.notes);
+        const patterns = (meta.ip || []) as string[];
+        if (!patterns.length) continue;
+
+        const matched: { hostName: string; keys: string[] }[] = [];
+        for (const [hostid, items] of hostItems.entries()) {
+          const hostName = zabbixHosts.find((h: any) => h.hostid === hostid)?.name || hostid;
+          const keys: string[] = [];
+          for (const it of items) {
+            const haystack = `${it.key_ || ""} ${it.name || ""}`.toLowerCase();
+            if (patterns.some((p) => haystack.includes(p.toLowerCase()))) {
+              keys.push(it.key_);
+            }
+          }
+          if (keys.length > 0) matched.push({ hostName, keys: keys.slice(0, 5) });
+        }
+
+        const status = matched.length === 0 ? "none" : matched.length >= zabbixHosts.length / 2 ? "covered" : "partial";
+        updates.push({ req: r, status, matched });
+      }
+
+      // Apply: upsert one coverage row per req with first matched host (or null), status, related_items list
+      for (const u of updates) {
+        const existing = coverageMap.get(u.req.id)?.[0];
+        const localHost = u.matched[0] ? hosts?.find((h) => h.name === u.matched[0].hostName)?.id : null;
+        const payload = {
+          requirement_id: u.req.id,
+          host_id: localHost || null,
+          status: u.status,
+          related_items: u.matched as any,
+          notes: `Автосопоставление: найдено ${u.matched.length} хост(а/ов) с подходящими метриками`,
+        };
+        if (existing) {
+          await supabase.from("tz_coverage").update(payload).eq("id", existing.id);
+        } else {
+          await supabase.from("tz_coverage").insert(payload);
+        }
+      }
+
+      await logAudit({
+        action: "Авто-сопоставление ТЗ ↔ Zabbix",
+        module: "monitoring",
+        details: `Обработано auto-пунктов: ${updates.length}`,
+      });
+
+      return updates.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["tz-coverage"] });
+      toast({ title: "Авто-сопоставление завершено", description: `Обновлено пунктов: ${count}` });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="space-y-4">
-      {/* Stats */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            Покрытие пунктов ТЗ: {stats.percent}%
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              Покрытие пунктов ТЗ: {stats.percent}%
+            </CardTitle>
+            {isStaff && (
+              <Button
+                variant="outline" size="sm"
+                onClick={() => autoMatch.mutate()}
+                disabled={autoMatch.isPending || zabbixHosts.length === 0}
+              >
+                {autoMatch.isPending ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Сопоставление...</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5 mr-1" />Авто-сопоставление с Zabbix</>
+                )}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={stats.percent} className="h-3" />
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div className="text-center">
-              <p className="text-2xl font-heading font-bold text-green-500">{stats.covered}</p>
+              <p className="text-2xl font-heading font-bold text-emerald-500">{stats.covered}</p>
               <p className="text-xs text-muted-foreground">Покрыто</p>
             </div>
             <div className="text-center">
@@ -202,7 +302,6 @@ export default function TZCoverage() {
         </CardContent>
       </Card>
 
-      {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -214,7 +313,7 @@ export default function TZCoverage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все статусы</SelectItem>
             <SelectItem value="covered">Покрыто</SelectItem>
@@ -222,8 +321,17 @@ export default function TZCoverage() {
             <SelectItem value="none">Не покрыто</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={freqFilter} onValueChange={setFreqFilter}>
+          <SelectTrigger className="w-[170px]"><SelectValue placeholder="Частота" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все частоты</SelectItem>
+            {Object.entries(freqLabels).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все категории</SelectItem>
             {categories.map((c) => (
@@ -233,7 +341,6 @@ export default function TZCoverage() {
         </Select>
       </div>
 
-      {/* Table */}
       <Card>
         <CardContent className="pt-4">
           <Table>
@@ -242,22 +349,27 @@ export default function TZCoverage() {
                 <TableHead className="w-16">Пункт</TableHead>
                 <TableHead>Требование</TableHead>
                 <TableHead>Категория</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Статус</TableHead>
-                {isStaff && <TableHead className="text-right">Действия</TableHead>}
+                <TableHead className="w-28">Частота</TableHead>
+                <TableHead className="w-24">Тип</TableHead>
+                <TableHead className="w-32">Статус</TableHead>
+                {isStaff && <TableHead className="text-right w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredReqs.slice(0, 100).map((req) => {
+              {filteredReqs.slice(0, 200).map((req) => {
                 const s = reqStatus(req.id);
                 const cfg = statusConfig[s];
                 const Icon = cfg.icon;
+                const meta = parseNotes(req.notes);
                 return (
                   <TableRow key={req.id}>
                     <TableCell className="font-mono text-xs">{req.code}</TableCell>
-                    <TableCell className="text-sm max-w-xl truncate">{req.title}</TableCell>
+                    <TableCell className="text-sm max-w-xl">{req.title}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">{req.category || "—"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {meta.f ? freqLabels[meta.f] || meta.f : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">{req.check_type || "manual"}</Badge>
@@ -280,9 +392,9 @@ export default function TZCoverage() {
               })}
             </TableBody>
           </Table>
-          {filteredReqs.length > 100 && (
+          {filteredReqs.length > 200 && (
             <p className="text-xs text-muted-foreground text-center pt-3">
-              Показано 100 из {filteredReqs.length}. Уточните фильтры.
+              Показано 200 из {filteredReqs.length}. Уточните фильтры.
             </p>
           )}
         </CardContent>
@@ -296,9 +408,20 @@ export default function TZCoverage() {
           {editingReq && (
             <div className="space-y-3">
               <div>
-                <Label>Название требования</Label>
-                <Textarea value={editTitle} onChange={(e) => setEditTitle(e.target.value)} rows={3} />
+                <Label>Требование</Label>
+                <p className="text-sm">{editingReq.title}</p>
               </div>
+              {(() => {
+                const meta = parseNotes(editingReq.notes);
+                return (meta.i || meta.ip?.length) ? (
+                  <div className="bg-muted/30 rounded p-2 text-xs space-y-1">
+                    {meta.i && <p><b>Инструкция:</b> {meta.i}</p>}
+                    {meta.ip?.length ? (
+                      <p><b>Шаблоны метрик:</b> {meta.ip.join(", ")}</p>
+                    ) : null}
+                  </div>
+                ) : null;
+              })()}
               <div>
                 <Label>Статус покрытия</Label>
                 <Select value={editStatus} onValueChange={setEditStatus}>

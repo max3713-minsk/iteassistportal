@@ -320,6 +320,8 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
           chartType={chartType}
           aggregation={aggregation}
           height={400}
+          exportable
+          graphName={graphName || "preview"}
         />
       </CardContent>
     </Card>

@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
-import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
 
 interface Props {
   hosts: any[];
@@ -19,32 +18,18 @@ interface Props {
   isZabbixConfigured: boolean;
 }
 
-const presetScripts = [
-  { id: "restart_scada", name: "restart_scada_services", label: "Перезапуск сервисов SCADA", desc: "Перезапуск SCADA-сервисов на целевом хосте", category: "restart", tzRef: "п.144 ТЗ" },
-  { id: "clean_temp", name: "clean_temp_logs", label: "Очистка временных файлов", desc: "Очистка /tmp, логов старше 30 дней", category: "cleanup", tzRef: "п.144 ТЗ" },
-  { id: "backup_db", name: "backup_db", label: "Резервное копирование БД", desc: "Внеплановый pg_dump основной базы", category: "backup", tzRef: "п.144 ТЗ" },
-  { id: "clear_rdp", name: "clear_rdp_sessions", label: "Сброс RDP-сессий", desc: "Закрытие зависших терминальных сессий", category: "session", tzRef: "п.144 ТЗ" },
-  { id: "test_failover", name: "test_hypermetro_failover", label: "Тест HyperMetro Failover", desc: "Тестовое переключение активного контроллера", category: "failover", tzRef: "п.144 ТЗ" },
-];
-
-const categoryIcons: Record<string, string> = {
-  restart: "🔄", cleanup: "🧹", backup: "💾", session: "👤",
-  failover: "🔁", network: "🌐", check: "✅",
-};
-
 export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigured }: Props) {
   const { toast } = useToast();
   const { isStaff } = useAuth();
   const queryClient = useQueryClient();
 
-  const [runDialog, setRunDialog] = useState<{ script: typeof presetScripts[0]; zabbixScript?: any } | null>(null);
+  const [runDialog, setRunDialog] = useState<{ scriptid: string; name: string; description?: string } | null>(null);
   const [selectedHost, setSelectedHost] = useState("");
   const [resultDialog, setResultDialog] = useState<{ output: string; status: string } | null>(null);
 
   const hostsArr = Array.isArray(hosts) ? hosts : [];
   const zabbixScripts = Array.isArray(scripts) ? scripts : [];
 
-  // Fetch automation logs
   const { data: logs } = useQuery({
     queryKey: ["automation-logs"],
     queryFn: async () => {
@@ -58,11 +43,15 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
     },
   });
 
+  const handleSync = () => {
+    queryClient.invalidateQueries({ queryKey: ["zabbix", "getScripts"] });
+    toast({ title: "Синхронизация скриптов с Zabbix..." });
+  };
+
   const executeMutation = useMutation({
     mutationFn: async ({ scriptid, hostid, scriptName, hostName }: {
       scriptid: string; hostid: string; scriptName: string; hostName: string;
     }) => {
-      // Log start
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Не авторизован");
 
@@ -75,7 +64,6 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
         status: "running",
       }).select().single();
 
-      // Execute via Zabbix
       const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
         body: { action: "executeScript", params: { scriptid, hostid } },
       });
@@ -85,7 +73,6 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
       const status = data?.error ? "error" : "success";
       const output = result?.value || data?.error?.message || JSON.stringify(data);
 
-      // Update log
       if (logEntry?.id) {
         await supabase.from("automation_logs")
           .update({ result: output, status })
@@ -93,7 +80,7 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
       }
 
       await logAudit({
-        action: "Запуск скрипта автоматизации",
+        action: "Запуск скрипта Zabbix",
         module: "monitoring",
         details: `Скрипт: ${scriptName}, Хост: ${hostName}, Результат: ${status}`,
       });
@@ -110,72 +97,87 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
     },
   });
 
-  const allScripts = [
-    ...presetScripts,
-    ...zabbixScripts
-      .filter((s: any) => !presetScripts.some(ps => ps.name === s.name))
-      .map((s: any) => ({
-        id: s.scriptid,
-        name: s.name,
-        label: s.name,
-        desc: s.description || "Скрипт из Zabbix",
-        category: "check",
-        tzRef: "—",
-        zabbixId: s.scriptid,
-      })),
-  ];
-
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Terminal className="h-4 w-4" />
-            Сценарии автоматизации
-          </CardTitle>
-          <CardDescription>
-            Запуск предустановленных сценариев из Zabbix на целевых хостах
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Terminal className="h-4 w-4" />
+                Скрипты Zabbix
+              </CardTitle>
+              <CardDescription>
+                Реальные скрипты, настроенные на сервере Zabbix (Administration → Scripts)
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleSync}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Синхронизация
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead>Сценарий</TableHead>
-                <TableHead>Описание</TableHead>
-                <TableHead>Пункт ТЗ</TableHead>
-                {isStaff && <TableHead className="text-right">Действие</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allScripts.map((script) => (
-                <TableRow key={script.id}>
-                  <TableCell className="text-lg">{categoryIcons[script.category] || "⚙️"}</TableCell>
-                  <TableCell className="font-medium">{script.label}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm max-w-[300px]">{script.desc}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{script.tzRef || "—"}</TableCell>
-                  {isStaff && (
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setRunDialog({ script })}
-                        disabled={!isZabbixConfigured}
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Запустить
-                      </Button>
-                    </TableCell>
-                  )}
+          {!isZabbixConfigured ? (
+            <p className="text-center py-8 text-sm text-muted-foreground">
+              Подключите Zabbix в разделе «Настройка»
+            </p>
+          ) : zabbixScripts.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <Terminal className="h-10 w-10 mx-auto text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                В Zabbix не настроены пользовательские скрипты
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Добавьте скрипты в Zabbix UI: Administration → Scripts, затем нажмите «Синхронизация»
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Имя скрипта</TableHead>
+                  <TableHead>Описание</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Группы</TableHead>
+                  {isStaff && <TableHead className="text-right">Действие</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {zabbixScripts.map((s: any) => (
+                  <TableRow key={s.scriptid}>
+                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-[300px]">
+                      {s.description || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {s.type === "0" ? "Script" : s.type === "1" ? "IPMI" : s.type === "2" ? "SSH" : s.type === "5" ? "Webhook" : `T${s.type}`}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {s.groups?.length > 0 ? s.groups.map((g: any) => g.name).join(", ") : "Все"}
+                    </TableCell>
+                    {isStaff && (
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setRunDialog({ scriptid: s.scriptid, name: s.name, description: s.description })}
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Запустить
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Execution logs */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -227,12 +229,11 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
         </CardContent>
       </Card>
 
-      {/* Run dialog */}
       <Dialog open={!!runDialog} onOpenChange={() => setRunDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Запуск: {runDialog?.script.label}</DialogTitle>
-            <DialogDescription>{runDialog?.script.desc}</DialogDescription>
+            <DialogTitle>Запуск: {runDialog?.name}</DialogTitle>
+            <DialogDescription>{runDialog?.description || "Скрипт Zabbix"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -254,9 +255,9 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
                 if (!selectedHost || !runDialog) return;
                 const host = hostsArr.find((h: any) => h.hostid === selectedHost);
                 executeMutation.mutate({
-                  scriptid: runDialog.script.id,
+                  scriptid: runDialog.scriptid,
                   hostid: selectedHost,
-                  scriptName: runDialog.script.label,
+                  scriptName: runDialog.name,
                   hostName: host?.name || selectedHost,
                 });
               }}
@@ -272,7 +273,6 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
         </DialogContent>
       </Dialog>
 
-      {/* Result dialog */}
       <Dialog open={!!resultDialog} onOpenChange={() => setResultDialog(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

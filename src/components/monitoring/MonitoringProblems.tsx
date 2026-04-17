@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,8 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, MessageSquarePlus, Check } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/lib/audit";
 import { priorityColor, priorityLabel, priorityToIncident, duration } from "./monitoringUtils";
 
 interface Props {
@@ -25,6 +30,10 @@ export default function MonitoringProblems({
   problems, alerts, problemsLoading, alertsLoading,
   isStaff, onCreateTicket, onAcknowledge, initialPriorityFilter,
 }: Props) {
+  const { toast } = useToast();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+  const qc = useQueryClient();
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter || "all");
   const [hostFilter, setHostFilter] = useState("");
   const [viewMode, setViewMode] = useState<"active" | "history">("active");
@@ -58,6 +67,23 @@ export default function MonitoringProblems({
     }
     return list;
   }, [alertsArr, priorityFilter, hostFilter]);
+
+  const closeMutation = useMutation({
+    mutationFn: async (eventid: string) => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "closeEvent", params: { eventids: [eventid] } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: async (_d, eventid) => {
+      await logAudit({ action: "Закрытие события Zabbix", module: "monitoring", details: `eventid=${eventid}` });
+      toast({ title: "Событие закрыто" });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
 
   return (
     <div className="space-y-4">
@@ -157,6 +183,18 @@ export default function MonitoringProblems({
                             <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(p)}>
                               <MessageSquarePlus className="h-4 w-4" />
                             </Button>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Закрыть событие (admin)"
+                                onClick={() => closeMutation.mutate(p.eventid)}
+                                disabled={closeMutation.isPending}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                {closeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                              </Button>
+                            )}
                           </TableCell>
                         )}
                       </TableRow>
