@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Save, Plus, X, Loader2, Search } from "lucide-react";
 import GraphChart from "./GraphChart";
+import { formatItemValue } from "./formatMetric";
 
 interface Props {
   hosts: any[];
