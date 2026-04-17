@@ -50,9 +50,9 @@ const fail = (error: string, status = 500) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-/* ─── Zabbix auth session (cached) ─── */
+/* ─── Zabbix auth session (cached for 1 hour per ТЗ) ─── */
 let authTokenCache: { token: string; ts: number } | null = null;
-const AUTH_TTL = 5 * 60 * 1000; // 5 min
+const AUTH_TTL = 60 * 60 * 1000; // 1 hour
 
 async function getAuthToken(apiUrl: string, user: string, password: string): Promise<string> {
   if (authTokenCache && Date.now() - authTokenCache.ts < AUTH_TTL) {
@@ -222,6 +222,43 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
           sortfield: "clock",
           sortorder: "DESC",
           limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
+    case "getTrends":
+      return {
+        method: "trend.get",
+        params: {
+          output: "extend",
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 1000,
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
+    case "getClosedEvents":
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged", "r_eventid"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 200,
+          value: 0, // recovered
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
+    case "getTriggerCounts":
+      return {
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "priority"],
+          filter: { value: 1, status: 0 },
+          countOutput: false,
           ...extraParams,
         },
         cacheTtl: 30000,
