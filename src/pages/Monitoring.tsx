@@ -17,6 +17,7 @@ import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
 import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 import HostManagement from "@/components/monitoring/HostManagement";
+import TZCoverage from "@/components/monitoring/TZCoverage";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -173,6 +174,7 @@ export default function Monitoring() {
           <TabsTrigger value="problems">Проблемы и Алерты</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
+          <TabsTrigger value="tz">Покрытие ТЗ</TabsTrigger>
           <TabsTrigger value="config" className="flex items-center gap-1">
             <Settings className="h-3.5 w-3.5" />
             Настройка
@@ -190,6 +192,7 @@ export default function Monitoring() {
             connectionError={connectionError}
             onTabChange={setTab}
             onFilterProblems={setProblemPriorityFilter}
+            graphs={graphs}
           />
         </TabsContent>
 
@@ -231,6 +234,10 @@ export default function Monitoring() {
             scripts={scripts}
             isZabbixConfigured={isZabbixConfigured}
           />
+        </TabsContent>
+
+        <TabsContent value="tz">
+          <TZCoverage />
         </TabsContent>
 
         <TabsContent value="config" className="space-y-6">

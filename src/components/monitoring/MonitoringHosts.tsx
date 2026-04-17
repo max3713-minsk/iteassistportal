@@ -9,6 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, ArrowLeft, BarChart3, AlertTriangle, Clock, Database } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import HostItemsView from "./HostItemsView";
 import {
   hostGroupType, groupTypeConfig, availabilityBadge,
   priorityColor, priorityLabel, duration,
@@ -197,40 +200,10 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
           </TabsContent>
 
           <TabsContent value="latest">
-            <Card>
-              <CardContent className="pt-4">
-                {hostItems.length === 0 ? (
-                  <p className="text-center py-8 text-muted-foreground">
-                    Нет данных. Убедитесь, что хост настроен в Zabbix.
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Метрика</TableHead>
-                        <TableHead>Ключ</TableHead>
-                        <TableHead>Значение</TableHead>
-                        <TableHead>Обновлено</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hostItems.slice(0, 50).map((item: any) => (
-                        <TableRow key={item.itemid}>
-                          <TableCell className="font-medium text-sm">{item.name}</TableCell>
-                          <TableCell className="font-mono text-xs text-muted-foreground">{item.key_}</TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {item.lastvalue} {item.units}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {item.lastclock ? new Date(parseInt(item.lastclock) * 1000).toLocaleString("ru-RU") : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <HostItemsViewWrapper
+              zabbixHostId={selectedHost.hostid}
+              items={hostItems}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -336,4 +309,20 @@ export default function MonitoringHosts({ hosts, alerts, items, hostsLoading, on
       )}
     </div>
   );
+}
+
+function HostItemsViewWrapper({ zabbixHostId, items }: { zabbixHostId: string; items: any[] }) {
+  const { data: localHost } = useQuery({
+    queryKey: ["monitored-host-by-zbx", zabbixHostId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("monitored_hosts")
+        .select("id")
+        .eq("zabbix_host_id", zabbixHostId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!zabbixHostId,
+  });
+  return <HostItemsView hostId={localHost?.id || ""} zabbixHostId={zabbixHostId} items={items} />;
 }
