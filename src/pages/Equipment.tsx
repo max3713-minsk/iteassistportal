@@ -294,6 +294,7 @@ export default function Equipment() {
             </TableHeader>
             <TableBody>
               {filteredEquipment.map((eq: any) => {
+                const monLink = linkByEqId.get(eq.id);
                 const row = (
                   <TableRow key={eq.id}>
                     <TableCell className="font-medium">{eq.name}</TableCell>
@@ -304,6 +305,21 @@ export default function Equipment() {
                     <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
+                    <TableCell>
+                      {monLink ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="success" className="gap-1 cursor-help">
+                              <Activity className="h-3 w-3" />
+                              {monLink.host_name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>Связано с Zabbix-хостом #{monLink.zabbix_host_id}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Не подключён</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[eq.status ?? "active"] ?? "outline"}>
                         {EQUIPMENT_STATUSES.find((s) => s.value === (eq.status ?? "active"))?.label ?? eq.status}
