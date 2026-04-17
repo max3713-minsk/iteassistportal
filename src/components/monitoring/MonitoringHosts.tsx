@@ -17,6 +17,7 @@ import {
   hostGroupType, groupTypeConfig, availabilityBadge,
   priorityColor, priorityLabel, duration,
 } from "./monitoringUtils";
+import { formatItemValue } from "./formatMetric";
 
 interface Props {
   hosts: any[];
