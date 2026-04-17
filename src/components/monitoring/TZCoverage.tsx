@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText, RefreshCw, Sparkles, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Edit2, Search, FileText, RefreshCw, Sparkles, Loader2, Wrench, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
