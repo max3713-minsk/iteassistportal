@@ -80,6 +80,19 @@ export default function Equipment() {
     },
   });
 
+  const { data: hostLinks = [] } = useQuery({
+    queryKey: ["monitoring-host-links"],
+    queryFn: async () => {
+      const { data } = await supabase.from("monitoring_host_links").select("equipment_id, host_name, zabbix_host_id");
+      return data ?? [];
+    },
+  });
+  const linkByEqId = useMemo(() => {
+    const map = new Map<string, { host_name: string; zabbix_host_id: string }>();
+    for (const l of hostLinks) map.set(l.equipment_id, l);
+    return map;
+  }, [hostLinks]);
+
   const saveMutation = useMutation({
     mutationFn: async (f: EquipForm) => {
       const payload = {
