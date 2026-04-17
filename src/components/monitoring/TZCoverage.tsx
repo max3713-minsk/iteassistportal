@@ -170,15 +170,17 @@ export default function TZCoverage() {
       if (!editingReq) return;
       const list = coverageMap.get(editingReq.id) || [];
       const existing = list[0];
+      const existingRelated = (existing?.related_items as any) || {};
       const payload = {
         requirement_id: editingReq.id,
         host_id: editHostId === "none" ? null : editHostId,
         status: editStatus,
         notes: editNotes || null,
+        related_items: { ...existingRelated, tools: editTools } as any,
       };
       if (existing) {
         await supabase.from("tz_coverage").update(payload).eq("id", existing.id);
-      } else if (editStatus !== "none" || editHostId !== "none" || editNotes) {
+      } else if (editStatus !== "none" || editHostId !== "none" || editNotes || editTools.length) {
         await supabase.from("tz_coverage").insert(payload);
       }
     },
