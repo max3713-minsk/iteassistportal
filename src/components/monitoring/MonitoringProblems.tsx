@@ -183,6 +183,18 @@ export default function MonitoringProblems({
                             <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(p)}>
                               <MessageSquarePlus className="h-4 w-4" />
                             </Button>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Закрыть событие (admin)"
+                                onClick={() => closeMutation.mutate(p.eventid)}
+                                disabled={closeMutation.isPending}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                {closeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                              </Button>
+                            )}
                           </TableCell>
                         )}
                       </TableRow>
