@@ -7,18 +7,19 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Server, Wifi, WifiOff, AlertTriangle, Cpu, Monitor, Database,
-  Terminal, FileText, GripHorizontal, RotateCcw, Lock, Unlock,
+  Server, Wifi, WifiOff, AlertTriangle,
+  Terminal, FileText, RotateCcw, Lock, Unlock, Activity,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import RecentEventsFeed from "./RecentEventsFeed";
+import ZabbixClusterWidgets from "./ZabbixClusterWidgets";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface Props {
-  hosts: { hostid?: string; name?: string; available?: string }[];
+  hosts: { hostid?: string; name?: string; available?: string; groups?: { groupid: string; name: string }[] }[];
   alerts: { priority?: string }[];
-  problems: unknown[];
+  problems: { eventid: string; severity?: string; hosts?: { hostid: string; name: string }[] }[];
   playbooks: unknown[];
   connectionError: boolean;
   onTabChange: (tab: string) => void;
@@ -35,15 +36,17 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: "problems", x: 3, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
   { i: "automation", x: 6, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
   { i: "tz", x: 9, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
-  { i: "alerts", x: 0, y: 4, w: 7, h: 6, minW: 4, minH: 4 },
-  { i: "clusters", x: 7, y: 4, w: 5, h: 6, minW: 3, minH: 3 },
+  { i: "alerts", x: 0, y: 4, w: 7, h: 7, minW: 4, minH: 4 },
+  { i: "clusters", x: 7, y: 4, w: 5, h: 7, minW: 3, minH: 4 },
+  { i: "topProblems", x: 0, y: 11, w: 6, h: 5, minW: 3, minH: 3 },
+  { i: "availability", x: 6, y: 11, w: 6, h: 5, minW: 3, minH: 3 },
 ];
 
-const STORAGE_KEY = "monitoring-dashboard-layout-v1";
+const STORAGE_KEY = "monitoring-dashboard-layout-v2";
 
 export default function DashboardGrid({
   hosts, alerts, problems, playbooks,
-  connectionError, onTabChange, onFilterProblems, graphs,
+  connectionError, onTabChange, onFilterProblems,
 }: Props) {
   const { user } = useAuth();
   const [layouts, setLayouts] = useState<Layouts>({ lg: DEFAULT_LAYOUT });
@@ -54,6 +57,10 @@ export default function DashboardGrid({
   const problemsArr = Array.isArray(problems) ? problems : [];
   const hostsAvailable = hostsArr.filter((h) => h.available === "1").length;
   const hostsUnavailable = hostsArr.filter((h) => h.available === "2").length;
+  const hostsUnknown = hostsArr.length - hostsAvailable - hostsUnavailable;
+  const availabilityPercent = hostsArr.length
+    ? Math.round((hostsAvailable / hostsArr.length) * 100)
+    : 0;
 
   const counters = useMemo(() => ({
     p1: alertsArr.filter((a) => parseInt(a.priority || "0") >= 4).length,
@@ -61,6 +68,25 @@ export default function DashboardGrid({
     p3: alertsArr.filter((a) => parseInt(a.priority || "0") === 2).length,
     p4: alertsArr.filter((a) => parseInt(a.priority || "0") <= 1).length,
   }), [alertsArr]);
+
+  // Top-N hosts with most active problems
+  const topProblemHosts = useMemo(() => {
+    const counts = new Map<string, { name: string; count: number; maxSev: number }>();
+    for (const p of problemsArr) {
+      const sev = parseInt(p.severity || "0");
+      for (const h of p.hosts || []) {
+        const key = h.hostid || h.name;
+        if (!key) continue;
+        const cur = counts.get(key) || { name: h.name, count: 0, maxSev: 0 };
+        cur.count++;
+        cur.maxSev = Math.max(cur.maxSev, sev);
+        counts.set(key, cur);
+      }
+    }
+    return [...counts.values()]
+      .sort((a, b) => b.maxSev - a.maxSev || b.count - a.count)
+      .slice(0, 8);
+  }, [problemsArr]);
 
   const { data: tzStats } = useQuery({
     queryKey: ["tz-coverage-stats"],
@@ -105,16 +131,10 @@ export default function DashboardGrid({
   };
 
   const counterCards = [
-    { key: "p1", filterKey: "5", label: "П1 — Критический", emoji: "🔴", count: counters.p1, color: "text-red-500", border: "border-red-500/30", desc: "Disaster + High" },
+    { key: "p1", filterKey: "5", label: "П1 — Критический", emoji: "🔴", count: counters.p1, color: "text-destructive", border: "border-destructive/30", desc: "Disaster + High" },
     { key: "p2", filterKey: "3", label: "П2 — Частичный отказ", emoji: "🟠", count: counters.p2, color: "text-orange-500", border: "border-orange-500/30", desc: "Average" },
     { key: "p3", filterKey: "2", label: "П3 — Сбои сервисов", emoji: "🟡", count: counters.p3, color: "text-yellow-500", border: "border-yellow-500/30", desc: "Warning" },
     { key: "p4", filterKey: "1", label: "П4 — Некритичные", emoji: "🔵", count: counters.p4, color: "text-blue-500", border: "border-blue-500/30", desc: "Information" },
-  ];
-
-  const clusters = [
-    { name: "Кластер Kubernetes", icon: Cpu },
-    { name: "Кластер VMware", icon: Monitor },
-    { name: "Кластер БД PostgreSQL", icon: Database },
   ];
 
   return (
@@ -168,8 +188,8 @@ export default function DashboardGrid({
             <CardContent>
               <div className="text-3xl font-heading font-bold">{hostsArr.length}</div>
               <div className="flex gap-3 mt-1 text-xs">
-                <span className="text-green-600 flex items-center gap-1"><Wifi className="h-3 w-3" />{hostsAvailable}</span>
-                <span className="text-red-500 flex items-center gap-1"><WifiOff className="h-3 w-3" />{hostsUnavailable}</span>
+                <span className="text-emerald-600 flex items-center gap-1"><Wifi className="h-3 w-3" />{hostsAvailable}</span>
+                <span className="text-destructive flex items-center gap-1"><WifiOff className="h-3 w-3" />{hostsUnavailable}</span>
               </div>
             </CardContent>
           </Card>
@@ -220,25 +240,103 @@ export default function DashboardGrid({
         </div>
 
         <div key="clusters">
+          <ZabbixClusterWidgets
+            hosts={hostsArr as any}
+            problems={problemsArr}
+            onClickGroup={() => onTabChange("hosts")}
+          />
+        </div>
+
+        <div key="topProblems">
           <Card className="h-full flex flex-col">
             <CardHeader className="widget-drag-handle cursor-move pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <GripHorizontal className="h-4 w-4 text-muted-foreground" />
-                Состояние кластеров
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Топ хостов с проблемами
+                <Badge variant="outline" className="text-[10px] ml-1">
+                  {topProblemHosts.length}
+                </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 flex-1 overflow-auto">
-              {clusters.map(({ name, icon: Icon }) => (
-                <div key={name} className="flex items-center gap-3 p-2 rounded border">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                  <p className="text-sm flex-1">{name}</p>
-                  {connectionError ? (
-                    <Badge variant="outline" className="text-muted-foreground">—</Badge>
-                  ) : (
-                    <Badge variant="default" className="bg-green-600">✅ Норма</Badge>
-                  )}
+            <CardContent className="flex-1 overflow-auto" onMouseDown={(e) => e.stopPropagation()}>
+              {topProblemHosts.length === 0 ? (
+                <div className="text-center py-6 text-sm text-muted-foreground">
+                  Проблемных хостов нет ✅
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-1.5">
+                  {topProblemHosts.map((h, i) => {
+                    const sevColor =
+                      h.maxSev >= 4 ? "text-destructive"
+                      : h.maxSev === 3 ? "text-orange-500"
+                      : h.maxSev === 2 ? "text-yellow-500"
+                      : "text-blue-500";
+                    return (
+                      <div
+                        key={h.name + i}
+                        className="flex items-center gap-3 p-2 rounded border hover:bg-muted/40 cursor-pointer"
+                        onClick={() => onTabChange("hosts")}
+                      >
+                        <span className="text-xs font-mono text-muted-foreground w-6">#{i + 1}</span>
+                        <Server className={`h-4 w-4 ${sevColor}`} />
+                        <p className="text-sm font-medium flex-1 truncate">{h.name}</p>
+                        <Badge variant="destructive" className="text-[10px]">
+                          {h.count} проб.
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div key="availability">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="widget-drag-handle cursor-move pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                Доступность инфраструктуры
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center space-y-4" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                <div className={`text-5xl font-heading font-bold ${
+                  availabilityPercent >= 95 ? "text-emerald-600"
+                  : availabilityPercent >= 80 ? "text-amber-500"
+                  : "text-destructive"
+                }`}>
+                  {availabilityPercent}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">хостов в сети</p>
+              </div>
+              <Progress
+                value={availabilityPercent}
+                className="h-2"
+                indicatorClassName={
+                  availabilityPercent >= 95 ? "bg-emerald-500"
+                  : availabilityPercent >= 80 ? "bg-amber-500"
+                  : "bg-destructive"
+                }
+              />
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded border p-2">
+                  <Wifi className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
+                  <div className="font-bold text-emerald-600">{hostsAvailable}</div>
+                  <div className="text-muted-foreground">в сети</div>
+                </div>
+                <div className="rounded border p-2">
+                  <WifiOff className="h-4 w-4 mx-auto text-destructive mb-1" />
+                  <div className="font-bold text-destructive">{hostsUnavailable}</div>
+                  <div className="text-muted-foreground">недоступны</div>
+                </div>
+                <div className="rounded border p-2">
+                  <Server className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                  <div className="font-bold">{hostsUnknown}</div>
+                  <div className="text-muted-foreground">неизв.</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
