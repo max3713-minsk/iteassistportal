@@ -587,6 +587,234 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          channel_type: string
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_status: string | null
+          name: string
+          updated_at: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          channel_type: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          channel_type?: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          attempts: number
+          body: string | null
+          channel_id: string | null
+          channel_type: string
+          created_at: string
+          error: string | null
+          event_type: string
+          http_status: number | null
+          id: string
+          payload: Json | null
+          priority: string | null
+          sent_at: string | null
+          status: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          channel_id?: string | null
+          channel_type: string
+          created_at?: string
+          error?: string | null
+          event_type: string
+          http_status?: number | null
+          id?: string
+          payload?: Json | null
+          priority?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          channel_id?: string | null
+          channel_type?: string
+          created_at?: string
+          error?: string | null
+          event_type?: string
+          http_status?: number | null
+          id?: string
+          payload?: Json | null
+          priority?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          delivery_mode: string
+          digest_schedule: string
+          dnd_enabled: boolean
+          quiet_bypass_critical: boolean
+          quiet_days: Json
+          quiet_hours_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_mode?: string
+          digest_schedule?: string
+          dnd_enabled?: boolean
+          quiet_bypass_critical?: boolean
+          quiet_days?: Json
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_mode?: string
+          digest_schedule?: string
+          dnd_enabled?: boolean
+          quiet_bypass_critical?: boolean
+          quiet_days?: Json
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_queue: {
+        Row: {
+          attempts: number
+          body: string | null
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          priority: string | null
+          scheduled_for: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          priority?: string | null
+          scheduled_for?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          priority?: string | null
+          scheduled_for?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_subscriptions: {
+        Row: {
+          channel_ids: Json
+          created_at: string
+          enabled: boolean
+          event_type: string
+          filters: Json
+          id: string
+          min_priority: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_ids?: Json
+          created_at?: string
+          enabled?: boolean
+          event_type: string
+          filters?: Json
+          id?: string
+          min_priority?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_ids?: Json
+          created_at?: string
+          enabled?: boolean
+          event_type?: string
+          filters?: Json
+          id?: string
+          min_priority?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

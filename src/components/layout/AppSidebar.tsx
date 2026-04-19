@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText, HelpCircle, Activity,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ const navItems = [
   { to: "/monitoring", icon: Activity, label: "Мониторинг", roles: [], moduleKey: "monitoring" },
   { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
   { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
+  { to: "/notifications", icon: Bell, label: "Уведомления", roles: [], moduleKey: "notifications" },
   { to: "/help", icon: HelpCircle, label: "Справка", roles: [], moduleKey: "help" },
 ];
 
