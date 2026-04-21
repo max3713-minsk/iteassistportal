@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import RecentEventsFeed from "./RecentEventsFeed";
 import ZabbixClusterWidgets from "./ZabbixClusterWidgets";
+import FavoriteMetricsWidget from "./FavoriteMetricsWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -40,6 +41,7 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: "clusters", x: 7, y: 4, w: 5, h: 7, minW: 3, minH: 4 },
   { i: "topProblems", x: 0, y: 11, w: 6, h: 5, minW: 3, minH: 3 },
   { i: "availability", x: 6, y: 11, w: 6, h: 5, minW: 3, minH: 3 },
+  { i: "favoriteMetrics", x: 0, y: 16, w: 12, h: 5, minW: 4, minH: 3 },
 ];
 
 const STORAGE_KEY = "monitoring-dashboard-layout-v2";
@@ -339,6 +341,10 @@ export default function DashboardGrid({
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <div key="favoriteMetrics">
+          <FavoriteMetricsWidget />
         </div>
 
       </ResponsiveGridLayout>

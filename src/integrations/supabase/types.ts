@@ -472,6 +472,42 @@ export type Database = {
           },
         ]
       }
+      metric_translations: {
+        Row: {
+          category: string | null
+          created_at: string
+          description_ru: string | null
+          display_name_ru: string
+          id: string
+          key_pattern: string
+          match_type: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description_ru?: string | null
+          display_name_ru: string
+          id?: string
+          key_pattern: string
+          match_type?: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description_ru?: string | null
+          display_name_ru?: string
+          id?: string
+          key_pattern?: string
+          match_type?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monitored_hosts: {
         Row: {
           created_at: string
@@ -1274,6 +1310,69 @@ export type Database = {
           updated_at?: string
           user_id?: string
           widget_type?: string
+        }
+        Relationships: []
+      }
+      user_favorite_metrics: {
+        Row: {
+          created_at: string
+          host_name: string
+          id: string
+          item_key: string
+          item_name: string
+          itemid: string
+          position: number
+          units: string | null
+          user_id: string
+          zabbix_host_id: string
+        }
+        Insert: {
+          created_at?: string
+          host_name: string
+          id?: string
+          item_key: string
+          item_name: string
+          itemid: string
+          position?: number
+          units?: string | null
+          user_id: string
+          zabbix_host_id: string
+        }
+        Update: {
+          created_at?: string
+          host_name?: string
+          id?: string
+          item_key?: string
+          item_name?: string
+          itemid?: string
+          position?: number
+          units?: string | null
+          user_id?: string
+          zabbix_host_id?: string
+        }
+        Relationships: []
+      }
+      user_metric_preferences: {
+        Row: {
+          created_at: string
+          display_language: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_language?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_language?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
