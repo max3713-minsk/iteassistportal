@@ -18,7 +18,7 @@ export function notify(event: DispatchEvent): void {
     .catch((e) => console.warn("notify failed", event.event_type, e));
 }
 
-export async function testChannel(channelId: string): Promise<{ ok: boolean; error?: string }> {
+export async function testChannel(channelId: string, overridePhone?: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke("notification-dispatch", {
       body: {
@@ -27,6 +27,7 @@ export async function testChannel(channelId: string): Promise<{ ok: boolean; err
         priority: "info",
         title: "Тестовое уведомление",
         body: "Если вы видите это сообщение — канал настроен корректно. Источник: ITE Assist Portal.",
+        override_phone: overridePhone,
       },
     });
     if (error) return { ok: false, error: error.message };
