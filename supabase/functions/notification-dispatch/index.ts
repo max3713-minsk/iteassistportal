@@ -137,6 +137,87 @@ async function sendWebhook(cfg: any, message: string, title: string, event: Even
   return { ok: res.ok, status: res.status, body: text };
 }
 
+function normalizePhone(p: string): string {
+  return String(p ?? "").replace(/[^\d]/g, "");
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, ms = 10000): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function sendMtsSms(cfg: any, message: string, overridePhone?: string) {
+  const clientId = String(cfg.client_id ?? "").trim();
+  const apiKey = String(cfg.api_key ?? "").trim();
+  const sender = String(cfg.sender_name ?? "").trim();
+  const phone = normalizePhone(overridePhone ?? cfg.recipient ?? cfg.phone);
+  if (!clientId || !apiKey) throw new Error("МТС: client_id и api_key обязательны");
+  if (!sender) throw new Error("МТС: имя отправителя (alpha_name) обязательно");
+  if (!phone) throw new Error("МТС: номер телефона обязателен");
+  const ttl = Math.min(259200, Math.max(300, Number(cfg.ttl) || 300));
+  const url = `https://api.communicator.mts.by/${encodeURIComponent(clientId)}/json2/simple`;
+  const body: any = {
+    phone_number: Number(phone),
+    channels: ["sms"],
+    channel_options: { sms: { text: message, alpha_name: sender, ttl } },
+  };
+  if (cfg.callback_url) body.callback_url = cfg.callback_url;
+  const auth = btoa(`${clientId}:${apiKey}`);
+  const res = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Basic ${auth}` },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let providerOk = res.ok;
+  let info = "";
+  try {
+    const j = JSON.parse(text);
+    if (j.error_code) { providerOk = false; info = `error_code=${j.error_code} ${j.error_text ?? ""}`; }
+    else if (j.message_id) { info = `message_id=${j.message_id}`; }
+  } catch { /* keep raw */ }
+  return { ok: providerOk, status: res.status, body: info ? `${info} | ${text}` : text };
+}
+
+async function sendA1Sms(cfg: any, message: string, overridePhone?: string) {
+  const login = normalizePhone(cfg.login);
+  const apiKey = String(cfg.api_key ?? "").trim();
+  const sender = String(cfg.sender_name ?? "").trim();
+  const phone = normalizePhone(overridePhone ?? cfg.recipient ?? cfg.phone);
+  if (!login || !apiKey) throw new Error("А1: login и api_key обязательны");
+  if (!sender) throw new Error("А1: имя отправителя обязательно");
+  if (!phone) throw new Error("А1: номер телефона обязателен");
+  const ttl = Math.min(86400, Math.max(40, Number(cfg.ttl) || 86400));
+  const params = new URLSearchParams({
+    user: login,
+    apikey: apiKey,
+    sender,
+    phone,
+    text: message,
+    ttl: String(ttl),
+  });
+  const url = `https://smart-sender.a1.by/api/send/sms?${params.toString()}`;
+  const res = await fetchWithTimeout(url, { method: "GET" });
+  const text = await res.text();
+  let providerOk = res.ok;
+  let info = "";
+  try {
+    const j = JSON.parse(text);
+    if (j.status === false) {
+      providerOk = false;
+      info = `error=${j.error?.code ?? ""} ${j.error?.description ?? ""}`;
+    } else if (j.status === true && j.data?.message_id) {
+      info = `message_id=${j.data.message_id}`;
+    }
+  } catch { /* keep raw */ }
+  return { ok: providerOk, status: res.status, body: info ? `${info} | ${text}` : text };
+}
+
 async function deliverToChannel(supabase: any, userId: string, channel: any, event: EventInput) {
   const message = renderTemplate(channel.config?.message_template, {
     title: event.title, body: event.body, event_type: event.event_type, priority: event.priority, payload: event.payload,
@@ -145,6 +226,8 @@ async function deliverToChannel(supabase: any, userId: string, channel: any, eve
   try {
     if (channel.channel_type === "telegram") result = await sendTelegram(channel.config, message);
     else if (channel.channel_type === "mattermost") result = await sendMattermost(channel.config, message, event.title);
+    else if (channel.channel_type === "mts_sms") result = await sendMtsSms(channel.config, message, (event as any).override_phone);
+    else if (channel.channel_type === "a1_sms") result = await sendA1Sms(channel.config, message, (event as any).override_phone);
     else result = await sendWebhook(channel.config, message, event.title, event);
 
     await supabase.from("notification_log").insert({
