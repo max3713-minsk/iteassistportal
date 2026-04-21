@@ -16,6 +16,8 @@ type EventInput = {
   target_user_ids?: string[];
   // For testing a single channel
   test_channel_id?: string;
+  // For SMS test: override recipient number
+  override_phone?: string;
 };
 
 const PRIORITY_RANK: Record<string, number> = {
