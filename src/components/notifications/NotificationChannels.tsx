@@ -384,3 +384,78 @@ function CommonWebhookExtras({ config, setConfig }: any) {
     </>
   );
 }
+
+function MtsSmsFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Используется JSONv2 API: <code>https://api.communicator.mts.by/&lt;client_id&gt;/json2/simple</code>.
+        Получите у МТС <b>Client ID</b>, <b>API Key</b> и зарегистрированное имя отправителя (alpha_name, до 11 символов).
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Client ID</Label>
+          <Input value={config.client_id ?? ""} onChange={(e) => setConfig({ ...config, client_id: e.target.value })} placeholder="123456" />
+        </div>
+        <div className="grid gap-2">
+          <Label>API Key</Label>
+          <Input type="password" value={config.api_key ?? ""} onChange={(e) => setConfig({ ...config, api_key: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Имя отправителя (alpha_name, до 11 симв.)</Label>
+          <Input maxLength={11} value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="ITE-Portal" />
+        </div>
+        <div className="grid gap-2">
+          <Label>TTL, сек (300–259200)</Label>
+          <Input type="number" min={300} max={259200} value={config.ttl ?? 300} onChange={(e) => setConfig({ ...config, ttl: Number(e.target.value) })} />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Номер телефона (только цифры, например 375291234567)</Label>
+        <Input value={config.recipient ?? ""} onChange={(e) => setConfig({ ...config, recipient: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+      </div>
+      <div className="grid gap-2">
+        <Label>Callback URL (опц.)</Label>
+        <Input value={config.callback_url ?? ""} onChange={(e) => setConfig({ ...config, callback_url: e.target.value })} placeholder="https://example.com/mts-callback" />
+      </div>
+    </div>
+  );
+}
+
+function A1SmsFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Используется smart-sender API: <code>https://smart-sender.a1.by/api/send/sms</code>.
+        Получите в личном кабинете <b>логин</b> (номер телефона), <b>API Key</b> и зарегистрированное имя отправителя.
+        IP портала должен быть в белом списке кабинета.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Логин (номер телефона)</Label>
+          <Input value={config.login ?? ""} onChange={(e) => setConfig({ ...config, login: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+        </div>
+        <div className="grid gap-2">
+          <Label>API Key</Label>
+          <Input type="password" value={config.api_key ?? ""} onChange={(e) => setConfig({ ...config, api_key: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Имя отправителя</Label>
+          <Input value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="Portal" />
+        </div>
+        <div className="grid gap-2">
+          <Label>TTL, сек (40–86400)</Label>
+          <Input type="number" min={40} max={86400} value={config.ttl ?? 86400} onChange={(e) => setConfig({ ...config, ttl: Number(e.target.value) })} />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Номер получателя (только цифры)</Label>
+        <Input value={config.recipient ?? ""} onChange={(e) => setConfig({ ...config, recipient: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+      </div>
+    </div>
+  );
+}
