@@ -220,6 +220,8 @@ function ChannelDialog({ open, onOpenChange, editing, userId }: { open: boolean;
           {type === "mattermost" && <MattermostFields config={config} setConfig={setConfig} />}
           {type === "email" && <EmailWebhookFields config={config} setConfig={setConfig} />}
           {type === "sms" && <SmsWebhookFields config={config} setConfig={setConfig} />}
+          {type === "mts_sms" && <MtsSmsFields config={config} setConfig={setConfig} />}
+          {type === "a1_sms" && <A1SmsFields config={config} setConfig={setConfig} />}
 
           <div className="grid gap-2">
             <Label>Шаблон сообщения (опционально)</Label>
