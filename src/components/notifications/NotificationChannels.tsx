@@ -16,13 +16,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "email" | "sms";
+type ChannelType = "telegram" | "mattermost" | "email" | "sms" | "mts_sms" | "a1_sms";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
   mattermost: { label: "Mattermost", icon: MessageSquare, color: "text-indigo-500" },
   email: { label: "Email (webhook)", icon: Mail, color: "text-emerald-500" },
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
+  mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
+  a1_sms: { label: "А1 SMS (smart-sender)", icon: Phone, color: "text-orange-500" },
 };
 
 export function NotificationChannels() {
@@ -31,6 +33,9 @@ export function NotificationChannels() {
   const { toast } = useToast();
   const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
+  const [smsTestChannel, setSmsTestChannel] = useState<any | null>(null);
+  const [smsTestPhone, setSmsTestPhone] = useState("");
+  const [smsTestSending, setSmsTestSending] = useState(false);
 
   const { data: channels = [], isLoading } = useQuery({
     queryKey: ["notif-channels", user?.id],
@@ -62,10 +67,28 @@ export function NotificationChannels() {
   });
 
   async function handleTest(id: string) {
+    const ch = channels.find((c: any) => c.id === id);
+    if (ch && (ch.channel_type === "mts_sms" || ch.channel_type === "a1_sms")) {
+      setSmsTestChannel(ch);
+      setSmsTestPhone((ch.config as any)?.recipient ?? "");
+      return;
+    }
     toast({ title: "Отправляю тест..." });
     const r = await testChannel(id);
     if (r.ok) toast({ title: "Тест отправлен", description: "Проверьте канал доставки" });
     else toast({ title: "Ошибка теста", description: r.error, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["notif-channels"] });
+  }
+
+  async function runSmsTest() {
+    if (!smsTestChannel) return;
+    const phone = smsTestPhone.replace(/[^\d]/g, "");
+    if (!phone) { toast({ title: "Введите номер телефона", variant: "destructive" }); return; }
+    setSmsTestSending(true);
+    const r = await testChannel(smsTestChannel.id, phone);
+    setSmsTestSending(false);
+    if (r.ok) { toast({ title: "SMS отправлено", description: `На номер ${phone}` }); setSmsTestChannel(null); }
+    else toast({ title: "Ошибка отправки", description: r.error, variant: "destructive" });
     qc.invalidateQueries({ queryKey: ["notif-channels"] });
   }
 
@@ -147,6 +170,28 @@ export function NotificationChannels() {
       )}
 
       <ChannelDialog open={open} onOpenChange={setOpen} editing={editing} userId={user?.id ?? ""} />
+
+      <Dialog open={!!smsTestChannel} onOpenChange={(v) => !v && setSmsTestChannel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Тестовое SMS</DialogTitle>
+            <DialogDescription>
+              Канал: {smsTestChannel?.name} ({smsTestChannel?.channel_type === "mts_sms" ? "МТС" : "А1"}).
+              Будет отправлено сообщение «Тестовое уведомление от портала».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label>Номер телефона (только цифры)</Label>
+            <Input value={smsTestPhone} onChange={(e) => setSmsTestPhone(e.target.value.replace(/[^\d]/g, ""))} placeholder="375291234567" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsTestChannel(null)}>Отмена</Button>
+            <Button onClick={runSmsTest} disabled={smsTestSending}>
+              {smsTestSending ? "Отправка..." : "Отправить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -218,6 +263,8 @@ function ChannelDialog({ open, onOpenChange, editing, userId }: { open: boolean;
           {type === "mattermost" && <MattermostFields config={config} setConfig={setConfig} />}
           {type === "email" && <EmailWebhookFields config={config} setConfig={setConfig} />}
           {type === "sms" && <SmsWebhookFields config={config} setConfig={setConfig} />}
+          {type === "mts_sms" && <MtsSmsFields config={config} setConfig={setConfig} />}
+          {type === "a1_sms" && <A1SmsFields config={config} setConfig={setConfig} />}
 
           <div className="grid gap-2">
             <Label>Шаблон сообщения (опционально)</Label>
@@ -378,5 +425,80 @@ function CommonWebhookExtras({ config, setConfig }: any) {
         />
       </div>
     </>
+  );
+}
+
+function MtsSmsFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Используется JSONv2 API: <code>https://api.communicator.mts.by/&lt;client_id&gt;/json2/simple</code>.
+        Получите у МТС <b>Client ID</b>, <b>API Key</b> и зарегистрированное имя отправителя (alpha_name, до 11 символов).
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Client ID</Label>
+          <Input value={config.client_id ?? ""} onChange={(e) => setConfig({ ...config, client_id: e.target.value })} placeholder="123456" />
+        </div>
+        <div className="grid gap-2">
+          <Label>API Key</Label>
+          <Input type="password" value={config.api_key ?? ""} onChange={(e) => setConfig({ ...config, api_key: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Имя отправителя (alpha_name, до 11 симв.)</Label>
+          <Input maxLength={11} value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="ITE-Portal" />
+        </div>
+        <div className="grid gap-2">
+          <Label>TTL, сек (300–259200)</Label>
+          <Input type="number" min={300} max={259200} value={config.ttl ?? 300} onChange={(e) => setConfig({ ...config, ttl: Number(e.target.value) })} />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Номер телефона (только цифры, например 375291234567)</Label>
+        <Input value={config.recipient ?? ""} onChange={(e) => setConfig({ ...config, recipient: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+      </div>
+      <div className="grid gap-2">
+        <Label>Callback URL (опц.)</Label>
+        <Input value={config.callback_url ?? ""} onChange={(e) => setConfig({ ...config, callback_url: e.target.value })} placeholder="https://example.com/mts-callback" />
+      </div>
+    </div>
+  );
+}
+
+function A1SmsFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Используется smart-sender API: <code>https://smart-sender.a1.by/api/send/sms</code>.
+        Получите в личном кабинете <b>логин</b> (номер телефона), <b>API Key</b> и зарегистрированное имя отправителя.
+        IP портала должен быть в белом списке кабинета.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Логин (номер телефона)</Label>
+          <Input value={config.login ?? ""} onChange={(e) => setConfig({ ...config, login: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+        </div>
+        <div className="grid gap-2">
+          <Label>API Key</Label>
+          <Input type="password" value={config.api_key ?? ""} onChange={(e) => setConfig({ ...config, api_key: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Имя отправителя</Label>
+          <Input value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="Portal" />
+        </div>
+        <div className="grid gap-2">
+          <Label>TTL, сек (40–86400)</Label>
+          <Input type="number" min={40} max={86400} value={config.ttl ?? 86400} onChange={(e) => setConfig({ ...config, ttl: Number(e.target.value) })} />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Номер получателя (только цифры)</Label>
+        <Input value={config.recipient ?? ""} onChange={(e) => setConfig({ ...config, recipient: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+      </div>
+    </div>
   );
 }
