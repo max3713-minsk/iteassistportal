@@ -33,6 +33,9 @@ export function NotificationChannels() {
   const { toast } = useToast();
   const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
+  const [smsTestChannel, setSmsTestChannel] = useState<any | null>(null);
+  const [smsTestPhone, setSmsTestPhone] = useState("");
+  const [smsTestSending, setSmsTestSending] = useState(false);
 
   const { data: channels = [], isLoading } = useQuery({
     queryKey: ["notif-channels", user?.id],
@@ -64,10 +67,28 @@ export function NotificationChannels() {
   });
 
   async function handleTest(id: string) {
+    const ch = channels.find((c: any) => c.id === id);
+    if (ch && (ch.channel_type === "mts_sms" || ch.channel_type === "a1_sms")) {
+      setSmsTestChannel(ch);
+      setSmsTestPhone(ch.config?.recipient ?? "");
+      return;
+    }
     toast({ title: "Отправляю тест..." });
     const r = await testChannel(id);
     if (r.ok) toast({ title: "Тест отправлен", description: "Проверьте канал доставки" });
     else toast({ title: "Ошибка теста", description: r.error, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["notif-channels"] });
+  }
+
+  async function runSmsTest() {
+    if (!smsTestChannel) return;
+    const phone = smsTestPhone.replace(/[^\d]/g, "");
+    if (!phone) { toast({ title: "Введите номер телефона", variant: "destructive" }); return; }
+    setSmsTestSending(true);
+    const r = await testChannel(smsTestChannel.id, phone);
+    setSmsTestSending(false);
+    if (r.ok) { toast({ title: "SMS отправлено", description: `На номер ${phone}` }); setSmsTestChannel(null); }
+    else toast({ title: "Ошибка отправки", description: r.error, variant: "destructive" });
     qc.invalidateQueries({ queryKey: ["notif-channels"] });
   }
 
@@ -149,6 +170,28 @@ export function NotificationChannels() {
       )}
 
       <ChannelDialog open={open} onOpenChange={setOpen} editing={editing} userId={user?.id ?? ""} />
+
+      <Dialog open={!!smsTestChannel} onOpenChange={(v) => !v && setSmsTestChannel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Тестовое SMS</DialogTitle>
+            <DialogDescription>
+              Канал: {smsTestChannel?.name} ({smsTestChannel?.channel_type === "mts_sms" ? "МТС" : "А1"}).
+              Будет отправлено сообщение «Тестовое уведомление от портала».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label>Номер телефона (только цифры)</Label>
+            <Input value={smsTestPhone} onChange={(e) => setSmsTestPhone(e.target.value.replace(/[^\d]/g, ""))} placeholder="375291234567" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsTestChannel(null)}>Отмена</Button>
+            <Button onClick={runSmsTest} disabled={smsTestSending}>
+              {smsTestSending ? "Отправка..." : "Отправить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
