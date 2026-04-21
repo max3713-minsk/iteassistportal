@@ -16,13 +16,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "email" | "sms";
+type ChannelType = "telegram" | "mattermost" | "email" | "sms" | "mts_sms" | "a1_sms";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
   mattermost: { label: "Mattermost", icon: MessageSquare, color: "text-indigo-500" },
   email: { label: "Email (webhook)", icon: Mail, color: "text-emerald-500" },
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
+  mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
+  a1_sms: { label: "А1 SMS (smart-sender)", icon: Phone, color: "text-orange-500" },
 };
 
 export function NotificationChannels() {
