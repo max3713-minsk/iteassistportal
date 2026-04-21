@@ -70,7 +70,7 @@ export function NotificationChannels() {
     const ch = channels.find((c: any) => c.id === id);
     if (ch && (ch.channel_type === "mts_sms" || ch.channel_type === "a1_sms")) {
       setSmsTestChannel(ch);
-      setSmsTestPhone(ch.config?.recipient ?? "");
+      setSmsTestPhone((ch.config as any)?.recipient ?? "");
       return;
     }
     toast({ title: "Отправляю тест..." });
