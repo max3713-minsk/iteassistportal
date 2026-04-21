@@ -14,6 +14,11 @@ import { Pencil, BarChart3, Thermometer, Fan, Zap, Network, Cpu, HardDrive, Acti
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { formatItemValue } from "./formatMetric";
+import { Star } from "lucide-react";
+import { useFavoriteMetrics } from "@/hooks/useFavoriteMetrics";
+import { useMetricTranslations } from "@/hooks/useMetricTranslations";
+import MetricGraphDialog from "./MetricGraphDialog";
+import MetricLanguageToggle from "./MetricLanguageToggle";
 
 interface ItemAlias {
   id: string;
@@ -72,6 +77,9 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [editingAlias, setEditingAlias] = useState<{ key: string; name: string; display: string; desc: string } | null>(null);
+  const [graphMetric, setGraphMetric] = useState<any>(null);
+  const { favoriteItemIds, toggle: toggleFav } = useFavoriteMetrics();
+  const { translate, isOriginal } = useMetricTranslations(zabbixHostId);
 
   const { data: aliases } = useQuery({
     queryKey: ["item-aliases", hostId],
@@ -149,12 +157,15 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <Input
-          placeholder="Поиск по имени или ключу..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Поиск по имени или ключу..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+          <MetricLanguageToggle />
+        </div>
 
         {Object.entries(grouped).map(([category, list]) => {
           const Icon = categoryIcons[category] || Activity;
@@ -169,7 +180,10 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
               <CardContent className="space-y-1">
                 {list.slice(0, 30).map((it) => {
                   const alias = aliasMap.get(it.key_);
-                  const display = alias?.display_name || it.name;
+                  const display = isOriginal
+                    ? it.name
+                    : translate({ key_: it.key_, name: it.name });
+                  const isFav = favoriteItemIds.has(it.itemid);
                   return (
                     <div
                       key={it.itemid}
@@ -178,7 +192,7 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">{display}</p>
-                          {alias && <Badge variant="secondary" className="text-[10px] h-4 px-1">алиас</Badge>}
+                          {alias && !isOriginal && <Badge variant="secondary" className="text-[10px] h-4 px-1">алиас</Badge>}
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -188,6 +202,9 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="max-w-md">
                             <p className="font-mono text-xs">{it.key_}</p>
+                            {it.name && it.name !== display && (
+                              <p className="text-xs mt-1 opacity-70">Оригинал: {it.name}</p>
+                            )}
                             {alias?.description && <p className="text-xs mt-1">{alias.description}</p>}
                           </TooltipContent>
                         </Tooltip>
@@ -216,7 +233,37 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Открыть график">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={`h-7 w-7 ${isFav ? "opacity-100 text-amber-500" : ""}`}
+                          title={isFav ? "Убрать из избранного" : "В избранное (на дашборд)"}
+                          onClick={() => toggleFav({
+                            zabbix_host_id: zabbixHostId || hostId,
+                            host_name: "",
+                            itemid: it.itemid,
+                            item_key: it.key_,
+                            item_name: display,
+                            units: it.units || null,
+                          })}
+                        >
+                          <Star className={`h-3.5 w-3.5 ${isFav ? "fill-current" : ""}`} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Открыть график"
+                          onClick={() => setGraphMetric({
+                            itemid: it.itemid,
+                            name: it.name,
+                            key_: it.key_,
+                            units: it.units,
+                            hostid: zabbixHostId || hostId,
+                            hostName: "",
+                            zabbixHostId: zabbixHostId,
+                          })}
+                        >
                           <BarChart3 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -266,6 +313,12 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
             )}
           </DialogContent>
         </Dialog>
+
+        <MetricGraphDialog
+          open={!!graphMetric}
+          onClose={() => setGraphMetric(null)}
+          metric={graphMetric}
+        />
       </div>
     </TooltipProvider>
   );

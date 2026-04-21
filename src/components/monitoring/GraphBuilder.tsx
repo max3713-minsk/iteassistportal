@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Save, Plus, X, Loader2, Search } from "lucide-react";
 import GraphChart from "./GraphChart";
 import { formatItemValue } from "./formatMetric";
+import { useMetricTranslations } from "@/hooks/useMetricTranslations";
+import MetricLanguageToggle from "./MetricLanguageToggle";
 
 interface Props {
   hosts: any[];
@@ -48,6 +50,9 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
   const [graphDesc, setGraphDesc] = useState("");
   const [isShared, setIsShared] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const selectedHostObj = hosts.find((h) => h.hostid === selectedHost);
+  const { translate, isOriginal } = useMetricTranslations(selectedHostObj?.hostid);
 
   // Fetch items for selected host
   const { data: items = [], isLoading: itemsLoading } = useQuery({
@@ -146,7 +151,10 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Конструктор графика</CardTitle>
+        <CardTitle className="text-base flex items-center justify-between">
+          <span>Конструктор графика</span>
+          <MetricLanguageToggle />
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Toolbar */}
@@ -229,14 +237,15 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
                   <div className="space-y-1">
                     {filteredItems.slice(0, 200).map((it: any) => {
                       const isSelected = selectedItems.some((s) => s.itemid === it.itemid);
+                      const display = isOriginal ? it.name : translate({ key_: it.key_, name: it.name });
                       return (
                         <div
                           key={it.itemid}
                           className={`flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer ${isSelected ? "bg-primary/10" : ""}`}
-                          onClick={() => isSelected ? removeItem(it.itemid) : addItem(it)}
+                          onClick={() => isSelected ? removeItem(it.itemid) : addItem({ ...it, name: display })}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{it.name}</p>
+                            <p className="text-sm font-medium truncate">{display}</p>
                             <p className="text-xs text-muted-foreground truncate font-mono">{it.key_}</p>
                           </div>
                           <div className="flex items-center gap-2 ml-2">
