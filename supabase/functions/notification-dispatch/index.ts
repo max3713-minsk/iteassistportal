@@ -1,5 +1,6 @@
 // Notification dispatcher: enqueue + send via webhooks (Telegram, Mattermost, Email-webhook, SMS-webhook)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -346,6 +347,44 @@ async function sendA1Sms(cfg: any, message: string, overridePhone?: string) {
     }
   } catch { /* keep raw */ }
   return { ok: providerOk, status: res.status, body: info ? `${info} | ${text}` : text };
+}
+
+async function sendSmtp(cfg: any, message: string, title: string, overrideEmail?: string) {
+  const host = String(cfg.host ?? "").trim();
+  const port = Number(cfg.port ?? 465);
+  const secure = cfg.secure !== false; // default true (SSL/TLS for 465)
+  const username = String(cfg.username ?? "").trim();
+  const password = String(cfg.password ?? "");
+  const fromEmail = String(cfg.from_email ?? username).trim();
+  const fromName = String(cfg.from_name ?? "ITE Assist Portal").trim();
+  const toEmail = String(overrideEmail ?? cfg.to_email ?? cfg.recipient ?? "").trim();
+  if (!host) throw new Error("SMTP: host обязателен");
+  if (!username || !password) throw new Error("SMTP: username и password обязательны");
+  if (!toEmail) throw new Error("SMTP: адрес получателя обязателен");
+  const client = new SMTPClient({
+    connection: {
+      hostname: host,
+      port,
+      tls: secure,
+      auth: { username, password },
+    },
+  });
+  try {
+    await client.send({
+      from: fromName ? `${fromName} <${fromEmail}>` : fromEmail,
+      to: toEmail,
+      subject: title,
+      content: message,
+      html: message
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br/>"),
+    });
+    await client.close();
+    return { ok: true, status: 250, body: `sent to ${toEmail}` };
+  } catch (e: any) {
+    try { await client.close(); } catch { /* ignore */ }
+    throw new Error(`SMTP send failed: ${e?.message ?? e}`);
+  }
 }
 
 async function deliverToChannel(supabase: any, userId: string, channel: any, event: EventInput) {
