@@ -39,6 +39,60 @@ function isCritical(p?: string | null) {
   return (PRIORITY_RANK[p ?? ""] ?? 0) >= 3;
 }
 
+// Evaluate sub.filters against event.payload. Filters are AND-combined.
+// Supported keys (all optional):
+//   assignee_scope: "any" | "me" | "unassigned" | "user_ids"
+//   assignee_user_ids: string[]
+//   creator_scope:  "any" | "me" | "user_ids"
+//   creator_user_ids: string[]
+//   priorities:     string[]   (e.g. ["P1","P2"])
+//   request_types:  string[]   (incident/service_request/...)
+//   product_codes:  string[]
+//   site_ids:       string[]
+//   statuses:       string[]
+//   only_internal:  boolean    (for ticket.comment_added)
+function matchesFilters(filters: any, payload: Record<string, any> | undefined, subscriberUserId: string): boolean {
+  if (!filters || typeof filters !== "object") return true;
+  const p = payload ?? {};
+
+  const assigneeScope = filters.assignee_scope as string | undefined;
+  if (assigneeScope && assigneeScope !== "any") {
+    const a = p.assigned_to as string | null | undefined;
+    if (assigneeScope === "me" && a !== subscriberUserId) return false;
+    if (assigneeScope === "unassigned" && a) return false;
+    if (assigneeScope === "user_ids") {
+      const ids: string[] = Array.isArray(filters.assignee_user_ids) ? filters.assignee_user_ids : [];
+      if (!a || !ids.includes(a)) return false;
+    }
+  }
+
+  const creatorScope = filters.creator_scope as string | undefined;
+  if (creatorScope && creatorScope !== "any") {
+    const c = p.created_by as string | null | undefined;
+    if (creatorScope === "me" && c !== subscriberUserId) return false;
+    if (creatorScope === "user_ids") {
+      const ids: string[] = Array.isArray(filters.creator_user_ids) ? filters.creator_user_ids : [];
+      if (!c || !ids.includes(c)) return false;
+    }
+  }
+
+  const arrayMatch = (key: string, val: any) => {
+    const arr = filters[key];
+    if (!Array.isArray(arr) || arr.length === 0) return true;
+    return val != null && arr.includes(val);
+  };
+  if (!arrayMatch("priorities", p.priority)) return false;
+  if (!arrayMatch("request_types", p.request_type)) return false;
+  if (!arrayMatch("product_codes", p.product_code)) return false;
+  if (!arrayMatch("site_ids", p.site_id)) return false;
+  if (!arrayMatch("statuses", p.status)) return false;
+
+  if (filters.only_internal === true && p.is_internal !== true) return false;
+  if (filters.only_internal === false && p.is_internal === true) return false;
+
+  return true;
+}
+
 function nowInTz(tz: string): { hhmm: string; dow: number } {
   // dow: 0 = Sunday ... 6 = Saturday
   const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false });
@@ -299,6 +353,7 @@ Deno.serve(async (req) => {
 
     for (const sub of candidates) {
       if (!meetsPriority(event.priority, sub.min_priority)) { skipped++; continue; }
+      if (!matchesFilters(sub.filters, event.payload as any, sub.user_id)) { skipped++; continue; }
 
       const { data: prefs } = await supabase.from("notification_preferences").select("*").eq("user_id", sub.user_id).maybeSingle();
       const critical = isCritical(event.priority);
