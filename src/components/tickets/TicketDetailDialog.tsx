@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
+import { notify } from "@/lib/notify";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -94,6 +95,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const commentMutation = useMutation({
     mutationFn: async () => {
       if (!comment.trim()) return;
+      const isInternal = false; // current UI does not expose internal flag
       const { error } = await supabase.from("ticket_comments").insert({
         ticket_id: ticket.id,
         user_id: user!.id,
@@ -101,6 +103,25 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       });
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
+
+      notify({
+        event_type: isInternal ? "ticket.comment_internal" : "ticket.comment_added",
+        priority: ticket.priority,
+        title: `Комментарий к «${ticket.title}»`,
+        body: comment.trim().slice(0, 240),
+        payload: {
+          ticket_id: ticket.id,
+          created_by: ticket.created_by,
+          assigned_to: ticket.assigned_to,
+          priority: ticket.priority,
+          request_type: ticket.request_type,
+          product_code: ticket.product_code,
+          site_id: ticket.site_id,
+          status: ticket.status,
+          is_internal: isInternal,
+          author_id: user!.id,
+        },
+      });
     },
     onSuccess: () => {
       setComment("");
@@ -158,6 +179,31 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
         entityId: ticket.id,
         details: transitionComment || ticket.title,
       });
+
+      // Notifications
+      const basePayload = {
+        ticket_id: ticket.id,
+        created_by: ticket.created_by,
+        assigned_to: assignedTo ?? ticket.assigned_to ?? null,
+        priority: ticket.priority,
+        request_type: ticket.request_type,
+        product_code: ticket.product_code,
+        site_id: ticket.site_id,
+        status: newStatus,
+      };
+      notify({
+        event_type: "ticket.status_changed",
+        priority: ticket.priority,
+        title: `Заявка «${ticket.title}» → ${STATUS_LABELS[newStatus]}`,
+        body: transitionComment || undefined,
+        payload: basePayload,
+      });
+      if (newStatus === "resolved") {
+        notify({ event_type: "ticket.resolved", priority: ticket.priority, title: `Решена: ${ticket.title}`, payload: basePayload });
+      }
+      if (newStatus === "closed") {
+        notify({ event_type: "ticket.closed", priority: ticket.priority, title: `Закрыта: ${ticket.title}`, payload: basePayload });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] });
@@ -205,6 +251,32 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
         module: "tickets",
         entityId: ticket.id,
         details: `→ ${assignedProfile?.full_name}`,
+      });
+
+      // Notifications: assigned + status_changed
+      const payload = {
+        ticket_id: ticket.id,
+        created_by: ticket.created_by,
+        assigned_to: assignedTo,
+        priority: ticket.priority,
+        request_type: ticket.request_type,
+        product_code: ticket.product_code,
+        site_id: ticket.site_id,
+        status: "assigned",
+      };
+      notify({
+        event_type: "ticket.assigned",
+        priority: ticket.priority,
+        title: `Назначена заявка: ${ticket.title}`,
+        body: `Исполнитель: ${assignedProfile?.full_name || ""}`.trim(),
+        payload,
+        target_user_ids: [assignedTo],
+      });
+      notify({
+        event_type: "ticket.status_changed",
+        priority: ticket.priority,
+        title: `Заявка «${ticket.title}» → Назначена`,
+        payload,
       });
     },
     onSuccess: () => {
