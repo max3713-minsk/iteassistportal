@@ -8,7 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, Filter } from "lucide-react";
 import { NOTIFICATION_EVENTS, EVENT_MODULES, PRIORITY_OPTIONS } from "@/lib/notification-events";
+import { PRODUCTS, REQUEST_TYPE_LABELS } from "@/lib/ticket-categories";
 
 export function NotificationSubscriptions() {
   const { user, roles } = useAuth();
@@ -28,6 +31,15 @@ export function NotificationSubscriptions() {
     queryKey: ["notif-subs", user?.id],
     queryFn: async () => {
       const { data } = await supabase.from("notification_subscriptions").select("*");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["notif-sites"],
+    queryFn: async () => {
+      const { data } = await supabase.from("sites").select("id,name").order("name");
       return data ?? [];
     },
     enabled: !!user,
@@ -54,6 +66,17 @@ export function NotificationSubscriptions() {
   function update(eventKey: string, patch: Partial<{ enabled: boolean; min_priority: string | null; channel_ids: string[] }>) {
     const existing = subMap.get(eventKey) ?? { event_type: eventKey, enabled: true, min_priority: null, channel_ids: [] };
     upsertMut.mutate({ ...existing, ...patch });
+  }
+
+  function updateFilters(eventKey: string, patch: Record<string, any>) {
+    const existing = subMap.get(eventKey) ?? { event_type: eventKey, enabled: true, min_priority: null, channel_ids: [], filters: {} };
+    const filters = { ...(existing.filters ?? {}), ...patch };
+    // Clean undefined / empty arrays
+    for (const k of Object.keys(filters)) {
+      if (filters[k] === undefined || filters[k] === null) delete filters[k];
+      if (Array.isArray(filters[k]) && filters[k].length === 0) delete filters[k];
+    }
+    upsertMut.mutate({ ...existing, filters });
   }
 
   function toggleChannel(eventKey: string, channelId: string, on: boolean) {
