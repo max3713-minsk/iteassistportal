@@ -16,11 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "email" | "sms" | "mts_sms" | "a1_sms";
+type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
   mattermost: { label: "Mattermost", icon: MessageSquare, color: "text-indigo-500" },
+  smtp: { label: "Email (SMTP)", icon: Mail, color: "text-blue-500" },
   email: { label: "Email (webhook)", icon: Mail, color: "text-emerald-500" },
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
   mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
@@ -261,6 +262,7 @@ function ChannelDialog({ open, onOpenChange, editing, userId }: { open: boolean;
 
           {type === "telegram" && <TelegramFields config={config} setConfig={setConfig} />}
           {type === "mattermost" && <MattermostFields config={config} setConfig={setConfig} />}
+          {type === "smtp" && <SmtpFields config={config} setConfig={setConfig} />}
           {type === "email" && <EmailWebhookFields config={config} setConfig={setConfig} />}
           {type === "sms" && <SmsWebhookFields config={config} setConfig={setConfig} />}
           {type === "mts_sms" && <MtsSmsFields config={config} setConfig={setConfig} />}
@@ -498,6 +500,55 @@ function A1SmsFields({ config, setConfig }: any) {
       <div className="grid gap-2">
         <Label>Номер получателя (только цифры)</Label>
         <Input value={config.recipient ?? ""} onChange={(e) => setConfig({ ...config, recipient: e.target.value.replace(/[^\d]/g, "") })} placeholder="375291234567" />
+      </div>
+    </div>
+  );
+}
+
+function SmtpFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Прямая отправка по SMTP с вашими кредами. Для hoster.by: <b>mailbe04.hoster.by</b>, порт <b>465</b>, шифрование <b>SSL/TLS</b>.
+        Логин — это полный адрес ящика, пароль — пароль почтового ящика.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>SMTP сервер</Label>
+          <Input value={config.host ?? ""} onChange={(e) => setConfig({ ...config, host: e.target.value })} placeholder="mailbe04.hoster.by" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Порт</Label>
+          <Input type="number" value={config.port ?? 465} onChange={(e) => setConfig({ ...config, port: Number(e.target.value) })} placeholder="465" />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch checked={config.secure !== false} onCheckedChange={(v) => setConfig({ ...config, secure: v })} />
+        <Label className="cursor-pointer">SSL/TLS (обязательно для порта 465)</Label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Логин (email)</Label>
+          <Input value={config.username ?? ""} onChange={(e) => setConfig({ ...config, username: e.target.value })} placeholder="noreply@вашдомен.by" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Пароль</Label>
+          <Input type="password" value={config.password ?? ""} onChange={(e) => setConfig({ ...config, password: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Email отправителя (From)</Label>
+          <Input value={config.from_email ?? ""} onChange={(e) => setConfig({ ...config, from_email: e.target.value })} placeholder="noreply@вашдомен.by (по умолчанию = логин)" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Имя отправителя</Label>
+          <Input value={config.from_name ?? ""} onChange={(e) => setConfig({ ...config, from_name: e.target.value })} placeholder="ITE Assist Portal" />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Email получателя</Label>
+        <Input type="email" value={config.to_email ?? ""} onChange={(e) => setConfig({ ...config, to_email: e.target.value })} placeholder="user@company.by" />
       </div>
     </div>
   );
