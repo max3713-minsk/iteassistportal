@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [], moduleKey: "dashboard" },
@@ -45,6 +46,10 @@ export default function AppSidebar() {
           <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
           <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
         </div>
+      </div>
+
+      <div className="px-3 pt-3">
+        <GlobalSearch />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
