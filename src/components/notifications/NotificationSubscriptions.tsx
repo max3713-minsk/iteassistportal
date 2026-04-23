@@ -163,6 +163,16 @@ export function NotificationSubscriptions() {
                       </div>
                     </div>
                   )}
+
+                  {enabled && ev.module === "tickets" && (
+                    <TicketFilters
+                      eventKey={ev.key}
+                      filters={sub?.filters ?? {}}
+                      sites={sites}
+                      onChange={(patch) => updateFilters(ev.key, patch)}
+                      isCommentEvent={ev.key.startsWith("ticket.comment")}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -170,5 +180,159 @@ export function NotificationSubscriptions() {
         </Card>
       ))}
     </div>
+  );
+}
+
+// ---------------- TicketFilters ----------------
+function TicketFilters({
+  eventKey,
+  filters,
+  sites,
+  onChange,
+  isCommentEvent,
+}: {
+  eventKey: string;
+  filters: any;
+  sites: { id: string; name: string }[];
+  onChange: (patch: Record<string, any>) => void;
+  isCommentEvent: boolean;
+}) {
+  const assigneeScope = filters.assignee_scope ?? "any";
+  const creatorScope = filters.creator_scope ?? "any";
+  const priorities: string[] = filters.priorities ?? [];
+  const requestTypes: string[] = filters.request_types ?? [];
+  const productCodes: string[] = filters.product_codes ?? [];
+  const siteIds: string[] = filters.site_ids ?? [];
+
+  const toggleArr = (key: string, arr: string[], val: string) => {
+    onChange({ [key]: arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val] });
+  };
+
+  const activeCount =
+    (assigneeScope !== "any" ? 1 : 0) +
+    (creatorScope !== "any" ? 1 : 0) +
+    (priorities.length ? 1 : 0) +
+    (requestTypes.length ? 1 : 0) +
+    (productCodes.length ? 1 : 0) +
+    (siteIds.length ? 1 : 0) +
+    (isCommentEvent && filters.only_internal !== undefined ? 1 : 0);
+
+  return (
+    <Collapsible className="pt-2 border-t">
+      <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <Filter className="h-3 w-3" />
+        <span>Условия отправки</span>
+        {activeCount > 0 && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{activeCount}</Badge>}
+        <ChevronDown className="h-3 w-3 ml-auto" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3 space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Исполнитель</p>
+            <Select value={assigneeScope} onValueChange={(v) => onChange({ assignee_scope: v === "any" ? undefined : v })}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Любой</SelectItem>
+                <SelectItem value="me">Назначенные на меня</SelectItem>
+                <SelectItem value="unassigned">Без исполнителя</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Автор заявки</p>
+            <Select value={creatorScope} onValueChange={(v) => onChange({ creator_scope: v === "any" ? undefined : v })}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Любой</SelectItem>
+                <SelectItem value="me">Только мои заявки</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Приоритет (если ничего не выбрано — все)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {["P1","P2","P3","P4"].map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => toggleArr("priorities", priorities, p)}
+                className={`text-xs px-2 py-0.5 rounded-md border transition-colors ${
+                  priorities.includes(p) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted/50"
+                }`}
+              >{p}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Тип обращения</p>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(REQUEST_TYPE_LABELS).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => toggleArr("request_types", requestTypes, v)}
+                className={`text-xs px-2 py-0.5 rounded-md border transition-colors ${
+                  requestTypes.includes(v) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted/50"
+                }`}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Продукт / система</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PRODUCTS.map((p) => (
+              <button
+                key={p.code}
+                type="button"
+                onClick={() => toggleArr("product_codes", productCodes, p.code)}
+                className={`text-xs px-2 py-0.5 rounded-md border font-mono transition-colors ${
+                  productCodes.includes(p.code) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted/50"
+                }`}
+              >{p.code}</button>
+            ))}
+          </div>
+        </div>
+
+        {sites.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">ЦОД</p>
+            <div className="flex flex-wrap gap-1.5">
+              {sites.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleArr("site_ids", siteIds, s.id)}
+                  className={`text-xs px-2 py-0.5 rounded-md border transition-colors ${
+                    siteIds.includes(s.id) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted/50"
+                  }`}
+                >{s.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isCommentEvent && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Тип комментария</p>
+            <Select
+              value={filters.only_internal === true ? "internal" : filters.only_internal === false ? "public" : "any"}
+              onValueChange={(v) => onChange({ only_internal: v === "internal" ? true : v === "public" ? false : undefined })}
+            >
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Любые</SelectItem>
+                <SelectItem value="public">Только публичные</SelectItem>
+                <SelectItem value="internal">Только внутренние</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
