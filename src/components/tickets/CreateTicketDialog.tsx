@@ -161,21 +161,36 @@ export function CreateTicketDialog({ open, onOpenChange }: Props) {
         details: `${title.trim()} | ${productCode} | ${requestType}`,
       });
 
-      // Fire notification (fire-and-forget)
+      // Fire notification (fire-and-forget) — обогащённый payload
+      const siteName = sites.find((s: any) => s.id === siteId)?.name ?? null;
+      const equipmentName = equipment.find((e: any) => e.id === equipmentId)?.name ?? null;
+      const productName = PRODUCTS.find((p) => p.code === productCode)?.name ?? productCode;
+      const requestTypeLabel = REQUEST_TYPES.find((rt) => rt.value === requestType)?.label ?? requestType;
+      const url = `${window.location.origin}/tickets?id=${ticket.id}`;
       notify({
         event_type: "ticket.created",
         priority: sla.priority,
-        title: `Новая заявка: ${title.trim()}`,
-        body: `${productCode}${subcategory ? " / " + subcategory : ""} • ${requestType} • SLA ${sla.slaMinutes} мин.`,
+        title: title.trim(),
+        body: description.trim() ? description.trim().slice(0, 600) : `Тип: ${requestTypeLabel} • SLA ${sla.slaMinutes} мин.`,
         payload: {
           ticket_id: ticket.id,
           created_by: user!.id,
+          created_by_name: profile?.full_name || user!.email,
           assigned_to: null,
           priority: sla.priority,
           request_type: requestType,
+          request_type_label: requestTypeLabel,
           product_code: productCode,
+          product_name: productName,
+          subcategory: subcategory || null,
           site_id: siteId || null,
+          site_name: siteName,
+          equipment_name: equipmentName,
           status: "open",
+          status_label: "Новая",
+          sla_minutes: sla.slaMinutes,
+          sla_deadline_label: slaDeadline.toLocaleString("ru-RU", { timeZone: "Europe/Minsk" }),
+          url,
         },
       });
     },

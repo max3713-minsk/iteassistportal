@@ -121,18 +121,92 @@ function inQuietWindow(prefs: any): boolean {
   return hhmm >= ss || hhmm < ee;
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  "ticket.created": "🆕 Новая заявка",
+  "ticket.assigned": "👤 Назначена заявка",
+  "ticket.status_changed": "🔄 Изменение статуса",
+  "ticket.resolved": "✅ Заявка решена",
+  "ticket.closed": "🔒 Заявка закрыта",
+  "ticket.comment_added": "💬 Новый комментарий",
+  "ticket.comment_internal": "🔒 Внутренний комментарий",
+  "protocol.created": "📋 Новый протокол",
+  "protocol.completed": "✅ Протокол выполнен",
+  "monitoring.alert": "⚠️ Срабатывание мониторинга",
+  "audit.event": "📝 Событие в журнале",
+  "test.channel": "🧪 Тест канала",
+};
+
+function flattenPayload(prefix: string, value: any, out: Record<string, string>) {
+  if (value === null || value === undefined) return;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    for (const [k, v] of Object.entries(value)) {
+      flattenPayload(prefix ? `${prefix}.${k}` : k, v, out);
+    }
+  } else {
+    out[prefix] = typeof value === "string" ? value : JSON.stringify(value);
+  }
+}
+
+function buildDefaultMessage(data: { title: string; body?: string; event_type: string; priority?: string | null; payload?: Record<string, any> }): string {
+  const p = data.payload ?? {};
+  const lines: string[] = [];
+  const header = EVENT_LABELS[data.event_type] ?? data.event_type;
+  const prio = data.priority ? ` [${data.priority}]` : "";
+  lines.push(`${header}${prio}`);
+  lines.push(`📌 ${data.title}`);
+  if (data.body) lines.push("", data.body);
+
+  // Контекст
+  const ctx: string[] = [];
+  if (p.product_name || p.product_code) ctx.push(`🧩 Модуль: ${p.product_name ?? p.product_code}${p.subcategory ? " / " + p.subcategory : ""}`);
+  if (p.site_name) ctx.push(`🏢 ЦОД: ${p.site_name}`);
+  if (p.equipment_name) ctx.push(`🖥 Оборудование: ${p.equipment_name}`);
+  if (p.request_type_label || p.request_type) ctx.push(`📂 Тип: ${p.request_type_label ?? p.request_type}`);
+  if (p.status_label || p.status) ctx.push(`🏷 Статус: ${p.status_label ?? p.status}`);
+  if (p.old_status_label && p.status_label) ctx[ctx.length - 1] = `🏷 Статус: ${p.old_status_label} → ${p.status_label}`;
+  if (p.created_by_name) ctx.push(`👤 Автор: ${p.created_by_name}`);
+  if (p.assigned_to_name) ctx.push(`🔧 Исполнитель: ${p.assigned_to_name}`);
+  if (p.author_name && data.event_type.startsWith("ticket.comment")) ctx.push(`✍️ Комментарий от: ${p.author_name}`);
+  if (p.changed_by_name && data.event_type === "ticket.status_changed") ctx.push(`✍️ Изменил: ${p.changed_by_name}`);
+  if (p.sla_deadline_label) ctx.push(`⏱ SLA до: ${p.sla_deadline_label}`);
+  if (p.actor_name && data.event_type === "audit.event") ctx.push(`👤 Пользователь: ${p.actor_name}`);
+  if (p.module_label && data.event_type === "audit.event") ctx.push(`🧩 Модуль: ${p.module_label}`);
+  if (p.host_name && data.event_type === "monitoring.alert") ctx.push(`🖥 Хост: ${p.host_name}`);
+  if (p.metric_name && data.event_type === "monitoring.alert") ctx.push(`📊 Метрика: ${p.metric_name}${p.value != null ? " = " + p.value : ""}`);
+
+  if (ctx.length) {
+    lines.push("");
+    lines.push(...ctx);
+  }
+
+  if (p.comment_text && data.event_type.startsWith("ticket.comment")) {
+    lines.push("");
+    lines.push(`«${String(p.comment_text).slice(0, 600)}»`);
+  }
+  if (p.transition_comment && data.event_type === "ticket.status_changed") {
+    lines.push("");
+    lines.push(`Комментарий: ${String(p.transition_comment).slice(0, 400)}`);
+  }
+  if (p.url) {
+    lines.push("");
+    lines.push(`🔗 ${p.url}`);
+  }
+  return lines.join("\n");
+}
+
 function renderTemplate(tpl: string | undefined, data: { title: string; body?: string; event_type: string; priority?: string | null; payload?: Record<string, unknown> }): string {
-  const base = tpl ?? "{{title}}\n{{body}}";
+  if (!tpl || !tpl.trim()) {
+    return buildDefaultMessage(data as any);
+  }
   const flat: Record<string, string> = {
     title: data.title,
     body: data.body ?? "",
     event_type: data.event_type,
+    event_label: EVENT_LABELS[data.event_type] ?? data.event_type,
     priority: data.priority ?? "",
   };
-  for (const [k, v] of Object.entries(data.payload ?? {})) {
-    flat[k] = typeof v === "string" ? v : JSON.stringify(v);
-  }
-  return base.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, k) => flat[k] ?? "");
+  flattenPayload("", data.payload ?? {}, flat);
+  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, k) => flat[k] ?? "");
 }
 
 async function sendTelegram(cfg: any, message: string) {
