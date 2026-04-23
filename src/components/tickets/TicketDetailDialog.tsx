@@ -95,6 +95,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const commentMutation = useMutation({
     mutationFn: async () => {
       if (!comment.trim()) return;
+      const isInternal = false; // current UI does not expose internal flag
       const { error } = await supabase.from("ticket_comments").insert({
         ticket_id: ticket.id,
         user_id: user!.id,
@@ -102,6 +103,25 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       });
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
+
+      notify({
+        event_type: isInternal ? "ticket.comment_internal" : "ticket.comment_added",
+        priority: ticket.priority,
+        title: `Комментарий к «${ticket.title}»`,
+        body: comment.trim().slice(0, 240),
+        payload: {
+          ticket_id: ticket.id,
+          created_by: ticket.created_by,
+          assigned_to: ticket.assigned_to,
+          priority: ticket.priority,
+          request_type: ticket.request_type,
+          product_code: ticket.product_code,
+          site_id: ticket.site_id,
+          status: ticket.status,
+          is_internal: isInternal,
+          author_id: user!.id,
+        },
+      });
     },
     onSuccess: () => {
       setComment("");
