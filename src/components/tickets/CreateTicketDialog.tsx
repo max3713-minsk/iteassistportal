@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
+import { notify } from "@/lib/notify";
 import {
   PRODUCTS,
   REQUEST_TYPES,
@@ -158,6 +159,24 @@ export function CreateTicketDialog({ open, onOpenChange }: Props) {
         module: "tickets",
         entityId: ticket.id,
         details: `${title.trim()} | ${productCode} | ${requestType}`,
+      });
+
+      // Fire notification (fire-and-forget)
+      notify({
+        event_type: "ticket.created",
+        priority: sla.priority,
+        title: `Новая заявка: ${title.trim()}`,
+        body: `${productCode}${subcategory ? " / " + subcategory : ""} • ${requestType} • SLA ${sla.slaMinutes} мин.`,
+        payload: {
+          ticket_id: ticket.id,
+          created_by: user!.id,
+          assigned_to: null,
+          priority: sla.priority,
+          request_type: requestType,
+          product_code: productCode,
+          site_id: siteId || null,
+          status: "open",
+        },
       });
     },
     onSuccess: () => {
