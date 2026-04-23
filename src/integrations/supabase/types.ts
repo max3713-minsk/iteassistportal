@@ -148,16 +148,74 @@ export type Database = {
         }
         Relationships: []
       }
+      contracts: {
+        Row: {
+          contract_number: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          organization_id: string
+          scan_name: string | null
+          scan_path: string | null
+          start_date: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_number: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          organization_id: string
+          scan_name?: string | null
+          scan_path?: string | null
+          start_date: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_number?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          organization_id?: string
+          scan_name?: string | null
+          scan_path?: string | null
+          start_date?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
           description: string | null
+          doc_category: string
           file_path: string
           file_size: number | null
           file_type: string | null
           id: string
           name: string
           organization: string
+          organization_id: string | null
           site_id: string | null
           updated_at: string
           uploaded_by: string | null
@@ -165,12 +223,14 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          doc_category?: string
           file_path: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           name: string
           organization: string
+          organization_id?: string | null
           site_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
@@ -178,17 +238,26 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          doc_category?: string
           file_path?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           name?: string
           organization?: string
+          organization_id?: string | null
           site_id?: string | null
           updated_at?: string
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_site_id_fkey"
             columns: ["site_id"]
@@ -206,6 +275,7 @@ export type Database = {
           id: string
           model: string | null
           name: string
+          organization_id: string | null
           os_info: string | null
           quantity: number | null
           serial_number: string | null
@@ -220,6 +290,7 @@ export type Database = {
           id?: string
           model?: string | null
           name: string
+          organization_id?: string | null
           os_info?: string | null
           quantity?: number | null
           serial_number?: string | null
@@ -234,6 +305,7 @@ export type Database = {
           id?: string
           model?: string | null
           name?: string
+          organization_id?: string | null
           os_info?: string | null
           quantity?: number | null
           serial_number?: string | null
@@ -247,6 +319,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -327,6 +406,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           completed_by: string | null
+          contract_id: string | null
           created_at: string
           created_by: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
@@ -342,6 +422,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           completed_by?: string | null
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
@@ -357,6 +438,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           completed_by?: string | null
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
@@ -370,6 +452,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_protocols_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maintenance_protocols_site_id_fkey"
             columns: ["site_id"]
@@ -520,6 +609,7 @@ export type Database = {
           ip_address: string
           name: string
           notes: string | null
+          organization_id: string | null
           port: number | null
           protocol: Database["public"]["Enums"]["monitoring_protocol"]
           protocols_config: Json | null
@@ -528,6 +618,7 @@ export type Database = {
           templates: Json | null
           updated_at: string
           visible_name: string | null
+          zabbix_connection_id: string | null
           zabbix_host_id: string | null
         }
         Insert: {
@@ -541,6 +632,7 @@ export type Database = {
           ip_address: string
           name: string
           notes?: string | null
+          organization_id?: string | null
           port?: number | null
           protocol?: Database["public"]["Enums"]["monitoring_protocol"]
           protocols_config?: Json | null
@@ -549,6 +641,7 @@ export type Database = {
           templates?: Json | null
           updated_at?: string
           visible_name?: string | null
+          zabbix_connection_id?: string | null
           zabbix_host_id?: string | null
         }
         Update: {
@@ -562,6 +655,7 @@ export type Database = {
           ip_address?: string
           name?: string
           notes?: string | null
+          organization_id?: string | null
           port?: number | null
           protocol?: Database["public"]["Enums"]["monitoring_protocol"]
           protocols_config?: Json | null
@@ -570,14 +664,29 @@ export type Database = {
           templates?: Json | null
           updated_at?: string
           visible_name?: string | null
+          zabbix_connection_id?: string | null
           zabbix_host_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "monitored_hosts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "monitored_hosts_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monitored_hosts_zabbix_connection_id_fkey"
+            columns: ["zabbix_connection_id"]
+            isOneToOne: false
+            referencedRelation: "zabbix_connections"
             referencedColumns: ["id"]
           },
         ]
@@ -851,6 +960,48 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          inn: string | null
+          is_active: boolean
+          name: string
+          notes: string | null
+          short_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          short_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          inn?: string | null
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          short_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1018,6 +1169,7 @@ export type Database = {
           id: string
           name: string
           organization: string
+          organization_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1028,6 +1180,7 @@ export type Database = {
           id?: string
           name: string
           organization: string
+          organization_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1038,9 +1191,18 @@ export type Database = {
           id?: string
           name?: string
           organization?: string
+          organization_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_comments: {
         Row: {
@@ -1128,6 +1290,7 @@ export type Database = {
           first_response_at: string | null
           id: string
           incident_category: string | null
+          organization_id: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
           product_code: string | null
           request_type: string | null
@@ -1148,6 +1311,7 @@ export type Database = {
           first_response_at?: string | null
           id?: string
           incident_category?: string | null
+          organization_id?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
           product_code?: string | null
           request_type?: string | null
@@ -1168,6 +1332,7 @@ export type Database = {
           first_response_at?: string | null
           id?: string
           incident_category?: string | null
+          organization_id?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
           product_code?: string | null
           request_type?: string | null
@@ -1185,6 +1350,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -1414,6 +1586,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      zabbix_connections: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+          vpn_info: string | null
+          zabbix_password: string
+          zabbix_url: string
+          zabbix_user: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+          vpn_info?: string | null
+          zabbix_password: string
+          zabbix_url: string
+          zabbix_user: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          vpn_info?: string | null
+          zabbix_password?: string
+          zabbix_url?: string
+          zabbix_user?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zabbix_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       zabbix_settings: {
         Row: {
