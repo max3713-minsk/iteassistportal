@@ -25,6 +25,7 @@ export default function Documents() {
   const [previewName, setPreviewName] = useState("");
   const [previewType, setPreviewType] = useState("");
   const [filterOrg, setFilterOrg] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -32,6 +33,7 @@ export default function Documents() {
   const [description, setDescription] = useState("");
   const [organization, setOrganization] = useState("");
   const [siteId, setSiteId] = useState("");
+  const [docCategory, setDocCategory] = useState<string>("technical");
   const [file, setFile] = useState<File | null>(null);
 
   const { data: documents = [], isLoading } = useQuery({
@@ -77,6 +79,7 @@ export default function Documents() {
         site_id: siteId || null,
         uploaded_by: session?.user.id,
         description: description || null,
+        doc_category: docCategory,
       });
       if (dbError) throw dbError;
     },
@@ -106,6 +109,7 @@ export default function Documents() {
     setDescription("");
     setOrganization("");
     setSiteId("");
+    setDocCategory("technical");
     setFile(null);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -135,7 +139,19 @@ export default function Documents() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const filteredDocs = filterOrg === "all" ? documents : documents.filter((d) => d.organization === filterOrg);
+  const categoryLabels: Record<string, string> = {
+    technical: "Техническая документация",
+    contract: "Договоры",
+    act: "Акты выполненных работ",
+    other: "Прочее",
+  };
+  const categories = ["technical", "contract", "act", "other"];
+
+  const filteredDocs = documents.filter((d: any) => {
+    if (filterOrg !== "all" && d.organization !== filterOrg) return false;
+    if (filterCategory !== "all" && (d.doc_category || "technical") !== filterCategory) return false;
+    return true;
+  });
 
   const canPreviewInBrowser = (type: string) =>
     type === "application/pdf" || type?.startsWith("image/");
@@ -182,6 +198,17 @@ export default function Documents() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Тип документа *</Label>
+                  <Select value={docCategory} onValueChange={setDocCategory}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c} value={c}>{categoryLabels[c]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Файл *</Label>
                   <Input
                     ref={fileRef}
@@ -223,6 +250,20 @@ export default function Documents() {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-64">
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger>
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Все типы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы документов</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{categoryLabels[c]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -240,9 +281,10 @@ export default function Documents() {
             <TableHeader>
               <TableRow>
                 <TableHead>Название</TableHead>
+                <TableHead>Тип</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead className="hidden md:table-cell">ЦОД</TableHead>
-                <TableHead className="hidden md:table-cell">Тип</TableHead>
+                <TableHead className="hidden md:table-cell">Формат</TableHead>
                 <TableHead className="hidden lg:table-cell">Размер</TableHead>
                 <TableHead className="w-32">Действия</TableHead>
               </TableRow>
@@ -251,6 +293,9 @@ export default function Documents() {
               {filteredDocs.map((doc: any) => (
                 <TableRow key={doc.id}>
                   <TableCell className="font-medium">{doc.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs">{categoryLabels[doc.doc_category || "technical"]}</Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">{doc.organization}</Badge>
                   </TableCell>
