@@ -15,6 +15,7 @@ import { logAudit } from "@/lib/audit";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog";
 import { TicketDetailDialog } from "@/components/tickets/TicketDetailDialog";
+import { SLATimer } from "@/components/tickets/SLATimer";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -124,6 +125,7 @@ export default function Tickets() {
                 <TableHead className="hidden lg:table-cell">Продукт</TableHead>
                 <TableHead className="hidden md:table-cell">Тип</TableHead>
                 <TableHead>Статус</TableHead>
+                <TableHead className="hidden md:table-cell">SLA</TableHead>
                 <TableHead className="hidden md:table-cell">Создана</TableHead>
               </TableRow>
             </TableHeader>
@@ -159,6 +161,9 @@ export default function Tickets() {
                       <Badge className={STATUS_COLORS[t.status]}>
                         {STATUS_LABELS[t.status] || t.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <SLATimer deadline={t.sla_deadline} status={t.status} compact />
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: ru })}

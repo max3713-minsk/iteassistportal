@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Clock, MessageSquare, History, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SLATimer } from "@/components/tickets/SLATimer";
 
 interface Props {
   ticket: any;
@@ -403,6 +404,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                   <span className={slaExpired ? "text-destructive font-medium" : ""}>
                     {format(new Date(ticket.sla_deadline), "dd.MM.yyyy HH:mm")}
                   </span>
+                  <SLATimer deadline={ticket.sla_deadline} status={ticket.status} />
                 </div>
               )}
               {assignedProfile && (
