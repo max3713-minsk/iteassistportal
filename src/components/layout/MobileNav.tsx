@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Панель управления", moduleKey: "dashboard" },
@@ -37,6 +38,7 @@ export default function MobileNav() {
         <span className="font-heading font-semibold text-sm">ITE Assist Portal</span>
       </div>
       <div className="flex items-center gap-1">
+        <GlobalSearch />
         <ThemeToggle />
         <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
