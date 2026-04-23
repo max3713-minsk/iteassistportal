@@ -173,12 +173,48 @@ export function NotificationSubscriptions() {
                       isCommentEvent={ev.key.startsWith("ticket.comment")}
                     />
                   )}
+
+                  {enabled && ev.key === "ticket.sla_warning" && (
+                    <SLAOffsetsPicker
+                      value={Array.isArray(sub?.filters?.sla_reminder_offsets) ? sub!.filters.sla_reminder_offsets : [30, 10, 5]}
+                      onChange={(offsets) => updateFilters(ev.key, { sla_reminder_offsets: offsets })}
+                    />
+                  )}
                 </div>
               );
             })}
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// ---------------- SLA Offset Picker ----------------
+function SLAOffsetsPicker({ value, onChange }: { value: number[]; onChange: (next: number[]) => void }) {
+  // Discrete 10-min steps + extra short reminders
+  const presets = [5, 10, 20, 30, 60, 120, 180];
+  const toggle = (n: number) => {
+    const set = new Set(value);
+    if (set.has(n)) set.delete(n); else set.add(n);
+    onChange(Array.from(set).sort((a, b) => b - a));
+  };
+  return (
+    <div className="pt-2 border-t space-y-1">
+      <p className="text-xs text-muted-foreground">Напоминать за (минуты до дедлайна SLA)</p>
+      <div className="flex flex-wrap gap-1.5">
+        {presets.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => toggle(n)}
+            className={`text-xs px-2 py-0.5 rounded-md border font-mono transition-colors ${
+              value.includes(n) ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted/50"
+            }`}
+          >{n} мин</button>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">Проверка выполняется каждые 5 минут. Уведомление отправится один раз для каждого выбранного интервала.</p>
     </div>
   );
 }
