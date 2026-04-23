@@ -16,11 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "email" | "sms" | "mts_sms" | "a1_sms";
+type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
   mattermost: { label: "Mattermost", icon: MessageSquare, color: "text-indigo-500" },
+  smtp: { label: "Email (SMTP)", icon: Mail, color: "text-blue-500" },
   email: { label: "Email (webhook)", icon: Mail, color: "text-emerald-500" },
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
   mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
@@ -261,6 +262,7 @@ function ChannelDialog({ open, onOpenChange, editing, userId }: { open: boolean;
 
           {type === "telegram" && <TelegramFields config={config} setConfig={setConfig} />}
           {type === "mattermost" && <MattermostFields config={config} setConfig={setConfig} />}
+          {type === "smtp" && <SmtpFields config={config} setConfig={setConfig} />}
           {type === "email" && <EmailWebhookFields config={config} setConfig={setConfig} />}
           {type === "sms" && <SmsWebhookFields config={config} setConfig={setConfig} />}
           {type === "mts_sms" && <MtsSmsFields config={config} setConfig={setConfig} />}
