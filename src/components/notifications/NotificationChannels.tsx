@@ -13,10 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
+import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone, Bell } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms";
+type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms" | "web_push";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
@@ -26,6 +26,7 @@ const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
   mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
   a1_sms: { label: "А1 SMS (smart-sender)", icon: Phone, color: "text-orange-500" },
+  web_push: { label: "Браузерные пуши", icon: Bell, color: "text-violet-500" },
 };
 
 export function NotificationChannels() {
@@ -267,6 +268,7 @@ function ChannelDialog({ open, onOpenChange, editing, userId }: { open: boolean;
           {type === "sms" && <SmsWebhookFields config={config} setConfig={setConfig} />}
           {type === "mts_sms" && <MtsSmsFields config={config} setConfig={setConfig} />}
           {type === "a1_sms" && <A1SmsFields config={config} setConfig={setConfig} />}
+          {type === "web_push" && <WebPushFields />}
 
           <div className="grid gap-2">
             <Label>Шаблон сообщения (опционально)</Label>
@@ -550,6 +552,40 @@ function SmtpFields({ config, setConfig }: any) {
         <Label>Email получателя</Label>
         <Input type="email" value={config.to_email ?? ""} onChange={(e) => setConfig({ ...config, to_email: e.target.value })} placeholder="user@company.by" />
       </div>
+    </div>
+  );
+}
+
+function WebPushFields() {
+  const supported = typeof Notification !== "undefined";
+  const [perm, setPerm] = useState<NotificationPermission>(supported ? Notification.permission : "default");
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Браузерные уведомления отображаются нативно в вашей ОС, пока хотя бы одна вкладка портала открыта.
+        Конфигурация не требуется — достаточно дать разрешение и сохранить канал.
+      </p>
+      {!supported && (
+        <p className="text-sm text-destructive">Этот браузер не поддерживает Notification API.</p>
+      )}
+      {supported && (
+        <div className="flex items-center gap-3">
+          <Badge variant={perm === "granted" ? "default" : perm === "denied" ? "destructive" : "outline"}>
+            {perm === "granted" ? "Разрешено" : perm === "denied" ? "Запрещено" : "Не запрошено"}
+          </Badge>
+          {perm !== "granted" && perm !== "denied" && (
+            <Button size="sm" variant="outline" type="button" onClick={async () => {
+              const p = await Notification.requestPermission();
+              setPerm(p);
+            }}>
+              Запросить разрешение
+            </Button>
+          )}
+          {perm === "denied" && (
+            <span className="text-xs text-muted-foreground">Включите уведомления в настройках браузера для этого сайта.</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
