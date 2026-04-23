@@ -104,22 +104,35 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
 
+      const { data: authorProfile } = await supabase
+        .from("profiles").select("full_name").eq("user_id", user!.id).single();
+      const productName = PRODUCTS.find((p) => p.code === ticket.product_code)?.name ?? ticket.product_code;
+      const url = `${window.location.origin}/tickets?id=${ticket.id}`;
       notify({
         event_type: isInternal ? "ticket.comment_internal" : "ticket.comment_added",
         priority: ticket.priority,
-        title: `Комментарий к «${ticket.title}»`,
-        body: comment.trim().slice(0, 240),
+        title: ticket.title,
+        body: comment.trim().slice(0, 600),
         payload: {
           ticket_id: ticket.id,
           created_by: ticket.created_by,
           assigned_to: ticket.assigned_to,
           priority: ticket.priority,
           request_type: ticket.request_type,
+          request_type_label: REQUEST_TYPE_LABELS[ticket.request_type] || ticket.request_type,
           product_code: ticket.product_code,
+          product_name: productName,
+          subcategory: ticket.subcategory,
           site_id: ticket.site_id,
+          site_name: ticket.sites?.name,
+          equipment_name: ticket.equipment?.name,
           status: ticket.status,
+          status_label: STATUS_LABELS[ticket.status] || ticket.status,
           is_internal: isInternal,
           author_id: user!.id,
+          author_name: authorProfile?.full_name || user!.email,
+          comment_text: comment.trim(),
+          url,
         },
       });
     },
@@ -181,28 +194,51 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       });
 
       // Notifications
+      const productName = PRODUCTS.find((p) => p.code === ticket.product_code)?.name ?? ticket.product_code;
+      const assignedId = assignedTo ?? ticket.assigned_to ?? null;
+      let assignedName: string | null = null;
+      if (assignedId) {
+        const { data: ap } = await supabase.from("profiles").select("full_name").eq("user_id", assignedId).single();
+        assignedName = ap?.full_name ?? null;
+      }
+      const { data: creatorProfile } = await supabase
+        .from("profiles").select("full_name").eq("user_id", ticket.created_by).single();
+      const url = `${window.location.origin}/tickets?id=${ticket.id}`;
       const basePayload = {
         ticket_id: ticket.id,
         created_by: ticket.created_by,
-        assigned_to: assignedTo ?? ticket.assigned_to ?? null,
+        created_by_name: creatorProfile?.full_name ?? null,
+        assigned_to: assignedId,
+        assigned_to_name: assignedName,
         priority: ticket.priority,
         request_type: ticket.request_type,
+        request_type_label: REQUEST_TYPE_LABELS[ticket.request_type] || ticket.request_type,
         product_code: ticket.product_code,
+        product_name: productName,
+        subcategory: ticket.subcategory,
         site_id: ticket.site_id,
+        site_name: ticket.sites?.name,
+        equipment_name: ticket.equipment?.name,
         status: newStatus,
+        status_label: STATUS_LABELS[newStatus] || newStatus,
+        old_status: ticket.status,
+        old_status_label: STATUS_LABELS[ticket.status] || ticket.status,
+        changed_by_name: profile?.full_name || user!.email,
+        transition_comment: transitionComment || null,
+        url,
       };
       notify({
         event_type: "ticket.status_changed",
         priority: ticket.priority,
-        title: `Заявка «${ticket.title}» → ${STATUS_LABELS[newStatus]}`,
+        title: ticket.title,
         body: transitionComment || undefined,
         payload: basePayload,
       });
       if (newStatus === "resolved") {
-        notify({ event_type: "ticket.resolved", priority: ticket.priority, title: `Решена: ${ticket.title}`, payload: basePayload });
+        notify({ event_type: "ticket.resolved", priority: ticket.priority, title: ticket.title, body: transitionComment || undefined, payload: basePayload });
       }
       if (newStatus === "closed") {
-        notify({ event_type: "ticket.closed", priority: ticket.priority, title: `Закрыта: ${ticket.title}`, payload: basePayload });
+        notify({ event_type: "ticket.closed", priority: ticket.priority, title: ticket.title, body: transitionComment || undefined, payload: basePayload });
       }
     },
     onSuccess: () => {
@@ -254,28 +290,44 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       });
 
       // Notifications: assigned + status_changed
+      const productName = PRODUCTS.find((p) => p.code === ticket.product_code)?.name ?? ticket.product_code;
+      const { data: creatorProfile } = await supabase
+        .from("profiles").select("full_name").eq("user_id", ticket.created_by).single();
+      const url = `${window.location.origin}/tickets?id=${ticket.id}`;
       const payload = {
         ticket_id: ticket.id,
         created_by: ticket.created_by,
+        created_by_name: creatorProfile?.full_name ?? null,
         assigned_to: assignedTo,
+        assigned_to_name: assignedProfile?.full_name ?? null,
         priority: ticket.priority,
         request_type: ticket.request_type,
+        request_type_label: REQUEST_TYPE_LABELS[ticket.request_type] || ticket.request_type,
         product_code: ticket.product_code,
+        product_name: productName,
+        subcategory: ticket.subcategory,
         site_id: ticket.site_id,
+        site_name: ticket.sites?.name,
+        equipment_name: ticket.equipment?.name,
         status: "assigned",
+        status_label: "Назначена",
+        old_status: ticket.status,
+        old_status_label: STATUS_LABELS[ticket.status] || ticket.status,
+        changed_by_name: profile?.full_name || user!.email,
+        url,
       };
       notify({
         event_type: "ticket.assigned",
         priority: ticket.priority,
-        title: `Назначена заявка: ${ticket.title}`,
-        body: `Исполнитель: ${assignedProfile?.full_name || ""}`.trim(),
+        title: ticket.title,
+        body: `Вам назначена заявка. Исполнитель: ${assignedProfile?.full_name || ""}`.trim(),
         payload,
         target_user_ids: [assignedTo],
       });
       notify({
         event_type: "ticket.status_changed",
         priority: ticket.priority,
-        title: `Заявка «${ticket.title}» → Назначена`,
+        title: ticket.title,
         payload,
       });
     },
