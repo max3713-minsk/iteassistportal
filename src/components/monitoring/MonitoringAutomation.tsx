@@ -246,22 +246,35 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
       </Card>
 
       <Dialog open={!!runDialog} onOpenChange={() => setRunDialog(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Запуск: {runDialog?.name}</DialogTitle>
             <DialogDescription>{runDialog?.description || "Скрипт Zabbix"}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Целевой хост</label>
-              <Select value={selectedHost} onValueChange={setSelectedHost}>
-                <SelectTrigger><SelectValue placeholder="Выберите хост" /></SelectTrigger>
-                <SelectContent>
-                  {hostsArr.map((h: any) => (
-                    <SelectItem key={h.hostid} value={h.hostid}>{h.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Целевой хост</label>
+                <Select value={selectedHost} onValueChange={setSelectedHost}>
+                  <SelectTrigger><SelectValue placeholder="Выберите хост" /></SelectTrigger>
+                  <SelectContent>
+                    {hostsArr.map((h: any) => (
+                      <SelectItem key={h.hostid} value={h.hostid}>{h.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedHost && !selectedHostDevice && (
+                <p className="text-xs text-muted-foreground">
+                  Хост не привязан к локальной CMDB — подсказки будут общие.
+                </p>
+              )}
+            </div>
+            <div className="border rounded-md p-3 bg-muted/20">
+              <DeviceHintsPanel
+                deviceType={selectedHostDevice?.device_type}
+                compact
+              />
             </div>
           </div>
           <DialogFooter>
