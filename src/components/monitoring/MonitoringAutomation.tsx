@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
+import DeviceHintsPanel from "./DeviceHintsPanel";
 
 interface Props {
   hosts: any[];
