@@ -13,10 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone } from "lucide-react";
+import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone, Bell } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
-type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms";
+type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms" | "web_push";
 
 const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }> = {
   telegram: { label: "Telegram", icon: Send, color: "text-sky-500" },
@@ -26,6 +26,7 @@ const TYPE_META: Record<ChannelType, { label: string; icon: any; color: string }
   sms: { label: "SMS (webhook)", icon: Phone, color: "text-amber-500" },
   mts_sms: { label: "МТС SMS (JSONv2)", icon: Phone, color: "text-red-500" },
   a1_sms: { label: "А1 SMS (smart-sender)", icon: Phone, color: "text-orange-500" },
+  web_push: { label: "Браузерные пуши", icon: Bell, color: "text-violet-500" },
 };
 
 export function NotificationChannels() {
