@@ -210,6 +210,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
                   {detail?.triggers?.length ?? 0}
                 </Badge>
               </TabsTrigger>
+              <TabsTrigger value="hints">Подсказки</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="flex-1 overflow-auto space-y-3">
