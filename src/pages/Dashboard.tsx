@@ -1,591 +1,113 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Server, Ticket, ClipboardList, AlertTriangle, CheckCircle2, Clock, Loader2, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
+import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
+import { Button } from "@/components/ui/button";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { format, subDays, startOfDay } from "date-fns";
-import { ru } from "date-fns/locale";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import { Lock, Unlock, RotateCcw, LayoutGrid, Eye, EyeOff } from "lucide-react";
+import { useDashboardLayout, WIDGET_TITLES, type LayoutItem } from "@/hooks/useDashboardLayout";
+import { WIDGET_COMPONENTS } from "@/components/dashboard/widgets";
 
-/* ─── Summary counts ─── */
-function useSummary() {
-  return useQuery({
-    queryKey: ["dashboard-summary"],
-    queryFn: async () => {
-      const [sites, equipment, openTickets, activeProtocols] = await Promise.all([
-        supabase.from("sites").select("*", { count: "exact", head: true }),
-        supabase.from("equipment").select("*", { count: "exact", head: true }),
-        supabase
-          .from("tickets")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["open", "in_progress", "waiting", "overdue"]),
-        supabase
-          .from("maintenance_protocols")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["pending", "in_progress"]),
-      ]);
-      return {
-        sites: sites.count ?? 0,
-        equipment: equipment.count ?? 0,
-        openTickets: openTickets.count ?? 0,
-        activeProtocols: activeProtocols.count ?? 0,
-      };
-    },
-  });
-}
-
-/* ─── Tickets by status ─── */
-function useTicketsByStatus() {
-  return useQuery({
-    queryKey: ["dashboard-tickets-status"],
-    queryFn: async () => {
-      const { data } = await supabase.from("tickets").select("status");
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((t) => {
-        counts[t.status] = (counts[t.status] || 0) + 1;
-      });
-      const labels: Record<string, string> = {
-        open: "Открыта",
-        in_progress: "В работе",
-        waiting: "Ожидание",
-        overdue: "Просрочена",
-        resolved: "Решена",
-        closed: "Закрыта",
-      };
-      return Object.entries(labels).map(([key, label]) => ({
-        status: key,
-        label,
-        count: counts[key] || 0,
-      }));
-    },
-  });
-}
-
-/* ─── Tickets by priority ─── */
-function useTicketsByPriority() {
-  return useQuery({
-    queryKey: ["dashboard-tickets-priority"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("tickets")
-        .select("priority")
-        .in("status", ["open", "in_progress", "waiting", "overdue"]);
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((t) => {
-        counts[t.priority] = (counts[t.priority] || 0) + 1;
-      });
-      return ["P1", "P2", "P3", "P4"].map((p) => ({ priority: p, count: counts[p] || 0 }));
-    },
-  });
-}
-
-/* ─── Protocols by status ─── */
-function useProtocolsByStatus() {
-  return useQuery({
-    queryKey: ["dashboard-protocols-status"],
-    queryFn: async () => {
-      const { data } = await supabase.from("maintenance_protocols").select("status");
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((p) => {
-        counts[p.status] = (counts[p.status] || 0) + 1;
-      });
-      const labels: Record<string, string> = {
-        pending: "Ожидает",
-        in_progress: "В работе",
-        completed: "Завершён",
-        overdue: "Просрочен",
-      };
-      return Object.entries(labels).map(([key, label]) => ({
-        status: key,
-        label,
-        count: counts[key] || 0,
-      }));
-    },
-  });
-}
-
-/* ─── Activity over last 14 days ─── */
-function useActivity() {
-  return useQuery({
-    queryKey: ["dashboard-activity"],
-    queryFn: async () => {
-      const since = subDays(new Date(), 13);
-      const [tickets, protocols] = await Promise.all([
-        supabase.from("tickets").select("created_at").gte("created_at", since.toISOString()),
-        supabase
-          .from("maintenance_protocols")
-          .select("created_at")
-          .gte("created_at", since.toISOString()),
-      ]);
-
-      const days: Record<string, { tickets: number; protocols: number }> = {};
-      for (let i = 0; i < 14; i++) {
-        const d = format(subDays(new Date(), 13 - i), "yyyy-MM-dd");
-        days[d] = { tickets: 0, protocols: 0 };
-      }
-      (tickets.data ?? []).forEach((t) => {
-        const d = format(new Date(t.created_at), "yyyy-MM-dd");
-        if (days[d]) days[d].tickets++;
-      });
-      (protocols.data ?? []).forEach((p) => {
-        const d = format(new Date(p.created_at), "yyyy-MM-dd");
-        if (days[d]) days[d].protocols++;
-      });
-
-      return Object.entries(days).map(([date, v]) => ({
-        date,
-        label: format(new Date(date), "dd MMM", { locale: ru }),
-        tickets: v.tickets,
-        protocols: v.protocols,
-      }));
-    },
-  });
-}
-
-/* ─── Equipment by status ─── */
-function useEquipmentByStatus() {
-  return useQuery({
-    queryKey: ["dashboard-equipment-status"],
-    queryFn: async () => {
-      const { data } = await supabase.from("equipment").select("status");
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((e) => {
-        const s = e.status || "active";
-        counts[s] = (counts[s] || 0) + 1;
-      });
-      const labels: Record<string, string> = {
-        active: "Активно",
-        maintenance: "На обслуживании",
-        decommissioned: "Выведено",
-        faulty: "Неисправно",
-      };
-      // Ensure all known statuses are present
-      const allStatuses = Object.keys(labels);
-      // Add any statuses from data that aren't in our labels
-      Object.keys(counts).forEach((s) => {
-        if (!allStatuses.includes(s)) allStatuses.push(s);
-      });
-      return allStatuses.map((status) => ({
-        status,
-        label: labels[status] || status,
-        count: counts[status] || 0,
-      }));
-    },
-  });
-}
-
-/* ─── Closed tickets stats ─── */
-function useClosedTicketsStats() {
-  return useQuery({
-    queryKey: ["dashboard-closed-tickets-stats"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("tickets")
-        .select("id, priority, created_at, first_response_at, resolved_at")
-        .in("status", ["resolved", "closed"]);
-
-      const rows = data ?? [];
-      const total = rows.length;
-      const byPriority: Record<string, number> = { P1: 0, P2: 0, P3: 0, P4: 0 };
-      let responseTimeSum = 0;
-      let responseTimeCount = 0;
-
-      rows.forEach((t) => {
-        byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
-        if (t.first_response_at) {
-          const diff = new Date(t.first_response_at).getTime() - new Date(t.created_at).getTime();
-          if (diff > 0) {
-            responseTimeSum += diff;
-            responseTimeCount++;
-          }
-        }
-      });
-
-      const avgResponseMs = responseTimeCount > 0 ? responseTimeSum / responseTimeCount : null;
-
-      return { total, byPriority, avgResponseMs };
-    },
-  });
-}
-
-/* ─── Recent 5 tickets ─── */
-function useRecentTickets() {
-  return useQuery({
-    queryKey: ["dashboard-recent-tickets"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("tickets")
-        .select("id, title, status, priority, created_at, site_id, sites(name)")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
-}
-
-/* ─── Colors ─── */
-const STATUS_COLORS = [
-  "hsl(217 91% 60%)",   // blue - open
-  "hsl(38 92% 50%)",    // amber - in_progress
-  "hsl(262 83% 58%)",   // violet - waiting
-  "hsl(0 72% 51%)",     // red - overdue
-  "hsl(142 71% 45%)",   // green - resolved
-  "hsl(160 84% 39%)",   // teal - closed
-];
-const PRIORITY_COLORS = [
-  "hsl(0 72% 51%)",     // red – P1
-  "hsl(25 95% 53%)",    // orange – P2
-  "hsl(38 92% 50%)",    // amber – P3
-  "hsl(217 91% 60%)",   // blue – P4
-];
-// Matches Equipment page badge colors: active=green, maintenance=amber, decommissioned=gray, faulty=red
-const EQUIPMENT_STATUS_COLOR_MAP: Record<string, string> = {
-  active: "hsl(152 82% 30%)",       // emerald-600
-  maintenance: "hsl(38 92% 50%)",   // amber-500
-  decommissioned: "hsl(220 9% 46%)",// gray
-  faulty: "hsl(0 72% 51%)",         // red
-};
-const EQUIPMENT_COLORS_FALLBACK = "hsl(199 89% 48%)";
-const PROTOCOL_COLORS = [
-  "hsl(38 92% 50%)",    // amber
-  "hsl(217 91% 60%)",   // blue
-  "hsl(160 84% 39%)",   // teal
-  "hsl(0 72% 51%)",     // red
-];
-
-const activityConfig: ChartConfig = {
-  tickets: { label: "Заявки", color: "hsl(217 91% 60%)" },
-  protocols: { label: "Протоколы", color: "hsl(160 84% 39%)" },
-};
-
-const ticketStatusConfig: ChartConfig = {
-  count: { label: "Кол-во" },
-};
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function Dashboard() {
-  const { data: summary } = useSummary();
-  const { data: ticketsByStatus } = useTicketsByStatus();
-  const { data: ticketsByPriority } = useTicketsByPriority();
-  const { data: protocolsByStatus } = useProtocolsByStatus();
-  const { data: activity } = useActivity();
-  const { data: equipmentByStatus } = useEquipmentByStatus();
-  const { data: recentTickets } = useRecentTickets();
-  const { data: closedStats } = useClosedTicketsStats();
+  const { layout, save, reset } = useDashboardLayout();
+  const [editMode, setEditMode] = useState(false);
 
-  function formatDuration(ms: number) {
-    const totalMinutes = Math.round(ms / 60000);
-    if (totalMinutes < 60) return `${totalMinutes} мин`;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours < 24) return `${hours} ч ${minutes > 0 ? `${minutes} мин` : ""}`.trim();
-    const days = Math.floor(hours / 24);
-    const remHours = hours % 24;
-    return `${days} д ${remHours > 0 ? `${remHours} ч` : ""}`.trim();
+  const visible = useMemo(() => layout.filter((w) => !w.hidden), [layout]);
+
+  function handleLayoutChange(next: Layout[]) {
+    if (!editMode) return;
+    const map = new Map(next.map((n) => [n.i, n]));
+    const merged: LayoutItem[] = layout.map((w) => {
+      const n = map.get(w.i);
+      if (!n || w.hidden) return w;
+      return { ...w, x: n.x, y: n.y, w: n.w, h: n.h };
+    });
+    save(merged);
   }
 
-  const priorityVariant: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
-    P1: "destructive",
-    P2: "default",
-    P3: "secondary",
-    P4: "outline",
-  };
-  const statusLabels: Record<string, string> = {
-    open: "Открыта",
-    in_progress: "В работе",
-    waiting: "Ожидание",
-    overdue: "Просрочена",
-    resolved: "Решена",
-    closed: "Закрыта",
-  };
-
-  const stats = [
-    { label: "ЦОД", value: summary?.sites ?? 0, icon: Building2, color: "text-primary", to: "/sites" },
-    { label: "Оборудование", value: summary?.equipment ?? 0, icon: Server, color: "text-accent", to: "/equipment" },
-    { label: "Открытые заявки", value: summary?.openTickets ?? 0, icon: Ticket, color: "text-destructive", to: "/tickets" },
-    { label: "Активные протоколы", value: summary?.activeProtocols ?? 0, icon: ClipboardList, color: "text-primary", to: "/protocols" },
-  ];
+  function toggleHidden(key: string) {
+    const next = layout.map((w) => w.i === key ? { ...w, hidden: !w.hidden } : w);
+    save(next);
+  }
 
   return (
-    <div className="space-y-6">
-      <h1 className="font-heading text-2xl font-bold">Панель управления</h1>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Link key={s.label} to={s.to} className="block">
-            <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
-                <s.icon className={cn("h-5 w-5", s.color)} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-heading font-bold">{s.value}</div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* Row: Tickets by status + Tickets by priority + Closed stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Заявки по статусам</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {ticketsByStatus && ticketsByStatus.some((d) => d.count > 0) ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
-                <BarChart data={ticketsByStatus}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {ticketsByStatus.map((_, i) => (
-                      <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Открытые заявки по приоритету</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {ticketsByPriority ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
-                <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="priority" />} />
-                  <Pie
-                    data={ticketsByPriority}
-                    dataKey="count"
-                    nameKey="priority"
-                    cx="50%"
-                    cy="45%"
-                    outerRadius={80}
-                    label={false}
-                  >
-                    {ticketsByPriority.map((_, i) => (
-                      <Cell key={i} fill={PRIORITY_COLORS[i]} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    payload={["P1 — Критический", "P2 — Высокий", "P3 — Средний", "P4 — Низкий"].map((label, i) => ({
-                      value: label,
-                      type: "circle" as const,
-                      color: PRIORITY_COLORS[i],
-                    }))}
-                    wrapperStyle={{ fontSize: 12 }}
-                  />
-                </PieChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Нет открытых заявок</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Closed tickets stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              Закрытые заявки
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Всего закрыто</p>
-              <p className="text-3xl font-heading font-bold">{closedStats?.total ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Среднее время первого реагирования</p>
-              <p className="text-lg font-heading font-semibold">
-                {closedStats?.avgResponseMs ? (
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    {formatDuration(closedStats.avgResponseMs)}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-sm">Нет данных</span>
-                )}
-              </p>
-            </div>
-            <div className="pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-2">По приоритетам</p>
-              <div className="space-y-1.5">
-                {["P1", "P2", "P3", "P4"].map((p, i) => (
-                  <div key={p} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[i] }} />
-                      <span className="text-muted-foreground">
-                        {p === "P1" ? "Критический" : p === "P2" ? "Высокий" : p === "P3" ? "Средний" : "Низкий"}
-                      </span>
-                    </div>
-                    <span className="font-medium">{closedStats?.byPriority[p] ?? 0}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row: Protocols by status + Equipment by status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Протоколы по статусам</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {protocolsByStatus && protocolsByStatus.some((d) => d.count > 0) ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[260px] w-full">
-                <BarChart data={protocolsByStatus}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {protocolsByStatus.map((_, i) => (
-                      <Cell key={i} fill={PROTOCOL_COLORS[i % PROTOCOL_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Оборудование по статусу</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {equipmentByStatus ? (
-              <ChartContainer config={ticketStatusConfig} className="h-[300px] w-full">
-                <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
-                  <Pie
-                    data={equipmentByStatus}
-                    dataKey="count"
-                    nameKey="label"
-                    cx="50%"
-                    cy="45%"
-                    outerRadius={80}
-                    label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}
-                  >
-                    {equipmentByStatus.map((item, i) => (
-                      <Cell key={i} fill={EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    payload={equipmentByStatus.map((item) => ({
-                      value: item.label,
-                      type: "circle" as const,
-                      color: EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_COLORS_FALLBACK,
-                    }))}
-                    wrapperStyle={{ fontSize: 12 }}
-                  />
-                </PieChart>
-              </ChartContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Activity chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Активность за 14 дней</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activity && activity.some((d) => d.tickets > 0 || d.protocols > 0) ? (
-            <ChartContainer config={activityConfig} className="h-[300px] w-full">
-              <LineChart data={activity}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Заявки" />
-                <Line type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} name="Протоколы" />
-              </LineChart>
-            </ChartContainer>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-10">Нет активности за последние 14 дней</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent tickets */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Последние заявки</CardTitle>
-          <Link to="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
-            Все заявки <ExternalLink className="h-3.5 w-3.5" />
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentTickets && recentTickets.length > 0 ? (
-            <div className="space-y-3">
-              {recentTickets.map((ticket) => (
-                <Link
-                  key={ticket.id}
-                  to={`/tickets?id=${ticket.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-bold">Панель управления</h1>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <LayoutGrid className="h-4 w-4 mr-1.5" />
+                Виджеты
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64 bg-background z-50">
+              <DropdownMenuLabel>Видимость виджетов</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {layout.map((w) => (
+                <DropdownMenuCheckboxItem
+                  key={w.i}
+                  checked={!w.hidden}
+                  onCheckedChange={() => toggleHidden(w.i)}
+                  onSelect={(e) => e.preventDefault()}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{ticket.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {(ticket as any).sites?.name ?? "—"} · {format(new Date(ticket.created_at), "dd MMM yyyy", { locale: ru })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <Badge variant={priorityVariant[ticket.priority] ?? "outline"} className="text-xs">
-                      {ticket.priority}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {statusLabels[ticket.status] ?? ticket.status}
-                    </Badge>
-                  </div>
-                </Link>
+                  {w.hidden ? <EyeOff className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 mr-2" />}
+                  {WIDGET_TITLES[w.i] ?? w.i}
+                </DropdownMenuCheckboxItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => reset()}>
+                <RotateCcw className="h-3.5 w-3.5 mr-2" />
+                Сбросить раскладку
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant={editMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setEditMode((v) => !v)}
+          >
+            {editMode ? <Unlock className="h-4 w-4 mr-1.5" /> : <Lock className="h-4 w-4 mr-1.5" />}
+            {editMode ? "Готово" : "Настроить"}
+          </Button>
+        </div>
+      </div>
+
+      {editMode && (
+        <p className="text-xs text-muted-foreground">
+          Перетащите виджеты за заголовок и измените их размер за правый нижний угол. Нажмите «Готово» для сохранения.
+        </p>
+      )}
+
+      <ResponsiveGridLayout
+        className={editMode ? "dashboard-edit" : ""}
+        layouts={{ lg: visible, md: visible, sm: visible, xs: visible, xxs: visible }}
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
+        rowHeight={40}
+        margin={[16, 16]}
+        containerPadding={[0, 0]}
+        isDraggable={editMode}
+        isResizable={editMode}
+        draggableHandle=".dashboard-drag-handle"
+        onLayoutChange={handleLayoutChange}
+        compactType="vertical"
+      >
+        {visible.map((w) => {
+          const Comp = WIDGET_COMPONENTS[w.i];
+          if (!Comp) return null;
+          return (
+            <div key={w.i} data-grid={w}>
+              <Comp />
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-10">Нет заявок</p>
-          )}
-        </CardContent>
-      </Card>
+          );
+        })}
+      </ResponsiveGridLayout>
     </div>
   );
 }
