@@ -504,3 +504,52 @@ function A1SmsFields({ config, setConfig }: any) {
     </div>
   );
 }
+
+function SmtpFields({ config, setConfig }: any) {
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Прямая отправка по SMTP с вашими кредами. Для hoster.by: <b>mailbe04.hoster.by</b>, порт <b>465</b>, шифрование <b>SSL/TLS</b>.
+        Логин — это полный адрес ящика, пароль — пароль почтового ящика.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>SMTP сервер</Label>
+          <Input value={config.host ?? ""} onChange={(e) => setConfig({ ...config, host: e.target.value })} placeholder="mailbe04.hoster.by" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Порт</Label>
+          <Input type="number" value={config.port ?? 465} onChange={(e) => setConfig({ ...config, port: Number(e.target.value) })} placeholder="465" />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch checked={config.secure !== false} onCheckedChange={(v) => setConfig({ ...config, secure: v })} />
+        <Label className="cursor-pointer">SSL/TLS (обязательно для порта 465)</Label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Логин (email)</Label>
+          <Input value={config.username ?? ""} onChange={(e) => setConfig({ ...config, username: e.target.value })} placeholder="noreply@вашдомен.by" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Пароль</Label>
+          <Input type="password" value={config.password ?? ""} onChange={(e) => setConfig({ ...config, password: e.target.value })} placeholder="••••••••" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2">
+          <Label>Email отправителя (From)</Label>
+          <Input value={config.from_email ?? ""} onChange={(e) => setConfig({ ...config, from_email: e.target.value })} placeholder="noreply@вашдомен.by (по умолчанию = логин)" />
+        </div>
+        <div className="grid gap-2">
+          <Label>Имя отправителя</Label>
+          <Input value={config.from_name ?? ""} onChange={(e) => setConfig({ ...config, from_name: e.target.value })} placeholder="ITE Assist Portal" />
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Label>Email получателя</Label>
+        <Input type="email" value={config.to_email ?? ""} onChange={(e) => setConfig({ ...config, to_email: e.target.value })} placeholder="user@company.by" />
+      </div>
+    </div>
+  );
+}
