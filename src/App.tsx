@@ -18,6 +18,8 @@ import AuditLog from "@/pages/AuditLog";
 import HelpReference from "@/pages/HelpReference";
 import Monitoring from "@/pages/Monitoring";
 import Notifications from "@/pages/Notifications";
+import Organizations from "@/pages/Organizations";
+import ZabbixConnections from "@/pages/ZabbixConnections";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +65,8 @@ const App = () => (
               <Route path="/audit" element={<AuditLog />} />
               <Route path="/monitoring" element={<Monitoring />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/organizations" element={<Organizations />} />
+              <Route path="/zabbix-connections" element={<ZabbixConnections />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />

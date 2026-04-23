@@ -43,9 +43,14 @@ function getFirstBusinessDay(year: number, month: number): Date {
 export function isTaskScheduledOnDate(
   frequency: FrequencyType,
   date: Date,
-  _serviceStartDate?: Date
+  serviceStartDate?: Date
 ): boolean {
   if (frequency === "on_request") return false;
+
+  // Don't schedule before contract start date
+  if (serviceStartDate && isBefore(date, serviceStartDate) && !isSameDay(date, serviceStartDate)) {
+    return false;
+  }
 
   // Don't schedule on weekends except daily
   const weekend = isWeekend(date);

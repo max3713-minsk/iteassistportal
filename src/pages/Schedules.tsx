@@ -2,6 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MaintenanceCalendar from "@/components/schedules/MaintenanceCalendar";
 import DayDetail from "@/components/schedules/DayDetail";
@@ -15,6 +18,22 @@ import {
 
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [contractId, setContractId] = useState<string>("");
+
+  const { data: contracts = [] } = useQuery({
+    queryKey: ["active-contracts"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contracts")
+        .select("id, contract_number, start_date, organization_id, organizations(name)")
+        .eq("is_active", true)
+        .order("start_date", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const activeContract = contracts.find((c: any) => c.id === contractId) ?? contracts[0];
+  const contractStartDate = activeContract?.start_date ? new Date(activeContract.start_date) : undefined;
 
   // Fetch tasks with category names
   const { data: tasks = [], isLoading } = useQuery({
@@ -44,8 +63,25 @@ export default function Schedules() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-heading text-2xl font-bold">Календарь ТО</h1>
+        {contracts.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Select value={activeContract?.id ?? ""} onValueChange={setContractId}>
+              <SelectTrigger className="w-[320px]"><SelectValue placeholder="Выберите договор"/></SelectTrigger>
+              <SelectContent>
+                {contracts.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.organizations?.name} — {c.contract_number} (с {c.start_date})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {contractStartDate && (
+              <Badge variant="outline" className="gap-1"><CalendarIcon className="h-3 w-3"/>Старт: {activeContract?.start_date}</Badge>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Legend */}
@@ -69,6 +105,7 @@ export default function Schedules() {
                 tasks={tasks}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
+                serviceStartDate={contractStartDate}
               />
             </Card>
             {selectedDate && (
