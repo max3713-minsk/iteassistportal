@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import HostItemsView from "./HostItemsView";
 import { priorityColor, priorityLabel } from "./monitoringUtils";
+import DeviceHintsPanel from "./DeviceHintsPanel";
 
 interface Props {
   open: boolean;
