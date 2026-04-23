@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell,
+  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut, ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase, Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ const navItems = [
   { to: "/tickets", icon: Ticket, label: "Заявки", roles: [], moduleKey: "tickets" },
   { to: "/documents", icon: FileArchive, label: "Документация", roles: [], moduleKey: "documents" },
   { to: "/monitoring", icon: Activity, label: "Мониторинг", roles: [], moduleKey: "monitoring" },
+  { to: "/organizations", icon: Briefcase, label: "Организации и Договоры", roles: ["admin"], moduleKey: "organizations" },
+  { to: "/zabbix-connections", icon: Plug, label: "Подключения Zabbix", roles: ["admin"], moduleKey: "zabbix" },
   { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
   { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
   { to: "/notifications", icon: Bell, label: "Уведомления", roles: [], moduleKey: "notifications" },
