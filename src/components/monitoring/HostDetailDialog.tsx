@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import HostItemsView from "./HostItemsView";
 import { priorityColor, priorityLabel } from "./monitoringUtils";
+import DeviceHintsPanel from "./DeviceHintsPanel";
 
 interface Props {
   open: boolean;
@@ -99,7 +100,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
       if (!zabbixHostId) return null;
       const { data } = await supabase
         .from("monitored_hosts")
-        .select("id")
+        .select("id, device_type")
         .eq("zabbix_host_id", zabbixHostId)
         .maybeSingle();
       return data;
@@ -209,6 +210,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
                   {detail?.triggers?.length ?? 0}
                 </Badge>
               </TabsTrigger>
+              <TabsTrigger value="hints">Подсказки</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="flex-1 overflow-auto space-y-3">
@@ -402,6 +404,16 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
                 </Table>
               ) : (
                 <p className="text-center py-8 text-sm text-muted-foreground">Триггеры не найдены</p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="hints" className="flex-1 overflow-auto">
+              <DeviceHintsPanel deviceType={(localHost as any)?.device_type} />
+              {!localHost && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Хост не привязан к локальной записи — показаны общие подсказки.
+                  Привяжите хост к оборудованию, чтобы получить подсказки по типу устройства.
+                </p>
               )}
             </TabsContent>
           </Tabs>

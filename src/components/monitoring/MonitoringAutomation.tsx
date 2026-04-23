@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
+import DeviceHintsPanel from "./DeviceHintsPanel";
 
 interface Props {
   hosts: any[];
@@ -47,6 +48,21 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
     queryClient.invalidateQueries({ queryKey: ["zabbix", "getScripts"] });
     toast({ title: "Синхронизация скриптов с Zabbix..." });
   };
+
+  // Подтягиваем device_type для выбранного хоста (если он есть в monitored_hosts)
+  const { data: selectedHostDevice } = useQuery({
+    queryKey: ["monitored-host-device", selectedHost],
+    queryFn: async () => {
+      if (!selectedHost) return null;
+      const { data } = await supabase
+        .from("monitored_hosts")
+        .select("device_type")
+        .eq("zabbix_host_id", selectedHost)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!selectedHost && !!runDialog,
+  });
 
   const executeMutation = useMutation({
     mutationFn: async ({ scriptid, hostid, scriptName, hostName }: {
@@ -230,22 +246,35 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
       </Card>
 
       <Dialog open={!!runDialog} onOpenChange={() => setRunDialog(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Запуск: {runDialog?.name}</DialogTitle>
             <DialogDescription>{runDialog?.description || "Скрипт Zabbix"}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Целевой хост</label>
-              <Select value={selectedHost} onValueChange={setSelectedHost}>
-                <SelectTrigger><SelectValue placeholder="Выберите хост" /></SelectTrigger>
-                <SelectContent>
-                  {hostsArr.map((h: any) => (
-                    <SelectItem key={h.hostid} value={h.hostid}>{h.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Целевой хост</label>
+                <Select value={selectedHost} onValueChange={setSelectedHost}>
+                  <SelectTrigger><SelectValue placeholder="Выберите хост" /></SelectTrigger>
+                  <SelectContent>
+                    {hostsArr.map((h: any) => (
+                      <SelectItem key={h.hostid} value={h.hostid}>{h.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedHost && !selectedHostDevice && (
+                <p className="text-xs text-muted-foreground">
+                  Хост не привязан к локальной CMDB — подсказки будут общие.
+                </p>
+              )}
+            </div>
+            <div className="border rounded-md p-3 bg-muted/20">
+              <DeviceHintsPanel
+                deviceType={selectedHostDevice?.device_type}
+                compact
+              />
             </div>
           </div>
           <DialogFooter>
