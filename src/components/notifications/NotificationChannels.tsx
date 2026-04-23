@@ -555,3 +555,37 @@ function SmtpFields({ config, setConfig }: any) {
     </div>
   );
 }
+
+function WebPushFields() {
+  const supported = typeof Notification !== "undefined";
+  const [perm, setPerm] = useState<NotificationPermission>(supported ? Notification.permission : "default");
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        Браузерные уведомления отображаются нативно в вашей ОС, пока хотя бы одна вкладка портала открыта.
+        Конфигурация не требуется — достаточно дать разрешение и сохранить канал.
+      </p>
+      {!supported && (
+        <p className="text-sm text-destructive">Этот браузер не поддерживает Notification API.</p>
+      )}
+      {supported && (
+        <div className="flex items-center gap-3">
+          <Badge variant={perm === "granted" ? "default" : perm === "denied" ? "destructive" : "outline"}>
+            {perm === "granted" ? "Разрешено" : perm === "denied" ? "Запрещено" : "Не запрошено"}
+          </Badge>
+          {perm !== "granted" && perm !== "denied" && (
+            <Button size="sm" variant="outline" type="button" onClick={async () => {
+              const p = await Notification.requestPermission();
+              setPerm(p);
+            }}>
+              Запросить разрешение
+            </Button>
+          )}
+          {perm === "denied" && (
+            <span className="text-xs text-muted-foreground">Включите уведомления в настройках браузера для этого сайта.</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
