@@ -100,7 +100,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
       if (!zabbixHostId) return null;
       const { data } = await supabase
         .from("monitored_hosts")
-        .select("id")
+        .select("id, device_type")
         .eq("zabbix_host_id", zabbixHostId)
         .maybeSingle();
       return data;
