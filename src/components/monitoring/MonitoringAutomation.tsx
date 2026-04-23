@@ -49,6 +49,21 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
     toast({ title: "Синхронизация скриптов с Zabbix..." });
   };
 
+  // Подтягиваем device_type для выбранного хоста (если он есть в monitored_hosts)
+  const { data: selectedHostDevice } = useQuery({
+    queryKey: ["monitored-host-device", selectedHost],
+    queryFn: async () => {
+      if (!selectedHost) return null;
+      const { data } = await supabase
+        .from("monitored_hosts")
+        .select("device_type")
+        .eq("zabbix_host_id", selectedHost)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!selectedHost && !!runDialog,
+  });
+
   const executeMutation = useMutation({
     mutationFn: async ({ scriptid, hostid, scriptName, hostName }: {
       scriptid: string; hostid: string; scriptName: string; hostName: string;
