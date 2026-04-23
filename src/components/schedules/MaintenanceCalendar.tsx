@@ -28,13 +28,15 @@ interface Props {
   tasks: TaskWithCategory[];
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
+  serviceStartDate?: Date;
 }
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate }: Props) {
+export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const today = startOfDay(new Date());
+  const startBoundary = serviceStartDate ? startOfDay(serviceStartDate) : null;
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -58,16 +60,17 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate 
       const key = format(day, "yyyy-MM-dd");
       const freqs = new Set<FrequencyType>();
       for (const t of tasks) {
-        if (isTaskScheduledOnDate(t.frequency, day)) {
+        if (isTaskScheduledOnDate(t.frequency, day, serviceStartDate)) {
           freqs.add(t.frequency);
         }
       }
       if (freqs.size > 0) map.set(key, freqs);
     }
     return map;
-  }, [calendarDays, tasks]);
+  }, [calendarDays, tasks, serviceStartDate]);
 
   const isPast = (date: Date) => isBefore(date, today) && !isSameDay(date, today);
+  const isBeforeStart = (date: Date) => startBoundary ? isBefore(date, startBoundary) && !isSameDay(date, startBoundary) : false;
 
   // Frequency priority for dot ordering
   const freqOrder: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
@@ -102,6 +105,7 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate 
           const key = format(day, "yyyy-MM-dd");
           const inMonth = isSameMonth(day, currentMonth);
           const past = isPast(day);
+          const beforeStart = isBeforeStart(day);
           const isToday = isSameDay(day, today);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const freqs = dayFrequencies.get(key);
@@ -113,16 +117,18 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate 
           return (
             <button
               key={key}
-              onClick={() => !past && inMonth && onSelectDate(day)}
-              disabled={past || !inMonth}
+              onClick={() => !past && !beforeStart && inMonth && onSelectDate(day)}
+              disabled={past || beforeStart || !inMonth}
               className={cn(
                 "relative flex flex-col items-center justify-start rounded-lg p-1 min-h-[60px] md:min-h-[72px] transition-all text-sm border border-transparent",
                 !inMonth && "opacity-20 cursor-default",
                 inMonth && past && "opacity-40 cursor-default bg-muted/50",
-                inMonth && !past && "hover:border-primary/40 cursor-pointer",
+                inMonth && beforeStart && "opacity-30 cursor-not-allowed bg-muted/30",
+                inMonth && !past && !beforeStart && "hover:border-primary/40 cursor-pointer",
                 isToday && "ring-2 ring-primary/50 font-bold",
                 isSelected && "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm",
               )}
+              title={beforeStart ? "До даты старта договора" : undefined}
             >
               <span
                 className={cn(
