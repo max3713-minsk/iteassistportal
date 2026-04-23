@@ -398,6 +398,7 @@ async function deliverToChannel(supabase: any, userId: string, channel: any, eve
     else if (channel.channel_type === "mts_sms") result = await sendMtsSms(channel.config, message, (event as any).override_phone);
     else if (channel.channel_type === "a1_sms") result = await sendA1Sms(channel.config, message, (event as any).override_phone);
     else if (channel.channel_type === "smtp") result = await sendSmtp(channel.config, message, event.title, (event as any).override_email);
+    else if (channel.channel_type === "web_push") result = { ok: true, status: 200, body: "queued for browser" };
     else result = await sendWebhook(channel.config, message, event.title, event);
 
     await supabase.from("notification_log").insert({
