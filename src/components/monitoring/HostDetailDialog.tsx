@@ -406,6 +406,16 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
                 <p className="text-center py-8 text-sm text-muted-foreground">Триггеры не найдены</p>
               )}
             </TabsContent>
+
+            <TabsContent value="hints" className="flex-1 overflow-auto">
+              <DeviceHintsPanel deviceType={(localHost as any)?.device_type} />
+              {!localHost && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Хост не привязан к локальной записи — показаны общие подсказки.
+                  Привяжите хост к оборудованию, чтобы получить подсказки по типу устройства.
+                </p>
+              )}
+            </TabsContent>
           </Tabs>
         )}
       </DialogContent>
