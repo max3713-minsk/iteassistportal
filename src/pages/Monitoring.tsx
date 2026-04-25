@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,10 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
-import { Activity, AlertTriangle, RefreshCw, Settings } from "lucide-react";
+import { Activity, AlertTriangle, RefreshCw, Settings, LayoutDashboard } from "lucide-react";
 import { priorityToIncident, priorityLabel } from "@/components/monitoring/monitoringUtils";
 
-import DashboardGrid from "@/components/monitoring/DashboardGrid";
 import MonitoringHosts from "@/components/monitoring/MonitoringHosts";
 import MonitoringProblems from "@/components/monitoring/MonitoringProblems";
 import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
@@ -59,7 +59,7 @@ export default function Monitoring() {
   const { toast } = useToast();
   const { isStaff } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useState("hosts");
   const [problemPriorityFilter, setProblemPriorityFilter] = useState("all");
 
   const { data: isZabbixConfigured = false } = useZabbixConfigured();
@@ -71,19 +71,6 @@ export default function Monitoring() {
   const { data: items = [] } = useZabbixData("getItems", isZabbixConfigured);
   const { data: graphs = [] } = useZabbixData("getGraphs", isZabbixConfigured);
   const { data: scripts = [] } = useZabbixData("getScripts", isZabbixConfigured);
-
-  // Ansible playbooks (legacy)
-  const { data: playbooks = [] } = useQuery({
-    queryKey: ["ansible", "playbooks"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("ansible-proxy", {
-        body: { action: "listPlaybooks" },
-      });
-      if (error) throw error;
-      return data?.result ?? [];
-    },
-    retry: 1,
-  });
 
   const connectionError = !isZabbixConfigured || hostsError != null;
 
@@ -161,10 +148,18 @@ export default function Monitoring() {
           <Activity className="h-6 w-6 text-primary" />
           Мониторинг и автоматизация
         </h1>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Обновить
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/">
+              <LayoutDashboard className="h-4 w-4 mr-2" />
+              Дашборды
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Обновить
+          </Button>
+        </div>
       </div>
 
       {connectionError && (
@@ -185,7 +180,6 @@ export default function Monitoring() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="dashboard">Дашборд</TabsTrigger>
           <TabsTrigger value="hosts">Хосты</TabsTrigger>
           <TabsTrigger value="problems">Проблемы и Алерты</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
@@ -196,19 +190,6 @@ export default function Monitoring() {
             Настройка
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="dashboard">
-          <DashboardGrid
-            hosts={hosts}
-            alerts={alerts}
-            problems={problems}
-            playbooks={playbooks}
-            connectionError={connectionError}
-            onTabChange={setTab}
-            onFilterProblems={setProblemPriorityFilter}
-            graphs={graphs}
-          />
-        </TabsContent>
 
         <TabsContent value="hosts">
           <MonitoringHosts

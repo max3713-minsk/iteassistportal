@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import KillSwitch, { useLogoKillTrigger } from "@/components/KillSwitch";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [], moduleKey: "dashboard" },
@@ -29,6 +30,7 @@ const navItems = [
 export default function AppSidebar() {
   const { pathname } = useLocation();
   const { profile, signOut, hasRole, hasModuleAccess, roles } = useAuth();
+  const kill = useLogoKillTrigger();
 
   const visibleItems = navItems.filter((item) => {
     // Role-based filter (admin-only items)
@@ -41,7 +43,15 @@ export default function AppSidebar() {
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
-        <BrandLogo className="h-9 w-auto" />
+        <button
+          type="button"
+          aria-label="Logo"
+          onClick={kill.onLogoClick}
+          className="focus:outline-none cursor-pointer"
+          tabIndex={-1}
+        >
+          <BrandLogo className="h-9 w-auto" />
+        </button>
         <div className="min-w-0">
           <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
           <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
@@ -91,6 +101,7 @@ export default function AppSidebar() {
           Выйти
         </Button>
       </div>
+      <KillSwitch open={kill.open} onOpenChange={kill.setOpen} />
     </aside>
   );
 }

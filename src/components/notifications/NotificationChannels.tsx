@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone, Bell } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Send, Trash2, Pencil, Plus, CheckCircle2, XCircle, AlertCircle, MessageSquare, Mail, Phone, Bell, ToggleLeft, ToggleRight } from "lucide-react";
 import { testChannel } from "@/lib/notify";
 
 type ChannelType = "telegram" | "mattermost" | "smtp" | "email" | "sms" | "mts_sms" | "a1_sms" | "web_push";
@@ -38,6 +39,7 @@ export function NotificationChannels() {
   const [smsTestChannel, setSmsTestChannel] = useState<any | null>(null);
   const [smsTestPhone, setSmsTestPhone] = useState("");
   const [smsTestSending, setSmsTestSending] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: channels = [], isLoading } = useQuery({
     queryKey: ["notif-channels", user?.id],
@@ -67,6 +69,44 @@ export function NotificationChannels() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notif-channels"] }),
   });
+
+  const bulkUpdateMut = useMutation({
+    mutationFn: async ({ ids, enabled }: { ids: string[]; enabled: boolean }) => {
+      const { error } = await supabase.from("notification_channels").update({ enabled }).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["notif-channels"] });
+      toast({ title: v.enabled ? "Каналы включены" : "Каналы выключены" });
+    },
+  });
+
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("notification_channels").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notif-channels"] });
+      toast({ title: "Каналы удалены" });
+      setSelected(new Set());
+    },
+  });
+
+  const allIds = useMemo(() => (channels as Array<{ id: string }>).map((c) => c.id), [channels]);
+  const allChecked = selected.size > 0 && selected.size === allIds.length;
+  const someChecked = selected.size > 0 && !allChecked;
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(allIds) : new Set());
+  }
 
   async function handleTest(id: string) {
     const ch = channels.find((c: any) => c.id === id);
@@ -107,6 +147,52 @@ export function NotificationChannels() {
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Добавить канал</Button>
       </div>
 
+      {channels.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border p-2 bg-muted/30">
+          <label className="flex items-center gap-2 text-sm cursor-pointer pl-1">
+            <Checkbox
+              checked={allChecked ? true : someChecked ? "indeterminate" : false}
+              onCheckedChange={(v) => toggleAll(!!v)}
+            />
+            <span className="text-muted-foreground">
+              {selected.size > 0 ? `Выбрано: ${selected.size}` : "Выбрать все"}
+            </span>
+          </label>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selected.size === 0}
+              onClick={() => bulkUpdateMut.mutate({ ids: Array.from(selected), enabled: true })}
+            >
+              <ToggleRight className="h-4 w-4 mr-1.5" />
+              Включить
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selected.size === 0}
+              onClick={() => bulkUpdateMut.mutate({ ids: Array.from(selected), enabled: false })}
+            >
+              <ToggleLeft className="h-4 w-4 mr-1.5" />
+              Выключить
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              disabled={selected.size === 0}
+              onClick={() => {
+                if (confirm(`Удалить ${selected.size} канал(ов)?`)) bulkDeleteMut.mutate(Array.from(selected));
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Удалить
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>
       ) : channels.length === 0 ? (
@@ -123,6 +209,12 @@ export function NotificationChannels() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
+                      <Checkbox
+                        checked={selected.has(ch.id)}
+                        onCheckedChange={(v) => toggleOne(ch.id, !!v)}
+                        className="mt-1"
+                        aria-label="Выбрать канал"
+                      />
                       <Icon className={`h-5 w-5 shrink-0 ${meta?.color}`} />
                       <div className="min-w-0">
                         <CardTitle className="text-base truncate">{ch.name}</CardTitle>
