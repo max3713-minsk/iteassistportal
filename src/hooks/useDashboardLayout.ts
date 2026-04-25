@@ -1,46 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { WIDGET_REGISTRY, type ChartType } from "@/components/dashboard/widgets";
 
-export interface DashboardWidgetRow {
+export interface WidgetInstance {
+  id: string;          // db row id, used as react-grid-layout key
+  type: string;        // widget_type, key in WIDGET_REGISTRY
+  x: number; y: number; w: number; h: number;
+  chartType?: ChartType;
+}
+
+interface DbRow {
   id: string;
   user_id: string;
   widget_type: string;
   title: string;
-  config: { x?: number; y?: number; w?: number; h?: number; hidden?: boolean } & Record<string, unknown>;
+  config: { x?: number; y?: number; w?: number; h?: number; chartType?: ChartType } & Record<string, unknown>;
   position: number;
 }
 
-export interface LayoutItem {
-  i: string;          // widget_type key
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  hidden?: boolean;
-}
-
-export const DEFAULT_WIDGETS: LayoutItem[] = [
-  { i: "summary",            x: 0, y: 0,  w: 12, h: 3 },
-  { i: "tickets-by-status",  x: 0, y: 3,  w: 4,  h: 7 },
-  { i: "tickets-by-priority",x: 4, y: 3,  w: 4,  h: 7 },
-  { i: "closed-stats",       x: 8, y: 3,  w: 4,  h: 7 },
-  { i: "protocols-by-status",x: 0, y: 10, w: 6,  h: 7 },
-  { i: "equipment-by-status",x: 6, y: 10, w: 6,  h: 7 },
-  { i: "activity",           x: 0, y: 17, w: 12, h: 7 },
-  { i: "recent-tickets",     x: 0, y: 24, w: 12, h: 7 },
+const DEFAULT_TYPES: Array<{ type: string; x: number; y: number; w: number; h: number; chartType?: ChartType }> = [
+  { type: "summary",             x: 0,  y: 0,  w: 12, h: 3 },
+  { type: "tickets-by-status",   x: 0,  y: 3,  w: 4,  h: 7, chartType: "bar" },
+  { type: "tickets-by-priority", x: 4,  y: 3,  w: 4,  h: 7, chartType: "donut" },
+  { type: "closed-stats",        x: 8,  y: 3,  w: 4,  h: 7 },
+  { type: "monitoring-hosts",    x: 0,  y: 10, w: 6,  h: 7, chartType: "donut" },
+  { type: "monitoring-events",   x: 6,  y: 10, w: 6,  h: 7 },
+  { type: "protocols-by-status", x: 0,  y: 17, w: 6,  h: 7, chartType: "bar" },
+  { type: "equipment-by-status", x: 6,  y: 17, w: 6,  h: 7, chartType: "donut" },
+  { type: "activity",            x: 0,  y: 24, w: 12, h: 7, chartType: "line" },
+  { type: "recent-tickets",      x: 0,  y: 31, w: 12, h: 7 },
 ];
-
-export const WIDGET_TITLES: Record<string, string> = {
-  "summary": "Сводка",
-  "tickets-by-status": "Заявки по статусам",
-  "tickets-by-priority": "Открытые заявки по приоритету",
-  "closed-stats": "Закрытые заявки",
-  "protocols-by-status": "Протоколы по статусам",
-  "equipment-by-status": "Оборудование по статусу",
-  "activity": "Активность за 14 дней",
-  "recent-tickets": "Последние заявки",
-};
 
 export function useDashboardLayout() {
   const { user } = useAuth();
@@ -49,49 +39,60 @@ export function useDashboardLayout() {
   const query = useQuery({
     queryKey: ["dashboard-layout", user?.id],
     queryFn: async () => {
-      if (!user) return [] as DashboardWidgetRow[];
+      if (!user) return [] as WidgetInstance[];
       const { data } = await supabase
         .from("user_dashboard_widgets")
         .select("*")
         .eq("user_id", user.id)
         .order("position", { ascending: true });
-      return (data || []) as unknown as DashboardWidgetRow[];
+      const rows = (data || []) as unknown as DbRow[];
+      if (rows.length === 0) {
+        // initialise defaults locally (persisted on first save)
+        return DEFAULT_TYPES.map((d, i) => ({
+          id: `default-${i}-${d.type}`, type: d.type, x: d.x, y: d.y, w: d.w, h: d.h, chartType: d.chartType,
+        })) as WidgetInstance[];
+      }
+      return rows.map((r) => ({
+        id: r.id,
+        type: r.widget_type,
+        x: r.config.x ?? 0,
+        y: r.config.y ?? 0,
+        w: r.config.w ?? WIDGET_REGISTRY[r.widget_type]?.defaultW ?? 4,
+        h: r.config.h ?? WIDGET_REGISTRY[r.widget_type]?.defaultH ?? 6,
+        chartType: r.config.chartType,
+      })) as WidgetInstance[];
     },
     enabled: !!user,
   });
 
-  // Merge stored config with defaults
-  const rows = query.data ?? [];
-  const stored = new Map(rows.map((r) => [r.widget_type, r]));
-  const layout: LayoutItem[] = DEFAULT_WIDGETS.map((d) => {
-    const r = stored.get(d.i);
-    if (!r) return d;
-    return {
-      i: d.i,
-      x: r.config.x ?? d.x,
-      y: r.config.y ?? d.y,
-      w: r.config.w ?? d.w,
-      h: r.config.h ?? d.h,
-      hidden: r.config.hidden ?? false,
-    };
-  });
+  const layout = query.data ?? [];
+
+  async function persist(items: WidgetInstance[]) {
+    if (!user) return;
+    await supabase.from("user_dashboard_widgets").delete().eq("user_id", user.id);
+    if (!items.length) return;
+    const payload = items.map((it, idx) => ({
+      user_id: user.id,
+      widget_type: it.type,
+      title: WIDGET_REGISTRY[it.type]?.title ?? it.type,
+      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null },
+      position: idx,
+    }));
+    await supabase.from("user_dashboard_widgets").insert(payload);
+  }
 
   const save = useMutation({
-    mutationFn: async (items: LayoutItem[]) => {
-      if (!user) return;
-      // upsert each widget
-      const payload = items.map((it, idx) => ({
-        user_id: user.id,
-        widget_type: it.i,
-        title: WIDGET_TITLES[it.i] ?? it.i,
-        config: { x: it.x, y: it.y, w: it.w, h: it.h, hidden: it.hidden ?? false },
-        position: idx,
-      }));
-      // Delete then re-insert (simpler than composite upsert without unique key)
-      await supabase.from("user_dashboard_widgets").delete().eq("user_id", user.id);
-      if (payload.length) await supabase.from("user_dashboard_widgets").insert(payload);
+    mutationFn: persist,
+    onMutate: async (items) => {
+      await qc.cancelQueries({ queryKey: ["dashboard-layout", user?.id] });
+      const prev = qc.getQueryData(["dashboard-layout", user?.id]);
+      qc.setQueryData(["dashboard-layout", user?.id], items);
+      return { prev };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["dashboard-layout", user?.id], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
   });
 
   const reset = useMutation({
@@ -102,10 +103,35 @@ export function useDashboardLayout() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
   });
 
+  function addWidget(type: string) {
+    const meta = WIDGET_REGISTRY[type];
+    if (!meta) return;
+    // find lowest free y
+    const maxY = layout.reduce((m, w) => Math.max(m, w.y + w.h), 0);
+    const next: WidgetInstance = {
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type, x: 0, y: maxY,
+      w: meta.defaultW, h: meta.defaultH,
+      chartType: meta.defaultChart,
+    };
+    save.mutate([...layout, next]);
+  }
+
+  function removeWidget(id: string) {
+    save.mutate(layout.filter((w) => w.id !== id));
+  }
+
+  function setChartType(id: string, chartType: ChartType) {
+    save.mutate(layout.map((w) => (w.id === id ? { ...w, chartType } : w)));
+  }
+
   return {
     layout,
     isLoading: query.isLoading,
     save: save.mutate,
     reset: reset.mutate,
+    addWidget,
+    removeWidget,
+    setChartType,
   };
 }

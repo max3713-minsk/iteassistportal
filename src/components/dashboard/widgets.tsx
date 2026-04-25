@@ -4,10 +4,11 @@ import { format, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell,
-  LineChart, Line, Legend,
+  LineChart, Line, Legend, AreaChart, Area, RadialBarChart, RadialBar,
 } from "recharts";
 import {
   Building2, Server, Ticket, ClipboardList, CheckCircle2, Clock, ExternalLink,
+  Star, Activity, AlertTriangle, ShieldCheck, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,25 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig,
 } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
+import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
+
+/* ============ Types ============ */
+export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "radial" | "list";
+
+export interface WidgetMeta {
+  type: string;
+  title: string;
+  description: string;
+  category: "Заявки" | "Протоколы" | "Оборудование" | "Мониторинг" | "Сводка";
+  icon: LucideIcon;
+  defaultW: number;
+  defaultH: number;
+  minW: number;
+  minH: number;
+  supportedCharts?: ChartType[]; // если не задан — визуализация фиксирована
+  defaultChart?: ChartType;
+  Component: React.FC<{ chartType?: ChartType }>;
+}
 
 /* ============ Colors / config ============ */
 const STATUS_COLORS = [
@@ -35,21 +55,108 @@ const activityConfig: ChartConfig = {
 };
 const baseConfig: ChartConfig = { count: { label: "Кол-во" } };
 
-/* ============ Wrapper card with drag handle ============ */
-function WidgetShell({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+/* ============ Wrapper ============ */
+function WidgetShell({ title, action, children, icon: Icon }: {
+  title: string; action?: React.ReactNode; children: React.ReactNode; icon?: LucideIcon;
+}) {
   return (
     <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="dashboard-drag-handle flex flex-row items-center justify-between pb-2 shrink-0">
-        <CardTitle className="text-base">{title}</CardTitle>
+      <CardHeader className="dashboard-drag-handle flex flex-row items-center justify-between pb-2 shrink-0 cursor-move">
+        <CardTitle className="text-base flex items-center gap-2">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          {title}
+        </CardTitle>
         {action}
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto">{children}</CardContent>
+      <CardContent className="flex-1 overflow-auto" onMouseDown={(e) => e.stopPropagation()}>{children}</CardContent>
     </Card>
   );
 }
 
+/* ============ Generic categorical renderer ============ */
+function CategoricalChart({ data, colors, chartType = "bar" }: {
+  data: Array<{ label: string; count: number }>;
+  colors: string[];
+  chartType?: ChartType;
+}) {
+  if (!data?.some((d) => d.count > 0)) {
+    return <p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>;
+  }
+  if (chartType === "list") {
+    const total = data.reduce((s, d) => s + d.count, 0);
+    return (
+      <div className="space-y-2">
+        {data.map((d, i) => (
+          <div key={d.label} className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
+                {d.label}
+              </span>
+              <span className="font-medium tabular-nums">{d.count}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${total ? (d.count / total) * 100 : 0}%`, background: colors[i % colors.length] }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <ChartContainer config={baseConfig} className="h-full w-full">
+      {chartType === "pie" || chartType === "donut" ? (
+        <PieChart>
+          <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+          <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="45%"
+               outerRadius={75} innerRadius={chartType === "donut" ? 40 : 0}
+               label={({ count }) => (count > 0 ? count : "")}>
+            {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+          </Pie>
+          <Legend payload={data.map((d, i) => ({ value: d.label, type: "circle" as const, color: colors[i % colors.length] }))}
+                  wrapperStyle={{ fontSize: 11 }} />
+        </PieChart>
+      ) : chartType === "radial" ? (
+        <RadialBarChart innerRadius="20%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
+          <RadialBar dataKey="count" background>
+            {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+          </RadialBar>
+          <Legend iconSize={8} payload={data.map((d, i) => ({ value: `${d.label} (${d.count})`, type: "circle" as const, color: colors[i % colors.length] }))}
+                  wrapperStyle={{ fontSize: 11 }} />
+        </RadialBarChart>
+      ) : chartType === "area" ? (
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Area type="monotone" dataKey="count" stroke={colors[0]} fill={colors[0]} fillOpacity={0.3} />
+        </AreaChart>
+      ) : chartType === "line" ? (
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Line type="monotone" dataKey="count" stroke={colors[0]} strokeWidth={2} dot={{ r: 3 }} />
+        </LineChart>
+      ) : (
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+          </Bar>
+        </BarChart>
+      )}
+    </ChartContainer>
+  );
+}
+
 /* ============ Summary tiles ============ */
-export function SummaryWidget() {
+const SummaryWidget: WidgetMeta["Component"] = () => {
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: async () => {
@@ -77,10 +184,10 @@ export function SummaryWidget() {
   ];
   return (
     <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="dashboard-drag-handle pb-2 shrink-0">
+      <CardHeader className="dashboard-drag-handle pb-2 shrink-0 cursor-move">
         <CardTitle className="text-base">Сводка</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <CardContent className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-3" onMouseDown={(e) => e.stopPropagation()}>
         {stats.map((s) => (
           <Link key={s.label} to={s.to} className="block">
             <div className="rounded-lg border p-3 hover:border-primary/40 hover:shadow-md transition-all h-full">
@@ -95,10 +202,10 @@ export function SummaryWidget() {
       </CardContent>
     </Card>
   );
-}
+};
 
 /* ============ Tickets by status ============ */
-export function TicketsByStatusWidget() {
+const TicketsByStatusWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-tickets-status"],
     queryFn: async () => {
@@ -113,28 +220,14 @@ export function TicketsByStatusWidget() {
     },
   });
   return (
-    <WidgetShell title="Заявки по статусам">
-      {data && data.some((d) => d.count > 0) ? (
-        <ChartContainer config={baseConfig} className="h-full w-full">
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />)}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      ) : (
-        <p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>
-      )}
+    <WidgetShell title="Заявки по статусам" icon={Ticket}>
+      <CategoricalChart data={data ?? []} colors={STATUS_COLORS} chartType={chartType ?? "bar"} />
     </WidgetShell>
   );
-}
+};
 
 /* ============ Tickets by priority ============ */
-export function TicketsByPriorityWidget() {
+const TicketsByPriorityWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-tickets-priority"],
     queryFn: async () => {
@@ -142,33 +235,19 @@ export function TicketsByPriorityWidget() {
         .in("status", ["open", "in_progress", "waiting", "overdue"]);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((t) => { counts[t.priority] = (counts[t.priority] || 0) + 1; });
-      return ["P1", "P2", "P3", "P4"].map((p) => ({ priority: p, count: counts[p] || 0 }));
+      const labelMap: Record<string, string> = { P1: "P1 — Критический", P2: "P2 — Высокий", P3: "P3 — Средний", P4: "P4 — Низкий" };
+      return ["P1", "P2", "P3", "P4"].map((p) => ({ status: p, label: labelMap[p], count: counts[p] || 0 }));
     },
   });
   return (
-    <WidgetShell title="Открытые заявки по приоритету">
-      {data ? (
-        <ChartContainer config={baseConfig} className="h-full w-full">
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent nameKey="priority" />} />
-            <Pie data={data} dataKey="count" nameKey="priority" cx="50%" cy="45%" outerRadius={70} label={false}>
-              {data.map((_, i) => <Cell key={i} fill={PRIORITY_COLORS[i]} />)}
-            </Pie>
-            <Legend
-              payload={["P1 — Критический", "P2 — Высокий", "P3 — Средний", "P4 — Низкий"].map((label, i) => ({
-                value: label, type: "circle" as const, color: PRIORITY_COLORS[i],
-              }))}
-              wrapperStyle={{ fontSize: 11 }}
-            />
-          </PieChart>
-        </ChartContainer>
-      ) : (<p className="text-sm text-muted-foreground text-center py-10">Нет открытых заявок</p>)}
+    <WidgetShell title="Открытые заявки по приоритету" icon={AlertTriangle}>
+      <CategoricalChart data={data ?? []} colors={PRIORITY_COLORS} chartType={chartType ?? "donut"} />
     </WidgetShell>
   );
-}
+};
 
 /* ============ Closed tickets stats ============ */
-export function ClosedStatsWidget() {
+const ClosedStatsWidget: WidgetMeta["Component"] = () => {
   const { data } = useQuery({
     queryKey: ["dashboard-closed-tickets-stats"],
     queryFn: async () => {
@@ -188,7 +267,6 @@ export function ClosedStatsWidget() {
       return { total: rows.length, byPriority, avgResponseMs: cnt ? sum / cnt : null };
     },
   });
-
   function formatDuration(ms: number) {
     const min = Math.round(ms / 60000);
     if (min < 60) return `${min} мин`;
@@ -197,9 +275,8 @@ export function ClosedStatsWidget() {
     const d = Math.floor(h / 24);
     return `${d} д ${h % 24 ? `${h % 24} ч` : ""}`.trim();
   }
-
   return (
-    <WidgetShell title="Закрытые заявки">
+    <WidgetShell title="Закрытые заявки" icon={CheckCircle2}>
       <div className="space-y-4">
         <div>
           <p className="text-xs text-muted-foreground">Всего закрыто</p>
@@ -238,10 +315,10 @@ export function ClosedStatsWidget() {
       </div>
     </WidgetShell>
   );
-}
+};
 
 /* ============ Protocols by status ============ */
-export function ProtocolsByStatusWidget() {
+const ProtocolsByStatusWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-protocols-status"],
     queryFn: async () => {
@@ -255,26 +332,14 @@ export function ProtocolsByStatusWidget() {
     },
   });
   return (
-    <WidgetShell title="Протоколы по статусам">
-      {data && data.some((d) => d.count > 0) ? (
-        <ChartContainer config={baseConfig} className="h-full w-full">
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={PROTOCOL_COLORS[i % PROTOCOL_COLORS.length]} />)}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-      ) : (<p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>)}
+    <WidgetShell title="Протоколы по статусам" icon={ClipboardList}>
+      <CategoricalChart data={data ?? []} colors={PROTOCOL_COLORS} chartType={chartType ?? "bar"} />
     </WidgetShell>
   );
-}
+};
 
 /* ============ Equipment by status ============ */
-export function EquipmentByStatusWidget() {
+const EquipmentByStatusWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-equipment-status"],
     queryFn: async () => {
@@ -289,34 +354,16 @@ export function EquipmentByStatusWidget() {
       return all.map((status) => ({ status, label: labels[status] || status, count: counts[status] || 0 }));
     },
   });
+  const colors = (data ?? []).map((d) => EQUIPMENT_STATUS_COLOR_MAP[d.status] ?? EQUIPMENT_FALLBACK);
   return (
-    <WidgetShell title="Оборудование по статусу">
-      {data ? (
-        <ChartContainer config={baseConfig} className="h-full w-full">
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
-            <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="45%" outerRadius={70}
-              label={({ label, count }) => (count > 0 ? `${label}: ${count}` : "")}>
-              {data.map((item, i) => (
-                <Cell key={i} fill={EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_FALLBACK} />
-              ))}
-            </Pie>
-            <Legend
-              payload={data.map((item) => ({
-                value: item.label, type: "circle" as const,
-                color: EQUIPMENT_STATUS_COLOR_MAP[item.status] ?? EQUIPMENT_FALLBACK,
-              }))}
-              wrapperStyle={{ fontSize: 11 }}
-            />
-          </PieChart>
-        </ChartContainer>
-      ) : (<p className="text-sm text-muted-foreground text-center py-10">Нет данных</p>)}
+    <WidgetShell title="Оборудование по статусу" icon={Server}>
+      <CategoricalChart data={data ?? []} colors={colors.length ? colors : STATUS_COLORS} chartType={chartType ?? "donut"} />
     </WidgetShell>
   );
-}
+};
 
 /* ============ Activity ============ */
-export function ActivityWidget() {
+const ActivityWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-activity"],
     queryFn: async () => {
@@ -338,26 +385,52 @@ export function ActivityWidget() {
       }));
     },
   });
+  const empty = !data || !data.some((d) => d.tickets > 0 || d.protocols > 0);
   return (
-    <WidgetShell title="Активность за 14 дней">
-      {data && data.some((d) => d.tickets > 0 || d.protocols > 0) ? (
+    <WidgetShell title="Активность за 14 дней" icon={Activity}>
+      {empty ? (
+        <p className="text-sm text-muted-foreground text-center py-10">Нет активности</p>
+      ) : (
         <ChartContainer config={activityConfig} className="h-full w-full">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Line type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Заявки" />
-            <Line type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} name="Протоколы" />
-          </LineChart>
+          {chartType === "bar" ? (
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="tickets" fill="hsl(217 91% 60%)" name="Заявки" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="protocols" fill="hsl(160 84% 39%)" name="Протоколы" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          ) : chartType === "area" ? (
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" fill="hsl(217 91% 60%)" fillOpacity={0.25} name="Заявки" />
+              <Area type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" fill="hsl(160 84% 39%)" fillOpacity={0.25} name="Протоколы" />
+            </AreaChart>
+          ) : (
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="tickets" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Заявки" />
+              <Line type="monotone" dataKey="protocols" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} name="Протоколы" />
+            </LineChart>
+          )}
         </ChartContainer>
-      ) : (<p className="text-sm text-muted-foreground text-center py-10">Нет активности</p>)}
+      )}
     </WidgetShell>
   );
-}
+};
 
 /* ============ Recent tickets ============ */
-export function RecentTicketsWidget() {
+const RecentTicketsWidget: WidgetMeta["Component"] = () => {
   const { data } = useQuery({
     queryKey: ["dashboard-recent-tickets"],
     queryFn: async () => {
@@ -377,6 +450,7 @@ export function RecentTicketsWidget() {
   return (
     <WidgetShell
       title="Последние заявки"
+      icon={Ticket}
       action={
         <Link to="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
           Все <ExternalLink className="h-3.5 w-3.5" />
@@ -404,16 +478,199 @@ export function RecentTicketsWidget() {
       ) : (<p className="text-sm text-muted-foreground text-center py-10">Нет заявок</p>)}
     </WidgetShell>
   );
-}
+};
+
+/* ============ Monitoring: Hosts by device type ============ */
+const MonitoringHostsWidget: WidgetMeta["Component"] = ({ chartType }) => {
+  const { data } = useQuery({
+    queryKey: ["dashboard-monitored-hosts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("monitored_hosts").select("device_type, enabled");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((h: any) => {
+        const s = h.enabled ? (h.device_type || "other") : "disabled";
+        counts[s] = (counts[s] || 0) + 1;
+      });
+      const labels: Record<string, string> = {
+        server: "Серверы", bmc: "BMC", switch: "Коммутаторы", router: "Маршрутизаторы",
+        storage: "СХД", firewall: "Файрволы", ups: "ИБП", other: "Прочее", disabled: "Отключены",
+      };
+      const keys = [...new Set([...Object.keys(labels), ...Object.keys(counts)])];
+      return keys
+        .map((s) => ({ status: s, label: labels[s] || s, count: counts[s] || 0 }))
+        .filter((d) => d.count > 0 || ["server", "switch", "router"].includes(d.status));
+    },
+  });
+  return (
+    <WidgetShell title="Хосты мониторинга по типу" icon={Server}>
+      <CategoricalChart data={data ?? []} colors={STATUS_COLORS} chartType={chartType ?? "donut"} />
+    </WidgetShell>
+  );
+};
+
+/* ============ Monitoring: TZ coverage ============ */
+const TZCoverageWidget: WidgetMeta["Component"] = ({ chartType }) => {
+  const { data } = useQuery({
+    queryKey: ["dashboard-tz-coverage"],
+    queryFn: async () => {
+      const [reqs, cov] = await Promise.all([
+        supabase.from("tz_requirements").select("id"),
+        supabase.from("tz_coverage").select("requirement_id,status"),
+      ]);
+      const total = (reqs.data ?? []).length;
+      const map = new Map<string, string>();
+      (cov.data ?? []).forEach((c: any) => map.set(c.requirement_id, c.status));
+      let covered = 0, partial = 0;
+      map.forEach((s) => { if (s === "covered") covered++; else if (s === "partial") partial++; });
+      const none = total - covered - partial;
+      return [
+        { status: "covered", label: "Покрыто", count: covered },
+        { status: "partial", label: "Частично", count: partial },
+        { status: "none", label: "Не покрыто", count: Math.max(0, none) },
+      ];
+    },
+  });
+  return (
+    <WidgetShell title="Покрытие ТЗ мониторингом" icon={ShieldCheck}>
+      <CategoricalChart data={data ?? []}
+        colors={["hsl(152 82% 30%)", "hsl(38 92% 50%)", "hsl(220 9% 46%)"]}
+        chartType={chartType ?? "donut"} />
+    </WidgetShell>
+  );
+};
+
+/* ============ Monitoring: Active problems (Zabbix) ============ */
+const RecentEventsWidget: WidgetMeta["Component"] = () => {
+  const { data, isError } = useQuery({
+    queryKey: ["dashboard-zbx-problems"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "getProblems" },
+      });
+      if (error) throw error;
+      return ((data?.result as any[]) || []).slice(0, 10);
+    },
+    refetchInterval: 60000,
+    retry: 0,
+  });
+  const sevMap: Record<string, { label: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
+    "5": { label: "Disaster", variant: "destructive" },
+    "4": { label: "High", variant: "destructive" },
+    "3": { label: "Average", variant: "default" },
+    "2": { label: "Warning", variant: "default" },
+    "1": { label: "Info", variant: "secondary" },
+    "0": { label: "Not class", variant: "outline" },
+  };
+  return (
+    <WidgetShell title="Активные проблемы Zabbix" icon={AlertTriangle}
+      action={<Link to="/monitoring" className="text-sm text-primary hover:underline flex items-center gap-1">Все <ExternalLink className="h-3.5 w-3.5" /></Link>}>
+      {isError ? (
+        <p className="text-sm text-muted-foreground text-center py-10">Мониторинг не настроен</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-10">Активных проблем нет</p>
+      ) : (
+        <div className="space-y-1.5">
+          {data.map((p: any) => {
+            const sev = sevMap[p.severity] ?? sevMap["0"];
+            const host = p.hosts?.[0]?.name ?? "—";
+            return (
+              <div key={p.eventid} className="flex items-start gap-2 p-2 rounded border text-xs">
+                <Badge variant={sev.variant} className="text-[10px] shrink-0">{sev.label}</Badge>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{p.name}</p>
+                  <p className="text-muted-foreground">
+                    {host} · {format(new Date(Number(p.clock) * 1000), "dd MMM HH:mm", { locale: ru })}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </WidgetShell>
+  );
+};
+
+/* ============ Favorite metrics (re-uses existing) ============ */
+const FavoriteMetricsWrap: WidgetMeta["Component"] = () => <FavoriteMetricsWidget />;
 
 /* ============ Registry ============ */
-export const WIDGET_COMPONENTS: Record<string, () => JSX.Element> = {
-  "summary": SummaryWidget,
-  "tickets-by-status": TicketsByStatusWidget,
-  "tickets-by-priority": TicketsByPriorityWidget,
-  "closed-stats": ClosedStatsWidget,
-  "protocols-by-status": ProtocolsByStatusWidget,
-  "equipment-by-status": EquipmentByStatusWidget,
-  "activity": ActivityWidget,
-  "recent-tickets": RecentTicketsWidget,
+export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
+  "summary": {
+    type: "summary", title: "Сводка", description: "Ключевые показатели: ЦОД, оборудование, заявки, протоколы.",
+    category: "Сводка", icon: Building2, defaultW: 12, defaultH: 3, minW: 4, minH: 3,
+    Component: SummaryWidget,
+  },
+  "tickets-by-status": {
+    type: "tickets-by-status", title: "Заявки по статусам", description: "Распределение всех заявок по статусам.",
+    category: "Заявки", icon: Ticket, defaultW: 4, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["bar", "pie", "donut", "radial", "list"], defaultChart: "bar",
+    Component: TicketsByStatusWidget,
+  },
+  "tickets-by-priority": {
+    type: "tickets-by-priority", title: "Открытые заявки по приоритету", description: "Активные заявки в разрезе P1–P4.",
+    category: "Заявки", icon: AlertTriangle, defaultW: 4, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["donut", "pie", "bar", "radial", "list"], defaultChart: "donut",
+    Component: TicketsByPriorityWidget,
+  },
+  "closed-stats": {
+    type: "closed-stats", title: "Закрытые заявки", description: "Сводка закрытых заявок и среднее время реагирования.",
+    category: "Заявки", icon: CheckCircle2, defaultW: 4, defaultH: 7, minW: 3, minH: 5,
+    Component: ClosedStatsWidget,
+  },
+  "recent-tickets": {
+    type: "recent-tickets", title: "Последние заявки", description: "Список 8 самых свежих заявок.",
+    category: "Заявки", icon: Ticket, defaultW: 12, defaultH: 7, minW: 4, minH: 5,
+    Component: RecentTicketsWidget,
+  },
+  "protocols-by-status": {
+    type: "protocols-by-status", title: "Протоколы по статусам", description: "Распределение протоколов ТО.",
+    category: "Протоколы", icon: ClipboardList, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["bar", "pie", "donut", "radial", "list"], defaultChart: "bar",
+    Component: ProtocolsByStatusWidget,
+  },
+  "equipment-by-status": {
+    type: "equipment-by-status", title: "Оборудование по статусу", description: "Состояние парка оборудования.",
+    category: "Оборудование", icon: Server, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["donut", "pie", "bar", "radial", "list"], defaultChart: "donut",
+    Component: EquipmentByStatusWidget,
+  },
+  "activity": {
+    type: "activity", title: "Активность за 14 дней", description: "Динамика заявок и протоколов.",
+    category: "Сводка", icon: Activity, defaultW: 12, defaultH: 7, minW: 4, minH: 5,
+    supportedCharts: ["line", "area", "bar"], defaultChart: "line",
+    Component: ActivityWidget,
+  },
+  "monitoring-hosts": {
+    type: "monitoring-hosts", title: "Хосты мониторинга", description: "Состояние всех хостов под мониторингом.",
+    category: "Мониторинг", icon: Server, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["donut", "pie", "bar", "radial", "list"], defaultChart: "donut",
+    Component: MonitoringHostsWidget,
+  },
+  "monitoring-events": {
+    type: "monitoring-events", title: "События мониторинга", description: "Свежие события и проблемы.",
+    category: "Мониторинг", icon: AlertTriangle, defaultW: 6, defaultH: 7, minW: 3, minH: 5,
+    Component: RecentEventsWidget,
+  },
+  "tz-coverage": {
+    type: "tz-coverage", title: "Покрытие ТЗ", description: "Сколько требований ТЗ покрыто мониторингом.",
+    category: "Мониторинг", icon: ShieldCheck, defaultW: 4, defaultH: 7, minW: 3, minH: 4,
+    supportedCharts: ["donut", "pie", "bar", "radial", "list"], defaultChart: "donut",
+    Component: TZCoverageWidget,
+  },
+  "favorite-metrics": {
+    type: "favorite-metrics", title: "Избранные метрики", description: "Последние значения избранных метрик Zabbix.",
+    category: "Мониторинг", icon: Star, defaultW: 6, defaultH: 8, minW: 3, minH: 5,
+    Component: FavoriteMetricsWrap,
+  },
+};
+
+export const CHART_TYPE_LABELS: Record<ChartType, string> = {
+  bar: "Столбцы",
+  pie: "Круговая",
+  donut: "Кольцевая",
+  line: "Линейная",
+  area: "Областная",
+  radial: "Радиальная",
+  list: "Список",
 };
