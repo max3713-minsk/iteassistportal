@@ -480,23 +480,29 @@ const RecentTicketsWidget: WidgetMeta["Component"] = () => {
   );
 };
 
-/* ============ Monitoring: Active hosts ============ */
+/* ============ Monitoring: Hosts by device type ============ */
 const MonitoringHostsWidget: WidgetMeta["Component"] = ({ chartType }) => {
   const { data } = useQuery({
     queryKey: ["dashboard-monitored-hosts"],
     queryFn: async () => {
-      const { data } = await supabase.from("monitored_hosts").select("status");
+      const { data } = await supabase.from("monitored_hosts").select("device_type, enabled");
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((h: any) => { const s = h.status || "unknown"; counts[s] = (counts[s] || 0) + 1; });
+      (data ?? []).forEach((h: any) => {
+        const s = h.enabled ? (h.device_type || "other") : "disabled";
+        counts[s] = (counts[s] || 0) + 1;
+      });
       const labels: Record<string, string> = {
-        active: "Активен", inactive: "Не активен", maintenance: "Обслуживание", unknown: "Неизвестно",
+        server: "Серверы", bmc: "BMC", switch: "Коммутаторы", router: "Маршрутизаторы",
+        storage: "СХД", firewall: "Файрволы", ups: "ИБП", other: "Прочее", disabled: "Отключены",
       };
-      const all = [...new Set([...Object.keys(labels), ...Object.keys(counts)])];
-      return all.map((s) => ({ status: s, label: labels[s] || s, count: counts[s] || 0 }));
+      const keys = [...new Set([...Object.keys(labels), ...Object.keys(counts)])];
+      return keys
+        .map((s) => ({ status: s, label: labels[s] || s, count: counts[s] || 0 }))
+        .filter((d) => d.count > 0 || ["server", "switch", "router"].includes(d.status));
     },
   });
   return (
-    <WidgetShell title="Хосты мониторинга" icon={Server}>
+    <WidgetShell title="Хосты мониторинга по типу" icon={Server}>
       <CategoricalChart data={data ?? []} colors={STATUS_COLORS} chartType={chartType ?? "donut"} />
     </WidgetShell>
   );
