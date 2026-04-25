@@ -1204,6 +1204,33 @@ export type Database = {
           },
         ]
       }
+      system_kill_log: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          status: string
+          triggered_by: string | null
+          triggered_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          status: string
+          triggered_by?: string | null
+          triggered_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          status?: string
+          triggered_by?: string | null
+          triggered_email?: string | null
+        }
+        Relationships: []
+      }
       ticket_comments: {
         Row: {
           content: string
