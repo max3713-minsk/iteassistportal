@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   Building2, Server, Ticket, ClipboardList, CheckCircle2, Clock, ExternalLink,
-  Star, Activity, AlertTriangle, ShieldCheck, type LucideIcon,
+  Star, Activity, AlertTriangle, ShieldCheck, LineChart as LineChartIcon, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -594,6 +594,60 @@ const RecentEventsWidget: WidgetMeta["Component"] = () => {
 /* ============ Favorite metrics (re-uses existing) ============ */
 const FavoriteMetricsWrap: WidgetMeta["Component"] = () => <FavoriteMetricsWidget />;
 
+/* ============ Saved graphs (library shortcuts) ============ */
+const SavedGraphsWidget: WidgetMeta["Component"] = () => {
+  const { data } = useQuery({
+    queryKey: ["dashboard-saved-graphs"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("saved_graphs")
+        .select("id,name,description,chart_type,is_template,is_shared,updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      return data ?? [];
+    },
+  });
+  return (
+    <WidgetShell
+      title="Сохранённые графики"
+      icon={LineChartIcon}
+      action={
+        <Link to="/monitoring" className="text-sm text-primary hover:underline flex items-center gap-1">
+          В раздел <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      }
+    >
+      {!data || data.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-10">
+          Графики не сохранены. Откройте раздел «Мониторинг → Графики», чтобы создать.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {data.map((g) => (
+            <Link
+              key={g.id}
+              to={`/monitoring?graph=${g.id}`}
+              className="flex items-center justify-between gap-2 p-2 rounded-md border hover:bg-muted/50 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{g.name}</p>
+                {g.description && (
+                  <p className="text-xs text-muted-foreground truncate">{g.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Badge variant="outline" className="text-[10px]">{g.chart_type}</Badge>
+                {g.is_template && <Badge variant="secondary" className="text-[10px]">шаблон</Badge>}
+                {g.is_shared && <Badge variant="secondary" className="text-[10px]">общий</Badge>}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </WidgetShell>
+  );
+};
+
 /* ============ Registry ============ */
 export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
   "summary": {
@@ -662,6 +716,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     type: "favorite-metrics", title: "Избранные метрики", description: "Последние значения избранных метрик Zabbix.",
     category: "Мониторинг", icon: Star, defaultW: 6, defaultH: 8, minW: 3, minH: 5,
     Component: FavoriteMetricsWrap,
+  },
+  "saved-graphs": {
+    type: "saved-graphs", title: "Сохранённые графики",
+    description: "Быстрый доступ к графикам из библиотеки. Клик — переход к разделу Графики.",
+    category: "Мониторинг", icon: LineChartIcon, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
+    Component: SavedGraphsWidget,
   },
 };
 
