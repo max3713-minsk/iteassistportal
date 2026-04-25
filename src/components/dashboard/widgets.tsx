@@ -533,37 +533,54 @@ const TZCoverageWidget: WidgetMeta["Component"] = ({ chartType }) => {
   );
 };
 
-/* ============ Monitoring: Recent events ============ */
+/* ============ Monitoring: Active problems (Zabbix) ============ */
 const RecentEventsWidget: WidgetMeta["Component"] = () => {
-  const { data } = useQuery({
-    queryKey: ["dashboard-monitor-events"],
+  const { data, isError } = useQuery({
+    queryKey: ["dashboard-zbx-problems"],
     queryFn: async () => {
-      const { data } = await supabase.from("monitor_events")
-        .select("id, severity, host, message, occurred_at")
-        .order("occurred_at", { ascending: false }).limit(10);
-      return data ?? [];
+      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+        body: { action: "getProblems" },
+      });
+      if (error) throw error;
+      return ((data?.result as any[]) || []).slice(0, 10);
     },
     refetchInterval: 60000,
+    retry: 0,
   });
-  const sevColor: Record<string, string> = {
-    critical: "destructive", high: "destructive", warning: "default", info: "secondary",
+  const sevMap: Record<string, { label: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
+    "5": { label: "Disaster", variant: "destructive" },
+    "4": { label: "High", variant: "destructive" },
+    "3": { label: "Average", variant: "default" },
+    "2": { label: "Warning", variant: "default" },
+    "1": { label: "Info", variant: "secondary" },
+    "0": { label: "Not class", variant: "outline" },
   };
   return (
-    <WidgetShell title="События мониторинга" icon={AlertTriangle}
+    <WidgetShell title="Активные проблемы Zabbix" icon={AlertTriangle}
       action={<Link to="/monitoring" className="text-sm text-primary hover:underline flex items-center gap-1">Все <ExternalLink className="h-3.5 w-3.5" /></Link>}>
-      {data && data.length > 0 ? (
+      {isError ? (
+        <p className="text-sm text-muted-foreground text-center py-10">Мониторинг не настроен</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-10">Активных проблем нет</p>
+      ) : (
         <div className="space-y-1.5">
-          {data.map((e: any) => (
-            <div key={e.id} className="flex items-start gap-2 p-2 rounded border text-xs">
-              <Badge variant={(sevColor[e.severity] ?? "outline") as any} className="text-[10px] shrink-0">{e.severity}</Badge>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{e.message}</p>
-                <p className="text-muted-foreground">{e.host} · {format(new Date(e.occurred_at), "dd MMM HH:mm", { locale: ru })}</p>
+          {data.map((p: any) => {
+            const sev = sevMap[p.severity] ?? sevMap["0"];
+            const host = p.hosts?.[0]?.name ?? "—";
+            return (
+              <div key={p.eventid} className="flex items-start gap-2 p-2 rounded border text-xs">
+                <Badge variant={sev.variant} className="text-[10px] shrink-0">{sev.label}</Badge>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{p.name}</p>
+                  <p className="text-muted-foreground">
+                    {host} · {format(new Date(Number(p.clock) * 1000), "dd MMM HH:mm", { locale: ru })}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      ) : <p className="text-sm text-muted-foreground text-center py-10">Нет событий</p>}
+      )}
     </WidgetShell>
   );
 };
