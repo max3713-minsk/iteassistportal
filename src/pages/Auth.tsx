@@ -9,12 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
-import logoLight from "@/assets/logo-light-hd.png";
-import { useTheme } from "next-themes";
 import { Phone, Mail, Globe, Clock } from "lucide-react";
 
 export default function Auth() {
-  const { resolvedTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -62,11 +59,8 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            {resolvedTheme === "light" ? (
-              <img src={logoLight} alt="Innotech Engineering" className="h-20 w-auto mx-auto" />
-            ) : (
-              <BrandLogo className="h-20 w-auto mx-auto" />
-            )}
+            {/* В тёмной теме — оригинал; в светлой — инвертируем чёрный в красный (--primary) через CSS-фильтр */}
+            <BrandLogo className="h-20 w-auto mx-auto dark:[filter:none] [filter:brightness(0)_saturate(100%)_invert(18%)_sepia(98%)_saturate(7000%)_hue-rotate(355deg)_brightness(95%)_contrast(115%)]" />
           </div>
           <CardTitle className="font-heading text-2xl">ITE Assist Portal</CardTitle>
           <CardDescription>Портал технической поддержки</CardDescription>

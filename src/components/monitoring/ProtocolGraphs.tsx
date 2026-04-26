@@ -151,6 +151,9 @@ export default function ProtocolGraphs({ protocolId, readonly = false }: Props) 
                         itemid: it.itemid,
                         itemName: it.name,
                         units: it.units,
+                        color: it.color,
+                        ip: it.ip,
+                        hostGroup: it.hostGroup,
                       }))}
                       timeRange={g.time_range}
                       chartType={g.chart_type as any}

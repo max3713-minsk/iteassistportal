@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Loader2, AlertCircle, Download, FileImage, FileText } from "lucide-react";
+import { Loader2, AlertCircle, FileImage, FileText, FileType2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 import { formatRaw } from "./formatMetric";
 
 interface Series {
@@ -12,6 +14,9 @@ interface Series {
   itemid: string;
   itemName: string;
   units?: string;
+  color?: string;
+  ip?: string;
+  hostGroup?: string;
 }
 
 interface Props {
@@ -22,6 +27,8 @@ interface Props {
   aggregation?: "avg" | "min" | "max";
   exportable?: boolean;
   graphName?: string;
+  refetchInterval?: number; // ms; 0 = off
+  showHostMeta?: boolean;
 }
 
 const RANGE_TO_SECONDS: Record<string, number> = {
@@ -32,7 +39,7 @@ const RANGE_TO_SECONDS: Record<string, number> = {
   "1m": 30 * 86400,
 };
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+export const DEFAULT_SERIES_COLORS = ["#dc2626", "#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
 function shouldUseTrends(timeRange: string): boolean {
   return ["1w", "1m"].includes(timeRange);
@@ -40,9 +47,10 @@ function shouldUseTrends(timeRange: string): boolean {
 
 export default function GraphChart({
   series, timeRange, chartType = "line", height = 300, aggregation = "avg",
-  exportable = false, graphName = "graph",
+  exportable = false, graphName = "graph", refetchInterval = 60000, showHostMeta = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["graph-data", series.map(s => s.itemid).join(","), timeRange, aggregation],
@@ -101,7 +109,7 @@ export default function GraphChart({
       return [...map.values()].sort((a, b) => a.clock - b.clock);
     },
     enabled: series.length > 0,
-    refetchInterval: 60000,
+    refetchInterval: refetchInterval > 0 ? refetchInterval : false,
     retry: 1,
   });
 
@@ -124,34 +132,69 @@ export default function GraphChart({
   };
 
   const exportPNG = async () => {
-    if (!containerRef.current) return;
-    const svg = containerRef.current.querySelector("svg");
-    if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const w = svg.clientWidth || 900;
-      const h = svg.clientHeight || height;
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(2, 2);
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${graphName.replace(/[^a-zа-я0-9_-]+/gi, "_")}.png`;
-        a.click();
-      }, "image/png");
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    if (!exportRef.current) return;
+    try {
+      const dataUrl = await toPng(exportRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${graphName.replace(/[^a-zа-я0-9_-]+/gi, "_")}.png`;
+      a.click();
+    } catch (e) {
+      console.error("PNG export failed", e);
+    }
+  };
+
+  const exportPDF = async () => {
+    if (!exportRef.current) return;
+    try {
+      const dataUrl = await toPng(exportRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+
+      // Header
+      pdf.setFontSize(14);
+      pdf.text(graphName, margin, margin + 5);
+      pdf.setFontSize(9);
+      pdf.setTextColor(100);
+      const meta = `Период: ${timeRange} · Сгенерировано: ${new Date().toLocaleString("ru-RU")}`;
+      pdf.text(meta, margin, margin + 11);
+
+      // Source list
+      let metaY = margin + 16;
+      series.slice(0, 6).forEach((s) => {
+        const line = `• ${s.hostName}${s.ip ? ` [${s.ip}]` : ""}${s.hostGroup ? ` (${s.hostGroup})` : ""} — ${s.itemName}`;
+        pdf.text(line, margin, metaY);
+        metaY += 5;
+      });
+
+      // Chart image
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res) => (img.onload = res));
+      const ratio = img.width / img.height;
+      const availW = pageW - margin * 2;
+      const availH = pageH - metaY - margin;
+      let drawW = availW;
+      let drawH = drawW / ratio;
+      if (drawH > availH) {
+        drawH = availH;
+        drawW = drawH * ratio;
+      }
+      pdf.addImage(dataUrl, "PNG", margin, metaY + 2, drawW, drawH);
+      pdf.save(`${graphName.replace(/[^a-zа-я0-9_-]+/gi, "_")}.pdf`);
+    } catch (e) {
+      console.error("PDF export failed", e);
+    }
   };
 
   if (!series.length) {
@@ -207,9 +250,30 @@ export default function GraphChart({
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={exportPNG}>
             <FileImage className="h-3 w-3 mr-1" /> PNG
           </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={exportPDF}>
+            <FileType2 className="h-3 w-3 mr-1" /> PDF
+          </Button>
         </div>
       )}
-      <div ref={containerRef}>
+      <div ref={exportRef} className="bg-card rounded p-3">
+        {showHostMeta && series.length > 0 && (
+          <div className="mb-2 pb-2 border-b text-xs space-y-0.5">
+            <div className="font-semibold text-foreground">{graphName}</div>
+            {series.map((s, i) => (
+              <div key={s.itemid} className="flex items-center gap-2 text-muted-foreground">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-sm"
+                  style={{ background: s.color || DEFAULT_SERIES_COLORS[i % DEFAULT_SERIES_COLORS.length] }}
+                />
+                <span className="font-medium text-foreground">{s.hostName}</span>
+                {s.ip && <span className="font-mono">[{s.ip}]</span>}
+                {s.hostGroup && <span>· {s.hostGroup}</span>}
+                <span>— {s.itemName}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div ref={containerRef}>
         <ResponsiveContainer width="100%" height={height}>
           <ChartComp data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -242,9 +306,9 @@ export default function GraphChart({
               }}
               wrapperStyle={{ fontSize: 11 }}
             />
-            {series.map((_, idx) => {
+            {series.map((s, idx) => {
               const key = `s${idx}`;
-              const color = COLORS[idx % COLORS.length];
+              const color = s.color || DEFAULT_SERIES_COLORS[idx % DEFAULT_SERIES_COLORS.length];
               if (chartType === "area") {
                 return <Area key={key} type="monotone" dataKey={key} stroke={color} fill={color} fillOpacity={0.2} strokeWidth={2} />;
               }
@@ -255,6 +319,7 @@ export default function GraphChart({
             })}
           </ChartComp>
         </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
