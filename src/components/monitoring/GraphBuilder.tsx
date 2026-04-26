@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Save, Plus, X, Loader2, Search } from "lucide-react";
-import GraphChart from "./GraphChart";
+import GraphChart, { DEFAULT_SERIES_COLORS } from "./GraphChart";
 import { formatItemValue } from "./formatMetric";
 import { useMetricTranslations } from "@/hooks/useMetricTranslations";
 import MetricLanguageToggle from "./MetricLanguageToggle";
@@ -33,6 +33,9 @@ interface SelectedItem {
   itemName: string;
   itemKey: string;
   units?: string;
+  color?: string;
+  ip?: string;
+  hostGroup?: string;
 }
 
 export default function GraphBuilder({ hosts, initialHostId, initialItemIds = [], onSaved }: Props) {
@@ -94,6 +97,8 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
   const addItem = (item: any) => {
     const host = hosts.find((h) => h.hostid === selectedHost);
     if (selectedItems.some((s) => s.itemid === item.itemid)) return;
+    const ip = host?.interfaces?.[0]?.ip || host?.ip || "";
+    const hostGroup = host?.groups?.[0]?.name || "";
     setSelectedItems([
       ...selectedItems,
       {
@@ -103,12 +108,19 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
         itemName: item.name,
         itemKey: item.key_,
         units: item.units,
+        ip,
+        hostGroup,
+        color: DEFAULT_SERIES_COLORS[selectedItems.length % DEFAULT_SERIES_COLORS.length],
       },
     ]);
   };
 
   const removeItem = (itemid: string) => {
     setSelectedItems(selectedItems.filter((s) => s.itemid !== itemid));
+  };
+
+  const updateColor = (itemid: string, color: string) => {
+    setSelectedItems(selectedItems.map((s) => s.itemid === itemid ? { ...s, color } : s));
   };
 
   const saveMutation = useMutation({
@@ -308,6 +320,13 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
           <div className="flex flex-wrap gap-2">
             {selectedItems.map((s) => (
               <Badge key={s.itemid} variant="secondary" className="gap-1 pr-1">
+                <input
+                  type="color"
+                  value={s.color || "#dc2626"}
+                  onChange={(e) => updateColor(s.itemid, e.target.value)}
+                  className="w-4 h-4 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  title="Цвет линии"
+                />
                 <span className="text-xs">{s.hostName}: {s.itemName}</span>
                 <Button size="icon" variant="ghost" className="h-4 w-4 ml-1" onClick={() => removeItem(s.itemid)}>
                   <X className="h-3 w-3" />
@@ -325,6 +344,9 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
             itemid: s.itemid,
             itemName: s.itemName,
             units: s.units,
+            color: s.color,
+            ip: s.ip,
+            hostGroup: s.hostGroup,
           }))}
           timeRange={timeRange}
           chartType={chartType}
