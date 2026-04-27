@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Clock, MessageSquare, History, AlertTriangle } from "lucide-react";
+import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SLATimer } from "@/components/tickets/SLATimer";
@@ -51,6 +51,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const [comment, setComment] = useState("");
   const [transitionComment, setTransitionComment] = useState("");
   const [pendingTransition, setPendingTransition] = useState<string | null>(null);
+  const [gitlabBusy, setGitlabBusy] = useState(false);
+  const [seafileBusy, setSeafileBusy] = useState(false);
 
   const isOwner = ticket.created_by === user?.id;
   const userRoles = roles as AppRole[];
@@ -82,6 +84,64 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       return (data ?? []) as any[];
     },
   });
+
+  // GitLab link for this ticket
+  const { data: gitlabLink, refetch: refetchGitlab } = useQuery({
+    queryKey: ["gitlab-link", ticket.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("gitlab_ticket_links")
+        .select("*")
+        .eq("ticket_id", ticket.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const handleCreateGitlabIssue = async () => {
+    setGitlabBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gitlab-create-issue", {
+        body: {
+          ticket_id: ticket.id,
+          title: ticket.title,
+          description: ticket.description || "",
+          priority: ticket.priority,
+          request_type: ticket.request_type,
+          subcategory: ticket.subcategory,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Issue создан", description: `GitLab issue #${data.issue_iid}` });
+      refetchGitlab();
+    } catch (e: any) {
+      toast({ title: "Ошибка GitLab", description: e.message, variant: "destructive" });
+    } finally { setGitlabBusy(false); }
+  };
+
+  const handleSeafileUpload = async (file: File) => {
+    setSeafileBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("subdir", `/tickets/${ticket.id}`);
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seafile-upload`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: fd,
+      });
+      const result = await r.json();
+      if (!r.ok || result.error) throw new Error(result.error || `HTTP ${r.status}`);
+      toast({ title: "Файл загружен в Seafile", description: file.name });
+    } catch (e: any) {
+      toast({ title: "Ошибка Seafile", description: e.message, variant: "destructive" });
+    } finally { setSeafileBusy(false); }
+  };
 
   // Engineers for assignment
   const { data: profiles = [] } = useQuery({
