@@ -21,6 +21,7 @@ const navItems = [
   { to: "/monitoring", icon: Activity, label: "Мониторинг", roles: [], moduleKey: "monitoring" },
   { to: "/organizations", icon: Briefcase, label: "Организации и Договоры", roles: ["admin"], moduleKey: "organizations" },
   { to: "/zabbix-connections", icon: Plug, label: "Подключения Zabbix", roles: ["admin"], moduleKey: "zabbix" },
+  { to: "/integrations", icon: Plug, label: "Интеграции (GitLab/Seafile)", roles: ["admin"], moduleKey: "integrations" },
   { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
   { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
   { to: "/notifications", icon: Bell, label: "Уведомления", roles: [], moduleKey: "notifications" },

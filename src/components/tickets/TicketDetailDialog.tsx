@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Clock, MessageSquare, History, AlertTriangle } from "lucide-react";
+import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SLATimer } from "@/components/tickets/SLATimer";
@@ -51,6 +51,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const [comment, setComment] = useState("");
   const [transitionComment, setTransitionComment] = useState("");
   const [pendingTransition, setPendingTransition] = useState<string | null>(null);
+  const [gitlabBusy, setGitlabBusy] = useState(false);
+  const [seafileBusy, setSeafileBusy] = useState(false);
 
   const isOwner = ticket.created_by === user?.id;
   const userRoles = roles as AppRole[];
@@ -82,6 +84,64 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       return (data ?? []) as any[];
     },
   });
+
+  // GitLab link for this ticket
+  const { data: gitlabLink, refetch: refetchGitlab } = useQuery({
+    queryKey: ["gitlab-link", ticket.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("gitlab_ticket_links")
+        .select("*")
+        .eq("ticket_id", ticket.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const handleCreateGitlabIssue = async () => {
+    setGitlabBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gitlab-create-issue", {
+        body: {
+          ticket_id: ticket.id,
+          title: ticket.title,
+          description: ticket.description || "",
+          priority: ticket.priority,
+          request_type: ticket.request_type,
+          subcategory: ticket.subcategory,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Issue создан", description: `GitLab issue #${data.issue_iid}` });
+      refetchGitlab();
+    } catch (e: any) {
+      toast({ title: "Ошибка GitLab", description: e.message, variant: "destructive" });
+    } finally { setGitlabBusy(false); }
+  };
+
+  const handleSeafileUpload = async (file: File) => {
+    setSeafileBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("subdir", `/tickets/${ticket.id}`);
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seafile-upload`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: fd,
+      });
+      const result = await r.json();
+      if (!r.ok || result.error) throw new Error(result.error || `HTTP ${r.status}`);
+      toast({ title: "Файл загружен в Seafile", description: file.name });
+    } catch (e: any) {
+      toast({ title: "Ошибка Seafile", description: e.message, variant: "destructive" });
+    } finally { setSeafileBusy(false); }
+  };
 
   // Engineers for assignment
   const { data: profiles = [] } = useQuery({
@@ -505,6 +565,65 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                       ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* External integrations (staff only) */}
+            {isStaff && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" /> Внешние интеграции
+                </Label>
+
+                {/* GitLab */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm">
+                    <p className="font-medium flex items-center gap-1.5">
+                      <GitBranch className="h-3.5 w-3.5" /> GitLab Issue
+                    </p>
+                    {gitlabLink ? (
+                      <a href={gitlabLink.issue_url} target="_blank" rel="noreferrer"
+                         className="text-xs text-primary hover:underline flex items-center gap-1">
+                        #{gitlabLink.issue_iid} ({gitlabLink.issue_state}) <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Не создан</p>
+                    )}
+                  </div>
+                  {!gitlabLink && (
+                    <Button size="sm" variant="outline" onClick={handleCreateGitlabIssue} disabled={gitlabBusy}>
+                      {gitlabBusy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <GitBranch className="h-3.5 w-3.5 mr-1" />}
+                      Создать issue
+                    </Button>
+                  )}
+                </div>
+
+                {/* Seafile */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm">
+                    <p className="font-medium flex items-center gap-1.5">
+                      <FolderArchive className="h-3.5 w-3.5" /> Seafile вложение
+                    </p>
+                    <p className="text-xs text-muted-foreground">Загружается в /tickets/{ticket.id.slice(0, 8)}</p>
+                  </div>
+                  <label>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleSeafileUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button size="sm" variant="outline" disabled={seafileBusy} asChild>
+                      <span>
+                        {seafileBusy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FolderArchive className="h-3.5 w-3.5 mr-1" />}
+                        Загрузить файл
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               </div>
             )}
           </TabsContent>

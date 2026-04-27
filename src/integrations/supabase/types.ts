@@ -358,6 +358,72 @@ export type Database = {
         }
         Relationships: []
       }
+      gitlab_ticket_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          issue_iid: number
+          issue_state: string
+          issue_url: string
+          project_id: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          issue_iid: number
+          issue_state?: string
+          issue_url: string
+          project_id: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          issue_iid?: number
+          issue_state?: string
+          issue_url?: string
+          project_id?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_settings: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       item_aliases: {
         Row: {
           category: string | null
@@ -1697,6 +1763,51 @@ export type Database = {
           zabbix_password?: string
           zabbix_url?: string
           zabbix_user?: string
+        }
+        Relationships: []
+      }
+      zabbix_template_library: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          imported_from: string | null
+          name: string
+          source: string
+          source_url: string | null
+          tags: Json
+          updated_at: string
+          yaml_content: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imported_from?: string | null
+          name: string
+          source?: string
+          source_url?: string | null
+          tags?: Json
+          updated_at?: string
+          yaml_content?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imported_from?: string | null
+          name?: string
+          source?: string
+          source_url?: string | null
+          tags?: Json
+          updated_at?: string
+          yaml_content?: string | null
         }
         Relationships: []
       }

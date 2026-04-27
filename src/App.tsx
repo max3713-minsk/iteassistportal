@@ -20,6 +20,7 @@ import Monitoring from "@/pages/Monitoring";
 import Notifications from "@/pages/Notifications";
 import Organizations from "@/pages/Organizations";
 import ZabbixConnections from "@/pages/ZabbixConnections";
+import Integrations from "@/pages/Integrations";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/organizations" element={<Organizations />} />
               <Route path="/zabbix-connections" element={<ZabbixConnections />} />
+              <Route path="/integrations" element={<Integrations />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />

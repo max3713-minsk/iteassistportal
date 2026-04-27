@@ -17,6 +17,8 @@ import { Library, Search, Loader2, Eye, Server, Activity, Link2, Download, Refre
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ExternalTemplatesPanel from "./ExternalTemplatesPanel";
 
 interface ZabbixTemplate {
   templateid: string;
@@ -197,6 +199,16 @@ export default function TemplateLibrary() {
   });
 
   return (
+    <div className="space-y-3">
+      <Tabs defaultValue="zabbix">
+        <TabsList>
+          <TabsTrigger value="zabbix">Из Zabbix</TabsTrigger>
+          <TabsTrigger value="external">Локальные / GitHub</TabsTrigger>
+        </TabsList>
+        <TabsContent value="external" className="mt-3">
+          <ExternalTemplatesPanel />
+        </TabsContent>
+        <TabsContent value="zabbix" className="mt-3">
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
         <CardTitle className="text-base flex items-center gap-2">
@@ -481,5 +493,8 @@ export default function TemplateLibrary() {
         </DialogContent>
       </Dialog>
     </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
