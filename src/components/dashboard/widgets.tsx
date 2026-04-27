@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
+import GraphChart from "@/components/monitoring/GraphChart";
 
 /* ============ Types ============ */
 export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "radial" | "list";
@@ -34,7 +35,8 @@ export interface WidgetMeta {
   minH: number;
   supportedCharts?: ChartType[]; // если не задан — визуализация фиксирована
   defaultChart?: ChartType;
-  Component: React.FC<{ chartType?: ChartType }>;
+  hasConfig?: boolean; // true → виджет требует выбор сохранённого графика и т.п.
+  Component: React.FC<{ chartType?: ChartType; config?: Record<string, unknown> }>;
 }
 
 /* ============ Colors / config ============ */
