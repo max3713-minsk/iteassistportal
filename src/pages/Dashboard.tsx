@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
@@ -31,6 +32,18 @@ export default function Dashboard() {
   const [editMode, setEditMode] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [configWidget, setConfigWidget] = useState<WidgetInstance | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Add live-graph widget via query param (?addLiveGraph=<savedGraphId>)
+  useEffect(() => {
+    const id = searchParams.get("addLiveGraph");
+    if (!id) return;
+    addWidget("live-graph", { savedGraphId: id, refreshInterval: 60 });
+    searchParams.delete("addLiveGraph");
+    setSearchParams(searchParams, { replace: true });
+    setEditMode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const presentTypes = useMemo(() => new Set(layout.map((w) => w.type)), [layout]);
 
