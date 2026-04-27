@@ -77,7 +77,7 @@ export function useDashboardLayout() {
       user_id: user.id,
       widget_type: it.type,
       title: WIDGET_REGISTRY[it.type]?.title ?? it.type,
-      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null, extra: it.config ?? {} },
+      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null, extra: (it.config ?? {}) as Record<string, unknown> } as unknown as never,
       position: idx,
     }));
     await supabase.from("user_dashboard_widgets").insert(payload);
