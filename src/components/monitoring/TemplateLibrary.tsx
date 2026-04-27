@@ -199,36 +199,16 @@ export default function TemplateLibrary() {
   });
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Шаблоны мониторинга</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <Tabs defaultValue="zabbix">
-          <TabsList>
-            <TabsTrigger value="zabbix">Из Zabbix</TabsTrigger>
-            <TabsTrigger value="external">Локальные / GitHub</TabsTrigger>
-          </TabsList>
-          <TabsContent value="zabbix" className="mt-3">
-            {/* Zabbix templates UI continues below in original Card */}
-          </TabsContent>
-          <TabsContent value="external" className="mt-3">
-            <ExternalTemplatesPanel />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Original Zabbix templates card kept as a separate component to avoid massive refactor:
-function ZabbixTemplatesCard_unused() {
-  return null;
-}
-
-// (No-op marker — the original return above is replaced; we now render the Zabbix UI inline inside the tab.)
-function _OldRender() {
-  return (
+    <div className="space-y-3">
+      <Tabs defaultValue="zabbix">
+        <TabsList>
+          <TabsTrigger value="zabbix">Из Zabbix</TabsTrigger>
+          <TabsTrigger value="external">Локальные / GitHub</TabsTrigger>
+        </TabsList>
+        <TabsContent value="external" className="mt-3">
+          <ExternalTemplatesPanel />
+        </TabsContent>
+        <TabsContent value="zabbix" className="mt-3">
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
         <CardTitle className="text-base flex items-center gap-2">
