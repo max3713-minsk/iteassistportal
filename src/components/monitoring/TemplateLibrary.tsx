@@ -493,5 +493,8 @@ export default function TemplateLibrary() {
         </DialogContent>
       </Dialog>
     </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
