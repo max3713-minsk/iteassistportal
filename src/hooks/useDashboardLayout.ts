@@ -8,6 +8,7 @@ export interface WidgetInstance {
   type: string;        // widget_type, key in WIDGET_REGISTRY
   x: number; y: number; w: number; h: number;
   chartType?: ChartType;
+  config?: Record<string, unknown>;
 }
 
 interface DbRow {
@@ -15,7 +16,7 @@ interface DbRow {
   user_id: string;
   widget_type: string;
   title: string;
-  config: { x?: number; y?: number; w?: number; h?: number; chartType?: ChartType } & Record<string, unknown>;
+  config: { x?: number; y?: number; w?: number; h?: number; chartType?: ChartType; extra?: Record<string, unknown> } & Record<string, unknown>;
   position: number;
 }
 
@@ -60,6 +61,7 @@ export function useDashboardLayout() {
         w: r.config.w ?? WIDGET_REGISTRY[r.widget_type]?.defaultW ?? 4,
         h: r.config.h ?? WIDGET_REGISTRY[r.widget_type]?.defaultH ?? 6,
         chartType: r.config.chartType,
+        config: (r.config.extra as Record<string, unknown>) ?? {},
       })) as WidgetInstance[];
     },
     enabled: !!user,
@@ -75,7 +77,7 @@ export function useDashboardLayout() {
       user_id: user.id,
       widget_type: it.type,
       title: WIDGET_REGISTRY[it.type]?.title ?? it.type,
-      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null },
+      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null, extra: (it.config ?? {}) as Record<string, unknown> } as unknown as never,
       position: idx,
     }));
     await supabase.from("user_dashboard_widgets").insert(payload);
@@ -103,7 +105,7 @@ export function useDashboardLayout() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
   });
 
-  function addWidget(type: string) {
+  function addWidget(type: string, initialConfig?: Record<string, unknown>) {
     const meta = WIDGET_REGISTRY[type];
     if (!meta) return;
     // find lowest free y
@@ -113,6 +115,7 @@ export function useDashboardLayout() {
       type, x: 0, y: maxY,
       w: meta.defaultW, h: meta.defaultH,
       chartType: meta.defaultChart,
+      config: initialConfig ?? {},
     };
     save.mutate([...layout, next]);
   }
@@ -125,6 +128,10 @@ export function useDashboardLayout() {
     save.mutate(layout.map((w) => (w.id === id ? { ...w, chartType } : w)));
   }
 
+  function setWidgetConfig(id: string, config: Record<string, unknown>) {
+    save.mutate(layout.map((w) => (w.id === id ? { ...w, config: { ...(w.config ?? {}), ...config } } : w)));
+  }
+
   return {
     layout,
     isLoading: query.isLoading,
@@ -133,5 +140,6 @@ export function useDashboardLayout() {
     addWidget,
     removeWidget,
     setChartType,
+    setWidgetConfig,
   };
 }

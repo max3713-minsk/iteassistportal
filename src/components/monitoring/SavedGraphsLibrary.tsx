@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star, Trash2, Users, FileText, BarChart3 } from "lucide-react";
+import { Star, Trash2, Users, FileText, BarChart3, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import GraphChart from "./GraphChart";
+import { Link } from "react-router-dom";
 
 interface SavedGraph {
   id: string;
@@ -113,6 +114,20 @@ export default function SavedGraphsLibrary() {
                         )}
                       </CardHeader>
                       <CardContent>
+                        <div className="flex justify-end mb-2">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            title="Добавить как живой виджет на панель управления"
+                          >
+                            <Link to={`/?addLiveGraph=${g.id}`}>
+                              <LayoutDashboard className="h-3 w-3 mr-1" />
+                              На панель управления
+                            </Link>
+                          </Button>
+                        </div>
                         <GraphChart
                           series={items.map((it: any) => ({
                             hostid: it.hostid,

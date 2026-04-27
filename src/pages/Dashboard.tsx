@@ -1,17 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
-  Lock, Unlock, RotateCcw, Plus, Trash2, BarChart3, MoreVertical,
+  Lock, Unlock, RotateCcw, Plus, Trash2, BarChart3, MoreVertical, Settings,
 } from "lucide-react";
 import { useDashboardLayout, type WidgetInstance } from "@/hooks/useDashboardLayout";
 import {
@@ -21,9 +28,22 @@ import {
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function Dashboard() {
-  const { layout, save, reset, addWidget, removeWidget, setChartType } = useDashboardLayout();
+  const { layout, save, reset, addWidget, removeWidget, setChartType, setWidgetConfig } = useDashboardLayout();
   const [editMode, setEditMode] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [configWidget, setConfigWidget] = useState<WidgetInstance | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Add live-graph widget via query param (?addLiveGraph=<savedGraphId>)
+  useEffect(() => {
+    const id = searchParams.get("addLiveGraph");
+    if (!id) return;
+    addWidget("live-graph", { savedGraphId: id, refreshInterval: 60 });
+    searchParams.delete("addLiveGraph");
+    setSearchParams(searchParams, { replace: true });
+    setEditMode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const presentTypes = useMemo(() => new Set(layout.map((w) => w.type)), [layout]);
 
@@ -122,16 +142,25 @@ export default function Dashboard() {
             return (
               <div key={w.id} data-grid={{ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: meta.minW, minH: meta.minH }}
                    className="relative group">
-                <Comp chartType={w.chartType ?? meta.defaultChart} />
+                <Comp chartType={w.chartType ?? meta.defaultChart} config={w.config} />
                 <WidgetMenu
                   instance={w}
                   onChartChange={(t) => setChartType(w.id, t)}
                   onRemove={() => removeWidget(w.id)}
+                  onConfigure={meta.hasConfig ? () => setConfigWidget(w) : undefined}
                 />
               </div>
             );
           })}
         </ResponsiveGridLayout>
+      )}
+
+      {configWidget && (
+        <WidgetConfigDialog
+          instance={configWidget}
+          onClose={() => setConfigWidget(null)}
+          onSave={(cfg) => { setWidgetConfig(configWidget.id, cfg); setConfigWidget(null); }}
+        />
       )}
     </div>
   );
@@ -145,10 +174,11 @@ function layoutToGrid(items: WidgetInstance[]): Layout[] {
 }
 
 /* ============ Per-widget menu ============ */
-function WidgetMenu({ instance, onChartChange, onRemove }: {
+function WidgetMenu({ instance, onChartChange, onRemove, onConfigure }: {
   instance: WidgetInstance;
   onChartChange: (t: ChartType) => void;
   onRemove: () => void;
+  onConfigure?: () => void;
 }) {
   const meta = WIDGET_REGISTRY[instance.type];
   const supports = meta?.supportedCharts ?? [];
@@ -161,6 +191,15 @@ function WidgetMenu({ instance, onChartChange, onRemove }: {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+          {onConfigure && (
+            <>
+              <DropdownMenuItem onClick={onConfigure}>
+                <Settings className="h-3.5 w-3.5 mr-2" />
+                Настроить
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {supports.length > 0 && (
             <>
               <DropdownMenuLabel className="text-xs">Визуализация</DropdownMenuLabel>
@@ -184,6 +223,90 @@ function WidgetMenu({ instance, onChartChange, onRemove }: {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+/* ============ Live-graph configuration dialog ============ */
+function WidgetConfigDialog({ instance, onClose, onSave }: {
+  instance: WidgetInstance;
+  onClose: () => void;
+  onSave: (cfg: Record<string, unknown>) => void;
+}) {
+  const [savedGraphId, setSavedGraphId] = useState<string>(
+    (instance.config?.savedGraphId as string) ?? "",
+  );
+  const [refreshInterval, setRefreshInterval] = useState<string>(
+    String((instance.config?.refreshInterval as number) ?? 60),
+  );
+
+  const { data: graphs = [] } = useQuery({
+    queryKey: ["saved-graphs-for-widget"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("saved_graphs")
+        .select("id,name,description,is_shared,is_template")
+        .order("updated_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Настройка живого графика</DialogTitle>
+          <DialogDescription>
+            Выберите сохранённый график и интервал автоматического обновления данных.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Сохранённый график</Label>
+            <Select value={savedGraphId} onValueChange={setSavedGraphId}>
+              <SelectTrigger><SelectValue placeholder="Выберите график…" /></SelectTrigger>
+              <SelectContent className="max-h-80 z-50">
+                {graphs.length === 0 && (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    Нет сохранённых графиков. Создайте в Мониторинге → Графики.
+                  </div>
+                )}
+                {graphs.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                    {g.is_template ? " · шаблон" : ""}
+                    {g.is_shared ? " · общий" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Частота обновления</Label>
+            <Select value={refreshInterval} onValueChange={setRefreshInterval}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="z-50">
+                <SelectItem value="0">Не обновлять</SelectItem>
+                <SelectItem value="15">15 секунд</SelectItem>
+                <SelectItem value="30">30 секунд</SelectItem>
+                <SelectItem value="60">1 минута</SelectItem>
+                <SelectItem value="300">5 минут</SelectItem>
+                <SelectItem value="900">15 минут</SelectItem>
+                <SelectItem value="3600">1 час</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button
+            disabled={!savedGraphId}
+            onClick={() => onSave({ savedGraphId, refreshInterval: Number(refreshInterval) })}
+          >
+            Сохранить
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

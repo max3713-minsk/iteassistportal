@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
+import GraphChart from "@/components/monitoring/GraphChart";
 
 /* ============ Types ============ */
 export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "radial" | "list";
@@ -34,7 +35,8 @@ export interface WidgetMeta {
   minH: number;
   supportedCharts?: ChartType[]; // если не задан — визуализация фиксирована
   defaultChart?: ChartType;
-  Component: React.FC<{ chartType?: ChartType }>;
+  hasConfig?: boolean; // true → виджет требует выбор сохранённого графика и т.п.
+  Component: React.FC<{ chartType?: ChartType; config?: Record<string, unknown> }>;
 }
 
 /* ============ Colors / config ============ */
@@ -733,4 +735,91 @@ export const CHART_TYPE_LABELS: Record<ChartType, string> = {
   area: "Областная",
   radial: "Радиальная",
   list: "Список",
+};
+
+/* ============ Live Graph widget (renders saved graph live with refresh) ============ */
+const LiveGraphWidget: WidgetMeta["Component"] = ({ config }) => {
+  const savedGraphId = config?.savedGraphId as string | undefined;
+  const refreshSec = (config?.refreshInterval as number) ?? 60;
+
+  const { data: graph } = useQuery({
+    queryKey: ["live-graph-meta", savedGraphId],
+    queryFn: async () => {
+      if (!savedGraphId) return null;
+      const { data } = await supabase
+        .from("saved_graphs")
+        .select("*")
+        .eq("id", savedGraphId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!savedGraphId,
+  });
+
+  if (!savedGraphId) {
+    return (
+      <WidgetShell title="Живой график" icon={LineChartIcon}>
+        <div className="h-full flex flex-col items-center justify-center text-center gap-2 py-8">
+          <LineChartIcon className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">График не выбран</p>
+          <p className="text-xs text-muted-foreground">Нажмите ⋯ → «Настроить» в правом верхнем углу виджета</p>
+        </div>
+      </WidgetShell>
+    );
+  }
+
+  if (!graph) {
+    return (
+      <WidgetShell title="Живой график" icon={LineChartIcon}>
+        <p className="text-sm text-muted-foreground text-center py-8">Загрузка…</p>
+      </WidgetShell>
+    );
+  }
+
+  const items = Array.isArray(graph.item_keys) ? (graph.item_keys as Array<Record<string, unknown>>) : [];
+
+  return (
+    <WidgetShell
+      title={graph.name as string}
+      icon={LineChartIcon}
+      action={
+        <Link to="/monitoring" className="text-xs text-primary hover:underline flex items-center gap-1">
+          В раздел <ExternalLink className="h-3 w-3" />
+        </Link>
+      }
+    >
+      <GraphChart
+        series={items.map((it) => ({
+          hostid: it.hostid as string,
+          hostName: it.hostName as string,
+          itemid: it.itemid as string,
+          itemName: it.name as string,
+          units: it.units as string,
+          color: it.color as string,
+          ip: it.ip as string,
+          hostGroup: it.hostGroup as string,
+        }))}
+        timeRange={(graph.time_range as string) || "1h"}
+        chartType={(graph.chart_type as "line" | "area" | "bar") || "line"}
+        aggregation={((graph.aggregation as "avg" | "min" | "max") || "avg")}
+        height={200}
+        graphName={graph.name as string}
+        refetchInterval={refreshSec * 1000}
+        showHostMeta={false}
+      />
+    </WidgetShell>
+  );
+};
+LiveGraphWidget.displayName = "LiveGraphWidget";
+
+// Register live-graph widget after declaration to avoid forward reference
+WIDGET_REGISTRY["live-graph"] = {
+  type: "live-graph",
+  title: "Живой график",
+  description: "Лайв-визуализация сохранённого графика. Настраиваемая частота обновления и переход к источнику.",
+  category: "Мониторинг",
+  icon: LineChartIcon,
+  defaultW: 6, defaultH: 8, minW: 4, minH: 5,
+  hasConfig: true,
+  Component: LiveGraphWidget,
 };
