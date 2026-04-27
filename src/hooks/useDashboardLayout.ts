@@ -105,7 +105,7 @@ export function useDashboardLayout() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
   });
 
-  function addWidget(type: string) {
+  function addWidget(type: string, initialConfig?: Record<string, unknown>) {
     const meta = WIDGET_REGISTRY[type];
     if (!meta) return;
     // find lowest free y
@@ -115,6 +115,7 @@ export function useDashboardLayout() {
       type, x: 0, y: maxY,
       w: meta.defaultW, h: meta.defaultH,
       chartType: meta.defaultChart,
+      config: initialConfig ?? {},
     };
     save.mutate([...layout, next]);
   }
