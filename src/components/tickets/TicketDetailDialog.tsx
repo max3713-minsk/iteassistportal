@@ -567,6 +567,65 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                 )}
               </div>
             )}
+
+            {/* External integrations (staff only) */}
+            {isStaff && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" /> Внешние интеграции
+                </Label>
+
+                {/* GitLab */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm">
+                    <p className="font-medium flex items-center gap-1.5">
+                      <GitBranch className="h-3.5 w-3.5" /> GitLab Issue
+                    </p>
+                    {gitlabLink ? (
+                      <a href={gitlabLink.issue_url} target="_blank" rel="noreferrer"
+                         className="text-xs text-primary hover:underline flex items-center gap-1">
+                        #{gitlabLink.issue_iid} ({gitlabLink.issue_state}) <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Не создан</p>
+                    )}
+                  </div>
+                  {!gitlabLink && (
+                    <Button size="sm" variant="outline" onClick={handleCreateGitlabIssue} disabled={gitlabBusy}>
+                      {gitlabBusy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <GitBranch className="h-3.5 w-3.5 mr-1" />}
+                      Создать issue
+                    </Button>
+                  )}
+                </div>
+
+                {/* Seafile */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm">
+                    <p className="font-medium flex items-center gap-1.5">
+                      <FolderArchive className="h-3.5 w-3.5" /> Seafile вложение
+                    </p>
+                    <p className="text-xs text-muted-foreground">Загружается в /tickets/{ticket.id.slice(0, 8)}</p>
+                  </div>
+                  <label>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleSeafileUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button size="sm" variant="outline" disabled={seafileBusy} asChild>
+                      <span>
+                        {seafileBusy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FolderArchive className="h-3.5 w-3.5 mr-1" />}
+                        Загрузить файл
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Comments tab */}
