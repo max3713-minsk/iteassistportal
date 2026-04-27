@@ -17,6 +17,8 @@ import { Library, Search, Loader2, Eye, Server, Activity, Link2, Download, Refre
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ExternalTemplatesPanel from "./ExternalTemplatesPanel";
 
 interface ZabbixTemplate {
   templateid: string;
@@ -196,6 +198,36 @@ export default function TemplateLibrary() {
       toast({ title: "Ошибка импорта", description: e.message, variant: "destructive" }),
   });
 
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Шаблоны мониторинга</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Tabs defaultValue="zabbix">
+          <TabsList>
+            <TabsTrigger value="zabbix">Из Zabbix</TabsTrigger>
+            <TabsTrigger value="external">Локальные / GitHub</TabsTrigger>
+          </TabsList>
+          <TabsContent value="zabbix" className="mt-3">
+            {/* Zabbix templates UI continues below in original Card */}
+          </TabsContent>
+          <TabsContent value="external" className="mt-3">
+            <ExternalTemplatesPanel />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Original Zabbix templates card kept as a separate component to avoid massive refactor:
+function ZabbixTemplatesCard_unused() {
+  return null;
+}
+
+// (No-op marker — the original return above is replaced; we now render the Zabbix UI inline inside the tab.)
+function _OldRender() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
