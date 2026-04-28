@@ -28,7 +28,7 @@ import {
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function Dashboard() {
-  const { layout, save, reset, addWidget, removeWidget, setChartType, setWidgetConfig } = useDashboardLayout();
+  const { layout, save, saveDebounced, reset, addWidget, removeWidget, setChartType, setWidgetConfig } = useDashboardLayout();
   const [editMode, setEditMode] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [configWidget, setConfigWidget] = useState<WidgetInstance | null>(null);
@@ -47,14 +47,16 @@ export default function Dashboard() {
 
   const presentTypes = useMemo(() => new Set(layout.map((w) => w.type)), [layout]);
 
-  function handleLayoutChange(next: Layout[]) {
+  // Persist only on drag/resize END (not on every animation frame) to avoid
+  // duplicate-charts flicker and constant refetching.
+  function handleStop(next: Layout[]) {
     if (!editMode) return;
     const map = new Map(next.map((n) => [n.i, n]));
     const merged = layout.map((w) => {
       const n = map.get(w.id);
       return n ? { ...w, x: n.x, y: n.y, w: n.w, h: n.h } : w;
     });
-    save(merged);
+    saveDebounced(merged);
   }
 
   return (
@@ -132,7 +134,8 @@ export default function Dashboard() {
           isDraggable={editMode}
           isResizable={editMode}
           draggableHandle=".dashboard-drag-handle"
-          onLayoutChange={handleLayoutChange}
+          onDragStop={handleStop}
+          onResizeStop={handleStop}
           compactType="vertical"
         >
           {layout.map((w) => {
@@ -140,8 +143,7 @@ export default function Dashboard() {
             if (!meta) return <div key={w.id} />;
             const Comp = meta.Component;
             return (
-              <div key={w.id} data-grid={{ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: meta.minW, minH: meta.minH }}
-                   className="relative group">
+              <div key={w.id} className="relative group">
                 <Comp chartType={w.chartType ?? meta.defaultChart} config={w.config} />
                 <WidgetMenu
                   instance={w}

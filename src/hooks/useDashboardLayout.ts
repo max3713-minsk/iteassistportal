@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { WIDGET_REGISTRY, type ChartType } from "@/components/dashboard/widgets";
@@ -36,6 +37,7 @@ const DEFAULT_TYPES: Array<{ type: string; x: number; y: number; w: number; h: n
 export function useDashboardLayout() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const query = useQuery({
     queryKey: ["dashboard-layout", user?.id],
@@ -70,17 +72,42 @@ export function useDashboardLayout() {
   const layout = query.data ?? [];
 
   async function persist(items: WidgetInstance[]) {
-    if (!user) return;
-    await supabase.from("user_dashboard_widgets").delete().eq("user_id", user.id);
-    if (!items.length) return;
-    const payload = items.map((it, idx) => ({
+    if (!user) return items;
+    // Materialize stable UUIDs for any "default-*"/"new-*" rows (first save / additions)
+    const materialized = items.map((it) => {
+      if (it.id.startsWith("default-") || it.id.startsWith("new-")) {
+        return { ...it, id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`) };
+      }
+      return it;
+    });
+
+    // Compute current DB ids and delete only the ones removed by the user
+    const { data: existing } = await supabase
+      .from("user_dashboard_widgets")
+      .select("id")
+      .eq("user_id", user.id);
+    const keepIds = new Set(materialized.map((m) => m.id));
+    const toDelete = (existing ?? []).map((r) => r.id).filter((id) => !keepIds.has(id));
+    if (toDelete.length) {
+      await supabase.from("user_dashboard_widgets").delete().in("id", toDelete);
+    }
+
+    if (!materialized.length) return materialized;
+
+    const payload = materialized.map((it, idx) => ({
+      id: it.id,
       user_id: user.id,
       widget_type: it.type,
       title: WIDGET_REGISTRY[it.type]?.title ?? it.type,
-      config: { x: it.x, y: it.y, w: it.w, h: it.h, chartType: it.chartType ?? null, extra: (it.config ?? {}) as Record<string, unknown> } as unknown as never,
+      config: {
+        x: it.x, y: it.y, w: it.w, h: it.h,
+        chartType: it.chartType ?? null,
+        extra: (it.config ?? {}) as Record<string, unknown>,
+      } as unknown as never,
       position: idx,
     }));
-    await supabase.from("user_dashboard_widgets").insert(payload);
+    await supabase.from("user_dashboard_widgets").upsert(payload, { onConflict: "id" });
+    return materialized;
   }
 
   const save = useMutation({
@@ -94,7 +121,11 @@ export function useDashboardLayout() {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["dashboard-layout", user?.id], ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
+    onSuccess: (materialized) => {
+      // Adopt materialized UUIDs into the cache so subsequent edits target real rows
+      if (materialized) qc.setQueryData(["dashboard-layout", user?.id], materialized);
+    },
+    // No invalidate — would remount widgets and cause duplicate/refetch flicker.
   });
 
   const reset = useMutation({
@@ -104,6 +135,13 @@ export function useDashboardLayout() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard-layout", user?.id] }),
   });
+
+  function saveDebounced(items: WidgetInstance[]) {
+    // Optimistic local update immediately so UI is responsive
+    qc.setQueryData(["dashboard-layout", user?.id], items);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => save.mutate(items), 400);
+  }
 
   function addWidget(type: string, initialConfig?: Record<string, unknown>) {
     const meta = WIDGET_REGISTRY[type];
@@ -136,6 +174,7 @@ export function useDashboardLayout() {
     layout,
     isLoading: query.isLoading,
     save: save.mutate,
+    saveDebounced,
     reset: reset.mutate,
     addWidget,
     removeWidget,
