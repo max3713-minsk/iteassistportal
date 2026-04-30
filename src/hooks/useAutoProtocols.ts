@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter } from "date-fns";
-import { isTaskScheduledOnDate } from "@/lib/schedule-utils";
+import { isTaskScheduledOnDate, buildHolidayMap, type HolidayEntry } from "@/lib/schedule-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Frequency = Database["public"]["Enums"]["maintenance_frequency"];
@@ -55,9 +55,16 @@ export function useAutoProtocols() {
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
 
+      // Load holidays for proper non-working day detection
+      const { data: holidaysData } = await supabase
+        .from("holidays")
+        .select("date, name, day_type")
+        .eq("country_code", "BY");
+      const holidayMap = buildHolidayMap((holidaysData ?? []) as HolidayEntry[]);
+
       // Which frequencies are scheduled today?
       const scheduledToday = SCHEDULED_FREQUENCIES.filter((f) =>
-        isTaskScheduledOnDate(f, today)
+        isTaskScheduledOnDate(f, today, undefined, holidayMap)
       );
       if (scheduledToday.length === 0) return;
 

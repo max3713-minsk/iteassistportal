@@ -394,6 +394,45 @@ export type Database = {
         }
         Relationships: []
       }
+      holidays: {
+        Row: {
+          country_code: string
+          created_at: string
+          created_by: string | null
+          date: string
+          day_type: string
+          id: string
+          name: string
+          notes: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          date: string
+          day_type?: string
+          id?: string
+          name: string
+          notes?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          day_type?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           config: Json

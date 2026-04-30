@@ -13,6 +13,7 @@ import {
   isTaskScheduledOnDate,
   type TaskWithCategory,
   type FrequencyType,
+  type HolidayMap,
 } from "@/lib/schedule-utils";
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   tasks: TaskWithCategory[];
   completedTaskIds: Set<string>;
   onClose: () => void;
+  holidays?: HolidayMap;
 }
 
 interface GroupedCategory {
@@ -27,12 +29,12 @@ interface GroupedCategory {
   items: { task: TaskWithCategory; completed: boolean }[];
 }
 
-export default function DayDetail({ date, tasks, completedTaskIds, onClose }: Props) {
+export default function DayDetail({ date, tasks, completedTaskIds, onClose, holidays }: Props) {
   const navigate = useNavigate();
   const grouped = useMemo(() => {
     // Filter tasks scheduled on this date
     const scheduled = tasks.filter((t) =>
-      isTaskScheduledOnDate(t.frequency, date)
+      isTaskScheduledOnDate(t.frequency, date, undefined, holidays)
     );
 
     // Group by category
@@ -51,7 +53,7 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose }: Pr
     return Array.from(catMap.values()).sort((a, b) =>
       a.categoryName.localeCompare(b.categoryName)
     );
-  }, [date, tasks, completedTaskIds]);
+  }, [date, tasks, completedTaskIds, holidays]);
 
   const totalTasks = grouped.reduce((s, g) => s + g.items.length, 0);
   const completedCount = grouped.reduce(
