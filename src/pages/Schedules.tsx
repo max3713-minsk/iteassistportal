@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import MaintenanceCalendar from "@/components/schedules/MaintenanceCalendar";
 import DayDetail from "@/components/schedules/DayDetail";
 import DayStats from "@/components/schedules/DayStats";
+import { useHolidays } from "@/hooks/useHolidays";
 import {
   frequencyColors,
   frequencyLabels,
@@ -19,6 +20,7 @@ import {
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [contractId, setContractId] = useState<string>("");
+  const { holidayMap } = useHolidays("BY");
 
   const { data: contracts = [] } = useQuery({
     queryKey: ["active-contracts"],
@@ -106,10 +108,11 @@ export default function Schedules() {
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
                 serviceStartDate={contractStartDate}
+                holidays={holidayMap}
               />
             </Card>
             {selectedDate && (
-              <DayStats date={selectedDate} tasks={tasks} />
+              <DayStats date={selectedDate} tasks={tasks} holidays={holidayMap} />
             )}
           </div>
 
@@ -121,6 +124,7 @@ export default function Schedules() {
                 tasks={tasks}
                 completedTaskIds={completedTaskIds}
                 onClose={() => setSelectedDate(null)}
+                holidays={holidayMap}
               />
             ) : (
               <Card className="flex flex-col items-center justify-center py-16 text-center">
