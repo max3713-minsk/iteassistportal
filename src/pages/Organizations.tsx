@@ -13,8 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/users/ConfirmDialog";
-import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
+import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow } from "lucide-react";
 import { logAudit } from "@/lib/audit";
+import SupportSchemeView from "@/components/organizations/SupportSchemeView";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Organizations() {
   const { hasRole } = useAuth();
@@ -47,6 +49,7 @@ export default function Organizations() {
         <TabsList>
           <TabsTrigger value="orgs">Организации</TabsTrigger>
           <TabsTrigger value="contracts">Договоры</TabsTrigger>
+          <TabsTrigger value="support"><Workflow className="h-3.5 w-3.5 mr-1.5" />Схема поддержки</TabsTrigger>
         </TabsList>
         <TabsContent value="orgs">
           <OrganizationsTab toast={toast} qc={qc} />
@@ -54,7 +57,43 @@ export default function Organizations() {
         <TabsContent value="contracts">
           <ContractsTab toast={toast} qc={qc} />
         </TabsContent>
+        <TabsContent value="support">
+          <SupportTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* ─── Support Scheme Tab ─── */
+function SupportTab() {
+  const { data: orgs = [] } = useQuery({
+    queryKey: ["organizations-for-support"],
+    queryFn: async () => (await supabase.from("organizations").select("id, name").eq("is_active", true).order("name")).data ?? [],
+  });
+  const [orgId, setOrgId] = useState<string>("");
+  const active = orgs.find((o: any) => o.id === orgId) ?? orgs[0];
+
+  if (orgs.length === 0) {
+    return (
+      <Card><CardContent className="py-10 text-center text-muted-foreground">
+        Сначала создайте организацию во вкладке «Организации».
+      </CardContent></Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Организация:</span>
+        <Select value={active?.id ?? ""} onValueChange={setOrgId}>
+          <SelectTrigger className="w-[360px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {orgs.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      {active && <SupportSchemeView organizationId={active.id} organizationName={active.name} />}
     </div>
   );
 }

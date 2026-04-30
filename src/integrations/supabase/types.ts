@@ -1309,6 +1309,139 @@ export type Database = {
           },
         ]
       }
+      support_scheme_lines: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          fallback_engineer_name: string | null
+          fallback_engineer_phone: string | null
+          id: string
+          line_name: string
+          line_number: string | null
+          position: number
+          primary_engineer_name: string | null
+          primary_engineer_phone: string | null
+          scheme_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          fallback_engineer_name?: string | null
+          fallback_engineer_phone?: string | null
+          id?: string
+          line_name: string
+          line_number?: string | null
+          position?: number
+          primary_engineer_name?: string | null
+          primary_engineer_phone?: string | null
+          scheme_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          fallback_engineer_name?: string | null
+          fallback_engineer_phone?: string | null
+          id?: string
+          line_name?: string
+          line_number?: string | null
+          position?: number
+          primary_engineer_name?: string | null
+          primary_engineer_phone?: string | null
+          scheme_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_scheme_lines_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "support_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_schemes: {
+        Row: {
+          contractor_responsible_name: string | null
+          contractor_responsible_phone: string | null
+          contractor_responsible_role: string | null
+          created_at: string
+          customer_responsible_name: string | null
+          customer_responsible_phone: string | null
+          customer_responsible_role: string | null
+          escalation_name: string | null
+          escalation_phone: string | null
+          escalation_role: string | null
+          hotline_city: string | null
+          hotline_mobile: string | null
+          id: string
+          ivr_after_hours: string | null
+          ivr_business_hours: string | null
+          organization_id: string
+          sla_note: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          contractor_responsible_name?: string | null
+          contractor_responsible_phone?: string | null
+          contractor_responsible_role?: string | null
+          created_at?: string
+          customer_responsible_name?: string | null
+          customer_responsible_phone?: string | null
+          customer_responsible_role?: string | null
+          escalation_name?: string | null
+          escalation_phone?: string | null
+          escalation_role?: string | null
+          hotline_city?: string | null
+          hotline_mobile?: string | null
+          id?: string
+          ivr_after_hours?: string | null
+          ivr_business_hours?: string | null
+          organization_id: string
+          sla_note?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          contractor_responsible_name?: string | null
+          contractor_responsible_phone?: string | null
+          contractor_responsible_role?: string | null
+          created_at?: string
+          customer_responsible_name?: string | null
+          customer_responsible_phone?: string | null
+          customer_responsible_role?: string | null
+          escalation_name?: string | null
+          escalation_phone?: string | null
+          escalation_role?: string | null
+          hotline_city?: string | null
+          hotline_mobile?: string | null
+          id?: string
+          ivr_after_hours?: string | null
+          ivr_business_hours?: string | null
+          organization_id?: string
+          sla_note?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_schemes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_kill_log: {
         Row: {
           created_at: string

@@ -35,7 +35,7 @@ const DAY_TYPE_COLOR: Record<string, string> = {
   short_day: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
 };
 
-export default function Holidays() {
+export default function Holidays({ embedded = false }: { embedded?: boolean } = {}) {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin") || hasRole("engineer");
   const qc = useQueryClient();
@@ -115,9 +115,15 @@ export default function Holidays() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <CalendarDays className="h-6 w-6" /> Праздники и переносы (РБ)
-          </h1>
+          {embedded ? (
+            <h2 className="font-heading text-lg font-semibold flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" /> Праздники и переносы (РБ)
+            </h2>
+          ) : (
+            <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
+              <CalendarDays className="h-6 w-6" /> Праздники и переносы (РБ)
+            </h1>
+          )}
           <p className="text-sm text-muted-foreground mt-1">
             Календарь ТО автоматически переносит регламентные работы со праздничных и выходных дней на ближайший рабочий день.
           </p>

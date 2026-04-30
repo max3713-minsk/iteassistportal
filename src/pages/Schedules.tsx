@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CalendarDays } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import MaintenanceCalendar from "@/components/schedules/MaintenanceCalendar";
 import DayDetail from "@/components/schedules/DayDetail";
 import DayStats from "@/components/schedules/DayStats";
 import { useHolidays } from "@/hooks/useHolidays";
+import HolidaysPanel from "@/pages/Holidays";
 import {
   frequencyColors,
   frequencyLabels,
@@ -20,6 +22,7 @@ import {
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [contractId, setContractId] = useState<string>("");
+  const [tab, setTab] = useState("calendar");
   const { holidayMap } = useHolidays("BY");
 
   const { data: contracts = [] } = useQuery({
@@ -67,7 +70,7 @@ export default function Schedules() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-heading text-2xl font-bold">Календарь ТО</h1>
-        {contracts.length > 0 && (
+        {tab === "calendar" && contracts.length > 0 && (
           <div className="flex items-center gap-2">
             <Select value={activeContract?.id ?? ""} onValueChange={setContractId}>
               <SelectTrigger className="w-[320px]"><SelectValue placeholder="Выберите договор"/></SelectTrigger>
@@ -86,15 +89,22 @@ export default function Schedules() {
         )}
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        {legend.map((f) => (
-          <div key={f} className="flex items-center gap-1.5 text-xs">
-            <span className={cn("w-3 h-3 rounded-full", frequencyColors[f].dot)} />
-            <span className="text-muted-foreground">{frequencyLabels[f]}</span>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="calendar"><CalendarIcon className="h-3.5 w-3.5 mr-1.5" />Календарь</TabsTrigger>
+          <TabsTrigger value="holidays"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Праздники (РБ)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar">
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            {legend.map((f) => (
+              <div key={f} className="flex items-center gap-1.5 text-xs">
+                <span className={cn("w-3 h-3 rounded-full", frequencyColors[f].dot)} />
+                <span className="text-muted-foreground">{frequencyLabels[f]}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
       {isLoading ? (
         <p className="text-muted-foreground">Загрузка...</p>
@@ -136,6 +146,12 @@ export default function Schedules() {
           </div>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="holidays">
+          <HolidaysPanel embedded />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
