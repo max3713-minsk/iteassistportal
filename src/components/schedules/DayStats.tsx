@@ -11,16 +11,18 @@ import {
   isTaskScheduledOnDate,
   type TaskWithCategory,
   type FrequencyType,
+  type HolidayMap,
 } from "@/lib/schedule-utils";
 
 interface Props {
   date: Date;
   tasks: TaskWithCategory[];
+  holidays?: HolidayMap;
 }
 
 const FREQ_ORDER: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
 
-export default function DayStats({ date, tasks }: Props) {
+export default function DayStats({ date, tasks, holidays }: Props) {
   const dateStr = format(date, "yyyy-MM-dd");
 
   // Build a set of completed task IDs from protocol items that match the date range
@@ -59,7 +61,7 @@ export default function DayStats({ date, tasks }: Props) {
 
     for (const freq of FREQ_ORDER) {
       const scheduled = tasks.filter(
-        (t) => t.frequency === freq && isTaskScheduledOnDate(freq, date)
+        (t) => t.frequency === freq && isTaskScheduledOnDate(freq, date, undefined, holidays)
       );
       if (scheduled.length === 0) continue;
 
@@ -70,7 +72,7 @@ export default function DayStats({ date, tasks }: Props) {
     }
 
     return result;
-  }, [date, tasks, completedTaskIdsForDate]);
+  }, [date, tasks, completedTaskIdsForDate, holidays]);
 
   if (stats.length === 0) {
     return null;

@@ -20,8 +20,10 @@ import { cn } from "@/lib/utils";
 import {
   frequencyColors,
   isTaskScheduledOnDate,
+  isNonWorkingDay,
   type FrequencyType,
   type TaskWithCategory,
+  type HolidayMap,
 } from "@/lib/schedule-utils";
 
 interface Props {
@@ -29,11 +31,12 @@ interface Props {
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   serviceStartDate?: Date;
+  holidays?: HolidayMap;
 }
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate }: Props) {
+export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const today = startOfDay(new Date());
   const startBoundary = serviceStartDate ? startOfDay(serviceStartDate) : null;
@@ -60,14 +63,14 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
       const key = format(day, "yyyy-MM-dd");
       const freqs = new Set<FrequencyType>();
       for (const t of tasks) {
-        if (isTaskScheduledOnDate(t.frequency, day, serviceStartDate)) {
+        if (isTaskScheduledOnDate(t.frequency, day, serviceStartDate, holidays)) {
           freqs.add(t.frequency);
         }
       }
       if (freqs.size > 0) map.set(key, freqs);
     }
     return map;
-  }, [calendarDays, tasks, serviceStartDate]);
+  }, [calendarDays, tasks, serviceStartDate, holidays]);
 
   const isPast = (date: Date) => isBefore(date, today) && !isSameDay(date, today);
   const isBeforeStart = (date: Date) => startBoundary ? isBefore(date, startBoundary) && !isSameDay(date, startBoundary) : false;
@@ -113,6 +116,9 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
           const sortedFreqs = freqs
             ? freqOrder.filter((f) => freqs.has(f))
             : [];
+          const holiday = holidays?.get(key);
+          const isHoliday = holiday?.day_type === "holiday";
+          const isWorkdayTransfer = holiday?.day_type === "workday";
 
           return (
             <button
@@ -127,18 +133,33 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
                 inMonth && !past && !beforeStart && "hover:border-primary/40 cursor-pointer",
                 isToday && "ring-2 ring-primary/50 font-bold",
                 isSelected && "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm",
+                inMonth && isHoliday && "bg-red-500/10 dark:bg-red-500/15",
+                inMonth && isWorkdayTransfer && "bg-blue-500/10 dark:bg-blue-500/15",
               )}
-              title={beforeStart ? "До даты старта договора" : undefined}
+              title={
+                beforeStart ? "До даты старта договора"
+                : holiday ? `${holiday.name}${isHoliday ? " (нерабочий)" : isWorkdayTransfer ? " (рабочий перенос)" : ""}`
+                : undefined
+              }
             >
               <span
                 className={cn(
                   "text-xs md:text-sm leading-none mb-1",
                   isToday && "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center",
                   past && "text-muted-foreground",
+                  inMonth && isHoliday && !isToday && "text-red-600 dark:text-red-400 font-medium",
                 )}
               >
                 {format(day, "d")}
               </span>
+              {inMonth && holiday && (
+                <span className={cn(
+                  "text-[9px] leading-none truncate max-w-full px-0.5",
+                  isHoliday ? "text-red-600/80 dark:text-red-400/80" : "text-blue-600/80 dark:text-blue-400/80",
+                )}>
+                  {holiday.name.length > 10 ? holiday.name.slice(0, 9) + "…" : holiday.name}
+                </span>
+              )}
 
               {/* Frequency dots */}
               {hasEvents && inMonth && (
