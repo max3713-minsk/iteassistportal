@@ -1,17 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Ticket, HelpCircle } from "lucide-react";
+import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { logAudit } from "@/lib/audit";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog";
 import { TicketDetailDialog } from "@/components/tickets/TicketDetailDialog";
@@ -25,6 +26,8 @@ import {
   PRODUCTS,
 } from "@/lib/ticket-categories";
 
+const PAGE_SIZE = 50;
+
 export default function Tickets() {
   const { user, isStaff, hasRole } = useAuth();
   const qc = useQueryClient();
@@ -32,14 +35,19 @@ export default function Tickets() {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showHelp, setShowHelp] = useState(false);
+  const [page, setPage] = useState(0);
 
-  const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ["tickets", statusFilter],
+  // Reset page when filter changes
+  useEffect(() => { setPage(0); }, [statusFilter]);
+
+  const { data: ticketsResult, isLoading } = useQuery({
+    queryKey: ["tickets", statusFilter, page],
     queryFn: async () => {
       let q = supabase
         .from("tickets")
-        .select("*, sites(name), equipment(name)")
-        .order("created_at", { ascending: false });
+        .select("*, sites(name), equipment(name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (statusFilter === "active") {
         q = q.in("status", ["open", "assigned", "in_progress", "waiting", "overdue"]);
@@ -47,33 +55,25 @@ export default function Tickets() {
         q = q.eq("status", statusFilter as any);
       }
 
-      const { data, error } = await q;
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data;
+      return { rows: data ?? [], total: count ?? 0 };
     },
   });
 
-  // Auto-mark overdue tickets
-  const overdueChecked = useRef(false);
+  // Realtime: invalidate on any tickets change
   useEffect(() => {
-    if (overdueChecked.current || !tickets.length) return;
-    overdueChecked.current = true;
-    const now = new Date();
-    const overdueTickets = tickets.filter(
-      (t: any) =>
-        (t.status === "open" || t.status === "assigned") &&
-        t.sla_deadline &&
-        new Date(t.sla_deadline) < now
-    );
-    if (overdueTickets.length === 0) return;
-    (async () => {
-      for (const t of overdueTickets) {
-        await supabase.from("tickets").update({ status: "overdue" }).eq("id", t.id);
-        await logAudit({ action: "Автоматическая просрочка SLA", module: "tickets", entityId: t.id, details: t.title });
-      }
-      qc.invalidateQueries({ queryKey: ["tickets"] });
-    })();
-  }, [tickets, qc]);
+    const channel = supabase
+      .channel("tickets-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" },
+        () => qc.invalidateQueries({ queryKey: ["tickets"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+  const tickets = ticketsResult?.rows ?? [];
+  const total = ticketsResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div>
@@ -107,7 +107,13 @@ export default function Tickets() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Загрузка...</p>
+        <Card>
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </Card>
       ) : tickets.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -116,6 +122,7 @@ export default function Tickets() {
           </CardContent>
         </Card>
       ) : (
+        <TooltipProvider delayDuration={400}>
         <Card>
           <Table>
             <TableHeader>
@@ -130,12 +137,16 @@ export default function Tickets() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tickets.map((t: any) => {
+              {tickets.map((t: any, idx: number) => {
                 const product = PRODUCTS.find((p) => p.code === t.product_code);
-                return (
+                const row = (
                   <TableRow
                     key={t.id}
-                    className={cn("cursor-pointer", ROW_STATUS_CLASSES[t.status])}
+                    className={cn(
+                      "cursor-pointer animate-in fade-in-0 transition-all duration-200",
+                      ROW_STATUS_CLASSES[t.status],
+                    )}
+                    style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}
                     onClick={() => setSelectedTicket(t)}
                   >
                     <TableCell>
@@ -170,10 +181,36 @@ export default function Tickets() {
                     </TableCell>
                   </TableRow>
                 );
+                if (t.description) {
+                  return (
+                    <Tooltip key={t.id}>
+                      <TooltipTrigger asChild>{row}</TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-md">
+                        <p className="text-xs">{t.description.slice(0, 100)}{t.description.length > 100 ? "…" : ""}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                return row;
               })}
             </TableBody>
           </Table>
+          {/* Pagination */}
+          <div className="flex items-center justify-between p-3 border-t">
+            <span className="text-sm text-muted-foreground">
+              Всего: {total} • Страница {page + 1} из {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Предыдущая
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page + 1 >= totalPages}>
+                Следующая <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
         </Card>
+        </TooltipProvider>
       )}
 
       <CreateTicketDialog open={createOpen} onOpenChange={setCreateOpen} />

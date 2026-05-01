@@ -32,6 +32,18 @@ Deno.serve(async (req) => {
 
   const supa = createClient(SUPABASE_URL, SERVICE_KEY);
 
+  // Auto-mark overdue tickets (server-side, was previously on client)
+  const nowIso = new Date().toISOString();
+  const { data: overdueRows } = await supa
+    .from("tickets")
+    .select("id, title")
+    .in("status", ["open", "assigned"])
+    .lt("sla_deadline", nowIso);
+  if (overdueRows?.length) {
+    const ids = overdueRows.map((t: any) => t.id);
+    await supa.from("tickets").update({ status: "overdue" }).in("id", ids);
+  }
+
   // Pull active tickets with future deadlines
   const { data: tickets, error: tErr } = await supa
     .from("tickets")
