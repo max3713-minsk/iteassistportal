@@ -564,7 +564,9 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                           size="sm"
                           variant={t.to === "cancelled" ? "destructive" : "outline"}
                           onClick={() => {
-                            if (t.requireComment) {
+                            if (t.to === "cancelled") {
+                              setConfirmCancel(true);
+                            } else if (t.requireComment) {
                               setPendingTransition(t.to);
                             } else {
                               statusMutation.mutate({ newStatus: t.to });
@@ -643,36 +645,62 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
           {/* Comments tab */}
           <TabsContent value="comments" className="space-y-3 mt-4">
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {comments.map((c: any) => (
-                <div key={c.id} className="bg-muted/30 rounded-lg p-3 text-sm">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-medium">{c.profiles?.full_name ?? "Пользователь"}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
-                    </span>
+              {comments
+                .filter((c: any) => isStaff || !c.is_internal)
+                .map((c: any) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "rounded-lg p-3 text-sm",
+                      c.is_internal ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-muted/30",
+                    )}
+                  >
+                    <div className="flex justify-between mb-1">
+                      <span className="font-medium flex items-center gap-1.5">
+                        {c.is_internal && <Lock className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
+                        {c.profiles?.full_name ?? "Пользователь"}
+                        {c.is_internal && (
+                          <span className="text-[10px] uppercase tracking-wider text-yellow-700 dark:text-yellow-400 ml-1">
+                            внутренняя
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap">{c.content}</p>
                   </div>
-                  <p className="whitespace-pre-wrap">{c.content}</p>
-                </div>
-              ))}
+                ))}
               {comments.length === 0 && (
                 <p className="text-muted-foreground text-sm text-center py-4">Комментариев пока нет</p>
               )}
             </div>
             {!["closed", "cancelled"].includes(ticket.status) && (
-              <div className="flex gap-2">
-                <Input
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Напишите комментарий..."
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && commentMutation.mutate()}
-                />
-                <Button
-                  size="sm"
-                  onClick={() => commentMutation.mutate()}
-                  disabled={!comment.trim() || commentMutation.isPending}
-                >
-                  Отправить
-                </Button>
+              <div className="space-y-2">
+                {isStaff && (
+                  <div className="flex items-center gap-2 px-1">
+                    <Switch id="ticket-internal-toggle" checked={isInternal} onCheckedChange={setIsInternal} />
+                    <label htmlFor="ticket-internal-toggle" className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
+                      <Lock className="h-3 w-3" /> Внутренняя заметка (только для сотрудников)
+                    </label>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={isInternal ? "Внутренняя заметка..." : "Напишите комментарий..."}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && commentMutation.mutate()}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => commentMutation.mutate()}
+                    disabled={!comment.trim() || commentMutation.isPending}
+                  >
+                    Отправить
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
