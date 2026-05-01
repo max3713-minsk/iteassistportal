@@ -58,7 +58,7 @@ export function SLATimer({ deadline, status, compact }: Props) {
   if (expired) {
     tone = "text-destructive border-destructive/40 bg-destructive/10";
     Icon = AlertTriangle;
-  } else if (diffMs < 5 * 60 * 1000) {
+  } else if (diffMs < 10 * 60 * 1000) {
     tone = "text-destructive border-destructive/40 bg-destructive/10 animate-pulse";
   } else if (diffMs < 30 * 60 * 1000) {
     tone = "text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10";
