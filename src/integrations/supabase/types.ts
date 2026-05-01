@@ -893,6 +893,7 @@ export type Database = {
           event_type: string
           http_status: number | null
           id: string
+          is_read: boolean
           payload: Json | null
           priority: string | null
           sent_at: string | null
@@ -910,6 +911,7 @@ export type Database = {
           event_type: string
           http_status?: number | null
           id?: string
+          is_read?: boolean
           payload?: Json | null
           priority?: string | null
           sent_at?: string | null
@@ -927,6 +929,7 @@ export type Database = {
           event_type?: string
           http_status?: number | null
           id?: string
+          is_read?: boolean
           payload?: Json | null
           priority?: string | null
           sent_at?: string | null
