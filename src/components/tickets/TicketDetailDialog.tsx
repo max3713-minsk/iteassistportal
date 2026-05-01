@@ -34,7 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2 } from "lucide-react";
+import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SLATimer } from "@/components/tickets/SLATimer";
@@ -49,8 +54,10 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
   const [transitionComment, setTransitionComment] = useState("");
   const [pendingTransition, setPendingTransition] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [gitlabBusy, setGitlabBusy] = useState(false);
   const [seafileBusy, setSeafileBusy] = useState(false);
 
@@ -143,11 +150,14 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
     } finally { setSeafileBusy(false); }
   };
 
-  // Engineers for assignment
+  // Engineers for assignment — only admin & engineer roles
   const { data: profiles = [] } = useQuery({
     queryKey: ["engineer-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, full_name");
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, user_roles!inner(role)")
+        .in("user_roles.role", ["admin", "engineer"]);
       return data ?? [];
     },
     enabled: hasRole("admin"),
@@ -156,11 +166,12 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const commentMutation = useMutation({
     mutationFn: async () => {
       if (!comment.trim()) return;
-      const isInternal = false; // current UI does not expose internal flag
+      const internal = isStaff ? isInternal : false;
       const { error } = await supabase.from("ticket_comments").insert({
         ticket_id: ticket.id,
         user_id: user!.id,
         content: comment.trim(),
+        is_internal: internal,
       });
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
@@ -170,7 +181,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       const productName = PRODUCTS.find((p) => p.code === ticket.product_code)?.name ?? ticket.product_code;
       const url = `${window.location.origin}/tickets?id=${ticket.id}`;
       notify({
-        event_type: isInternal ? "ticket.comment_internal" : "ticket.comment_added",
+        event_type: internal ? "ticket.comment_internal" : "ticket.comment_added",
         priority: ticket.priority,
         title: ticket.title,
         body: comment.trim().slice(0, 600),
@@ -189,7 +200,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
           equipment_name: ticket.equipment?.name,
           status: ticket.status,
           status_label: STATUS_LABELS[ticket.status] || ticket.status,
-          is_internal: isInternal,
+          is_internal: internal,
           author_id: user!.id,
           author_name: authorProfile?.full_name || user!.email,
           comment_text: comment.trim(),
@@ -199,6 +210,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
     },
     onSuccess: () => {
       setComment("");
+      setIsInternal(false);
       refetchComments();
       toast({ title: "Комментарий добавлен" });
     },
