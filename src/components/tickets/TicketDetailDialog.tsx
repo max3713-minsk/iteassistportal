@@ -741,6 +741,28 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
           </TabsContent>
         </Tabs>
       </DialogContent>
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отменить заявку?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите отменить заявку «{ticket.title}»? Это действие зафиксируется в истории.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmCancel(false);
+                statusMutation.mutate({ newStatus: "cancelled" });
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Да, отменить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
