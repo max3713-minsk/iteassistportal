@@ -5,11 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog";
 import { TicketDetailDialog } from "@/components/tickets/TicketDetailDialog";
 import { SLATimer } from "@/components/tickets/SLATimer";
+import { TicketKanban } from "@/components/tickets/TicketKanban";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -27,6 +30,7 @@ import {
 } from "@/lib/ticket-categories";
 
 const PAGE_SIZE = 50;
+const KANBAN_PAGE_SIZE = 200;
 
 export default function Tickets() {
   const { user, isStaff, hasRole } = useAuth();
@@ -34,26 +38,48 @@ export default function Tickets() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [productFilter, setProductFilter] = useState<string>("all");
+  const [requestTypeFilter, setRequestTypeFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"list" | "kanban">("list");
   const [showHelp, setShowHelp] = useState(false);
   const [page, setPage] = useState(0);
 
-  // Reset page when filter changes
-  useEffect(() => { setPage(0); }, [statusFilter]);
+  // Reset page when any filter changes
+  useEffect(() => { setPage(0); }, [statusFilter, priorityFilter, productFilter, requestTypeFilter, search, view]);
+
+  // Load orgs for filter
+  const { data: orgs = [] } = useQuery({
+    queryKey: ["orgs-for-tickets-filter"],
+    queryFn: async () => {
+      const { data } = await supabase.from("organizations").select("id, name").order("name");
+      return data ?? [];
+    },
+  });
+  const [orgFilter, setOrgFilter] = useState<string>("all");
+  useEffect(() => { setPage(0); }, [orgFilter]);
 
   const { data: ticketsResult, isLoading } = useQuery({
-    queryKey: ["tickets", statusFilter, page],
+    queryKey: ["tickets", view, statusFilter, priorityFilter, productFilter, requestTypeFilter, orgFilter, search, page],
     queryFn: async () => {
+      const limit = view === "kanban" ? KANBAN_PAGE_SIZE : PAGE_SIZE;
       let q = supabase
         .from("tickets")
         .select("*, sites(name), equipment(name)", { count: "exact" })
         .order("created_at", { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        .range(view === "kanban" ? 0 : page * limit, view === "kanban" ? limit - 1 : (page + 1) * limit - 1);
 
       if (statusFilter === "active") {
         q = q.in("status", ["open", "assigned", "in_progress", "waiting", "overdue"]);
       } else if (statusFilter !== "all") {
         q = q.eq("status", statusFilter as any);
       }
+      if (priorityFilter !== "all") q = q.eq("priority", priorityFilter as any);
+      if (productFilter !== "all") q = q.eq("product_code", productFilter);
+      if (requestTypeFilter !== "all") q = q.eq("request_type", requestTypeFilter);
+      if (orgFilter !== "all") q = q.eq("organization_id", orgFilter);
+      if (search.trim()) q = q.ilike("title", `%${search.trim()}%`);
 
       const { data, error, count } = await q;
       if (error) throw error;
@@ -74,21 +100,53 @@ export default function Tickets() {
   const tickets = ticketsResult?.rows ?? [];
   const total = ticketsResult?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasActiveFilters =
+    statusFilter !== "all" || priorityFilter !== "all" || productFilter !== "all" ||
+    requestTypeFilter !== "all" || orgFilter !== "all" || !!search.trim();
+
+  function resetFilters() {
+    setStatusFilter("all");
+    setPriorityFilter("all");
+    setProductFilter("all");
+    setRequestTypeFilter("all");
+    setOrgFilter("all");
+    setSearch("");
+  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-2xl font-bold">Заявки</h1>
         <div className="flex gap-2">
+          <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as "list" | "kanban")} size="sm">
+            <ToggleGroupItem value="list" aria-label="Список"><List className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="kanban" aria-label="Канбан"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+          </ToggleGroup>
           <Button variant="outline" size="icon" onClick={() => setShowHelp(true)} title="Справка">
             <HelpCircle className="h-4 w-4" />
           </Button>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />Новая заявка
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters bar */}
+      <Card className="mb-4 p-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="relative col-span-2 md:col-span-3 lg:col-span-2">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по теме…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-7 h-9"
+            />
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Статус" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все</SelectItem>
+              <SelectItem value="all">Все статусы</SelectItem>
               <SelectItem value="active">Активные</SelectItem>
               <SelectItem value="open">Новые</SelectItem>
               <SelectItem value="assigned">Назначенные</SelectItem>
@@ -100,11 +158,53 @@ export default function Tickets() {
               <SelectItem value="cancelled">Отменённые</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />Новая заявка
-          </Button>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Приоритет" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все приоритеты</SelectItem>
+              <SelectItem value="P1">P1 — Критический</SelectItem>
+              <SelectItem value="P2">P2 — Высокий</SelectItem>
+              <SelectItem value="P3">P3 — Средний</SelectItem>
+              <SelectItem value="P4">P4 — Низкий</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Продукт" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все продукты</SelectItem>
+              {PRODUCTS.map((p) => (
+                <SelectItem key={p.code} value={p.code}>{p.code} — {p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={requestTypeFilter} onValueChange={setRequestTypeFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Тип" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы</SelectItem>
+              {Object.entries(REQUEST_TYPE_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Организация" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все организации</SelectItem>
+              {orgs.map((o: any) => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between mt-2 pt-2 border-t">
+            <span className="text-xs text-muted-foreground">Найдено: {total}</span>
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-7 text-xs">
+              <X className="h-3 w-3 mr-1" />Сбросить фильтры
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {isLoading ? (
         <Card>
@@ -118,9 +218,11 @@ export default function Tickets() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Ticket className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground">Заявок пока нет</p>
+            <p className="text-muted-foreground">{hasActiveFilters ? "Ничего не найдено по выбранным фильтрам" : "Заявок пока нет"}</p>
           </CardContent>
         </Card>
+      ) : view === "kanban" ? (
+        <TicketKanban tickets={tickets} onSelect={setSelectedTicket} />
       ) : (
         <TooltipProvider delayDuration={400}>
         <Card>
