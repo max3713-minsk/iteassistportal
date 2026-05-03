@@ -1,13 +1,16 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter } from "lucide-react";
-import { format } from "date-fns";
+import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { format, parseISO, isWithinInterval } from "date-fns";
+import { logAudit } from "@/lib/audit";
 import ProtocolList from "@/components/protocols/ProtocolList";
 import ProtocolDetail from "@/components/protocols/ProtocolDetail";
 import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
@@ -17,8 +20,9 @@ import { exportProtocolDocx } from "@/lib/export-protocol-docx";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 export default function Protocols() {
-  const { isStaff } = useAuth();
+  const { isStaff, user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const dateParam = searchParams.get("date") || "";
 
@@ -26,6 +30,9 @@ export default function Protocols() {
   const [filterSite, setFilterSite] = useState("all");
   const [filterFrequency, setFilterFrequency] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [periodFrom, setPeriodFrom] = useState("");
+  const [periodTo, setPeriodTo] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
 
   // Auto-create protocols for today
@@ -77,6 +84,8 @@ export default function Protocols() {
     if (dateParam) {
       result = result.filter((p) => p.period_start <= dateParam && p.period_end >= dateParam);
     }
+    if (periodFrom) result = result.filter((p) => p.period_end >= periodFrom);
+    if (periodTo)   result = result.filter((p) => p.period_start <= periodTo);
     return result;
   };
 
@@ -88,7 +97,63 @@ export default function Protocols() {
         ? overdueProtocols
         : completedProtocols;
     return applyFilters(base);
-  }, [activeProtocols, overdueProtocols, completedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam]);
+  }, [activeProtocols, overdueProtocols, completedProtocols, activeTab, filterSite, filterFrequency, filterStatus, dateParam, periodFrom, periodTo]);
+
+  const hasFilters = filterSite !== "all" || filterFrequency !== "all" || filterStatus !== "all" || !!periodFrom || !!periodTo;
+
+  function resetFilters() {
+    setFilterSite("all"); setFilterFrequency("all"); setFilterStatus("all");
+    setPeriodFrom(""); setPeriodTo("");
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll(ids: string[]) {
+    setSelectedIds((prev) => {
+      const all = ids.every((i) => prev.has(i));
+      if (all) { const n = new Set(prev); ids.forEach((i) => n.delete(i)); return n; }
+      const n = new Set(prev); ids.forEach((i) => n.add(i)); return n;
+    });
+  }
+
+  async function bulkComplete() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase
+      .from("maintenance_protocols")
+      .update({ status: "completed", completed_at: new Date().toISOString(), completed_by: user!.id } as any)
+      .in("id", ids);
+    if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
+    await logAudit({ action: `Массовое завершение протоколов (${ids.length})`, module: "protocols", details: ids.join(", ") });
+    toast({ title: `Завершено: ${ids.length}` });
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["protocols"] });
+  }
+
+  function bulkExportCsv() {
+    if (selectedIds.size === 0) return;
+    const rows = filtered.filter((p) => selectedIds.has(p.id));
+    const header = ["ЦОД", "Тип работ", "Период с", "Период по", "Статус", "Создан"];
+    const lines = [header.join(";")].concat(
+      rows.map((p) => [
+        (p.sites?.name ?? "").replace(/;/g, ","),
+        frequencyLabels[p.frequency] ?? p.frequency,
+        p.period_start, p.period_end,
+        p.status,
+        format(new Date(p.created_at), "dd.MM.yyyy HH:mm"),
+      ].join(";")),
+    );
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `protocols_${format(new Date(), "yyyyMMdd_HHmm")}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
 
   const fetchProtocolData = async (protocolId: string) => {
     const { data: protocol } = await supabase
@@ -245,10 +310,10 @@ export default function Protocols() {
           <Select value={filterSite} onValueChange={setFilterSite}>
             <SelectTrigger>
               <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue placeholder="Все площадки" />
+              <SelectValue placeholder="Все ЦОД" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все площадки</SelectItem>
+              <SelectItem value="all">Все ЦОД</SelectItem>
               {sites.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -281,7 +346,38 @@ export default function Protocols() {
             </Select>
           </div>
         )}
+        <div className="flex items-center gap-1.5">
+          <CalIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} className="w-40 h-9" placeholder="Период с" />
+          <span className="text-muted-foreground text-xs">—</span>
+          <Input type="date" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} className="w-40 h-9" placeholder="по" />
+        </div>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-xs">
+            <X className="h-3 w-3 mr-1" /> Сбросить
+          </Button>
+        )}
       </div>
+
+      {/* Bulk actions bar */}
+      {isStaff && selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 mb-3 p-2 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="outline" onClick={bulkExportCsv}>
+              <FileDown className="h-3.5 w-3.5 mr-1" /> Экспорт CSV
+            </Button>
+            {activeTab !== "completed" && (
+              <Button size="sm" onClick={bulkComplete}>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Завершить
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {dateParam && (
         <p className="text-sm text-muted-foreground mb-3">
@@ -292,7 +388,13 @@ export default function Protocols() {
       {isLoading ? (
         <p className="text-muted-foreground">Загрузка...</p>
       ) : (
-        <ProtocolList protocols={filtered} onSelect={setSelectedId} />
+        <ProtocolList
+          protocols={filtered}
+          onSelect={setSelectedId}
+          selectedIds={isStaff ? selectedIds : undefined}
+          onToggleSelect={isStaff ? toggleSelect : undefined}
+          onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
+        />
       )}
     </div>
   );

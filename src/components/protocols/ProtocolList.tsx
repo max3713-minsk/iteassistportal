@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Eye, ClipboardList } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 
@@ -44,9 +45,12 @@ interface Protocol {
 interface Props {
   protocols: Protocol[];
   onSelect: (id: string) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (ids: string[]) => void;
 }
 
-export default function ProtocolList({ protocols, onSelect }: Props) {
+export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll }: Props) {
   if (protocols.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center py-12">
@@ -61,6 +65,14 @@ export default function ProtocolList({ protocols, onSelect }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
+            {onToggleSelect && (
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={protocols.length > 0 && protocols.every((p) => selectedIds?.has(p.id))}
+                  onCheckedChange={() => onToggleSelectAll?.(protocols.map((p) => p.id))}
+                />
+              </TableHead>
+            )}
             <TableHead>Площадка</TableHead>
             <TableHead>Тип работ</TableHead>
             <TableHead>Период</TableHead>
@@ -72,6 +84,14 @@ export default function ProtocolList({ protocols, onSelect }: Props) {
         <TableBody>
           {protocols.map((p) => (
             <TableRow key={p.id} className={cn(rowStatusClasses[p.status])}>
+              {onToggleSelect && (
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds?.has(p.id) ?? false}
+                    onCheckedChange={() => onToggleSelect(p.id)}
+                  />
+                </TableCell>
+              )}
               <TableCell className="font-medium">{p.sites?.name ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant="outline">{frequencyLabels[p.frequency] ?? p.frequency}</Badge>
