@@ -44,6 +44,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SLATimer } from "@/components/tickets/SLATimer";
 import { cn } from "@/lib/utils";
+import { EquipmentSummary } from "@/components/tickets/EquipmentSummary";
 
 interface Props {
   ticket: any;
@@ -460,6 +461,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                 {ticket.description}
               </div>
             )}
+
+            {ticket.equipment_id && <EquipmentSummary equipmentId={ticket.equipment_id} />}
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>

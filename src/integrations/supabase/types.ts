@@ -282,6 +282,8 @@ export type Database = {
           site_id: string
           status: string | null
           updated_at: string
+          warranty_provider: string | null
+          warranty_until: string | null
         }
         Insert: {
           category_id?: string | null
@@ -297,6 +299,8 @@ export type Database = {
           site_id: string
           status?: string | null
           updated_at?: string
+          warranty_provider?: string | null
+          warranty_until?: string | null
         }
         Update: {
           category_id?: string | null
@@ -312,6 +316,8 @@ export type Database = {
           site_id?: string
           status?: string | null
           updated_at?: string
+          warranty_provider?: string | null
+          warranty_until?: string | null
         }
         Relationships: [
           {
