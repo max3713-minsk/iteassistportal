@@ -14,11 +14,12 @@ import {
   subMonths,
 } from "date-fns";
 import { ru } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   frequencyColors,
+  frequencyLabels,
   isTaskScheduledOnDate,
   isNonWorkingDay,
   type FrequencyType,
@@ -82,9 +83,14 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
     <div className="select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => setCurrentMonth(new Date())}>
+            <CalendarDays className="h-3.5 w-3.5 mr-1" /> Сегодня
+          </Button>
+        </div>
         <h2 className="font-heading text-lg font-semibold capitalize">
           {format(currentMonth, "LLLL yyyy", { locale: ru })}
         </h2>
@@ -178,6 +184,24 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
             </button>
           );
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 pt-3 border-t flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+        {freqOrder.map((f) => (
+          <div key={f} className="flex items-center gap-1.5">
+            <span className={cn("w-2.5 h-2.5 rounded-full", frequencyColors[f].dot)} />
+            <span>{frequencyLabels[f]}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-red-500/30 border border-red-500/50" />
+          <span>Праздник</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-blue-500/30 border border-blue-500/50" />
+          <span>Рабочий перенос</span>
+        </div>
       </div>
     </div>
   );
