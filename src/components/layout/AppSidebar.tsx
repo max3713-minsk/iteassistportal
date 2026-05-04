@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
-  Plug, ChevronDown, ChevronRight,
+  Plug, ChevronDown, ChevronRight, Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     title: "Мониторинг",
     items: [
       { to: "/monitoring", icon: Activity, label: "Мониторинг", roles: [], moduleKey: "monitoring" },
+      { to: "/infrastructure-maps", icon: Network, label: "Карта инфраструктуры", roles: [], moduleKey: "monitoring" },
     ],
   },
   {

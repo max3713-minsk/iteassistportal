@@ -439,6 +439,39 @@ export type Database = {
         }
         Relationships: []
       }
+      infrastructure_maps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           config: Json
