@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -98,7 +99,7 @@ export function useZabbixConnection() {
 
 /**
  * Helper to inject the active connection id into edge function payloads.
- * Use as: supabase.functions.invoke("zabbix-proxy", withZabbixConn(activeId, { action: "..." }))
+ * Use as: invokeZabbix( withZabbixConn(activeId, { action: "..." }))
  */
 export function withZabbixConn<T extends object>(connectionId: string | null, body: T): { body: T & { connection_id?: string } } {
   return { body: { ...body, ...(connectionId ? { connection_id: connectionId } : {}) } };

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { supabase } from "@/integrations/supabase/client";
 import { Cpu, MemoryStick, HardDrive, Loader2, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,7 +30,7 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
   const { data: items = [], isLoading, error } = useQuery({
     queryKey: ["host-items-by-zbx", zabbixHostId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getItemsByHost", params: { hostid: zabbixHostId } },
       });
       if (error) throw error;

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,7 +71,7 @@ export default function MonitoringProblems({
 
   const closeMutation = useMutation({
     mutationFn: async (eventid: string) => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "closeEvent", params: { eventids: [eventid] } },
       });
       if (error) throw error;

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Loader2, AlertCircle, FileImage, FileText, FileType2 } from "lucide-react";
@@ -62,7 +63,7 @@ export default function GraphChart({
 
       const results = await Promise.all(
         series.map(async (s) => {
-          const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+          const { data, error } = await invokeZabbix( {
             body: {
               action: useTrends ? "getTrends" : "getHistory",
               params: {
@@ -77,7 +78,7 @@ export default function GraphChart({
           let raw = data?.result ?? [];
 
           if (!useTrends && raw.length === 0) {
-            const { data: d2 } = await supabase.functions.invoke("zabbix-proxy", {
+            const { data: d2 } = await invokeZabbix( {
               body: {
                 action: "getHistory",
                 params: { itemids: [s.itemid], time_from: timeFrom, history: 3, limit: 5000 },

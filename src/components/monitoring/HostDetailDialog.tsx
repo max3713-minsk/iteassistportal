@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -56,7 +57,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
   const { data: detail, isLoading: detailLoading, refetch: refetchDetail } = useQuery({
     queryKey: ["zbx-host-detail", zabbixHostId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getHostDetail", params: { hostid: zabbixHostId } },
       });
       if (error) throw error;
@@ -69,7 +70,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["zbx-host-items", zabbixHostId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getItemsByHost", params: { hostid: zabbixHostId } },
       });
       if (error) throw error;
@@ -82,7 +83,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
   const { data: allTemplates = [] } = useQuery({
     queryKey: ["zbx-all-templates"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getTemplates" },
       });
       if (error) throw error;
@@ -124,7 +125,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
 
   const linkMutation = useMutation({
     mutationFn: async (templateid: string) => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "updateHostTemplates", params: { hostid: zabbixHostId, templateids: [templateid], mode: "link" } },
       });
       if (error) throw error;
@@ -147,7 +148,7 @@ export default function HostDetailDialog({ open, onOpenChange, zabbixHostId, hos
 
   const unlinkMutation = useMutation({
     mutationFn: async (templateid: string) => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "updateHostTemplates", params: { hostid: zabbixHostId, templateids: [templateid], mode: "unlink" } },
       });
       if (error) throw error;

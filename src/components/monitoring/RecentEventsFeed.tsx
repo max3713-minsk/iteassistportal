@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +43,7 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
   const { data: activeEvents = [], isLoading: loadingActive } = useQuery({
     queryKey: ["zabbix", "getProblems"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getProblems" },
       });
       if (error) throw error;
@@ -64,7 +65,7 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
   const { data: closedEvents = [], isLoading: loadingClosed } = useQuery({
     queryKey: ["zabbix", "getClosedEvents"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getClosedEvents" },
       });
       if (error) throw error;
@@ -142,7 +143,7 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
 
   const ackMutation = useMutation({
     mutationFn: async (eventids: string[]) => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "massAcknowledge", params: { eventids, message: "Подтверждено через портал ITEA", close: false } },
       });
       if (error) throw error;
@@ -161,7 +162,7 @@ export default function RecentEventsFeed({ isZabbixConfigured, onClickEvent, com
 
   const closeMutation = useMutation({
     mutationFn: async (eventids: string[]) => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "massAcknowledge", params: { eventids, message: "Закрыто через портал ITEA", close: true } },
       });
       if (error) throw error;

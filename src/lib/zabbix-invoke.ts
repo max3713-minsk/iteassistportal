@@ -16,7 +16,7 @@ function activeConnectionId(): string | null {
 }
 
 /**
- * Drop-in replacement for `supabase.functions.invoke("zabbix-proxy", { body })`
+ * Drop-in replacement for `invokeZabbix( { body })`
  * that automatically injects `connection_id` from the global picker.
  */
 export function invokeZabbix<T = unknown>(payload: { body?: Record<string, unknown> } = {}) {

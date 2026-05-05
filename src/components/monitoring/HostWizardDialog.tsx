@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -136,7 +137,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
   const { data: zbxGroups } = useQuery({
     queryKey: ["zabbix", "getHostGroups"],
     queryFn: async () => {
-      const { data } = await supabase.functions.invoke("zabbix-proxy", { body: { action: "getHostGroups" } });
+      const { data } = await invokeZabbix( { body: { action: "getHostGroups" } });
       return (data?.result as { groupid: string; name: string }[]) || [];
     },
     enabled: open,
@@ -145,7 +146,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
   const { data: zbxTemplates } = useQuery({
     queryKey: ["zabbix", "getTemplates"],
     queryFn: async () => {
-      const { data } = await supabase.functions.invoke("zabbix-proxy", { body: { action: "getTemplates" } });
+      const { data } = await invokeZabbix( { body: { action: "getTemplates" } });
       return (data?.result as { templateid: string; name: string }[]) || [];
     },
     enabled: open && step >= 3,
@@ -172,7 +173,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
     setTesting(true);
     setTestResult(null);
     try {
-      const { data: resp, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data: resp, error } = await invokeZabbix( {
         body: { action: "testConnection" },
       });
       if (error) throw error;
@@ -201,7 +202,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
       let zabbix_host_id: string | null = null;
 
       if (data.push_to_zabbix) {
-        const { data: zRes, error: zErr } = await supabase.functions.invoke("zabbix-proxy", {
+        const { data: zRes, error: zErr } = await invokeZabbix( {
           body: {
             action: "createHost",
             params: {
