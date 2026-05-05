@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -57,7 +58,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
   const { data: zabbixHosts = [], isLoading: zbxLoading, refetch: refetchZbx } = useQuery({
     queryKey: ["cmdb-sync", "zabbix-hosts"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getHosts" },
       });
       if (error) throw error;

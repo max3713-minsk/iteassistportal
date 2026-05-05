@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +63,7 @@ export default function GraphBuilder({ hosts, initialHostId, initialItemIds = []
     queryKey: ["zabbix-items-for-host", selectedHost],
     queryFn: async () => {
       if (!selectedHost) return [];
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getItems", params: { hostids: [selectedHost], filter: { status: 0 } } },
       });
       if (error) throw error;

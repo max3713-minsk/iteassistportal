@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ZabbixConnectionProvider } from "@/hooks/useZabbixConnection";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -22,6 +23,7 @@ import Organizations from "@/pages/Organizations";
 import ZabbixConnections from "@/pages/ZabbixConnections";
 import Integrations from "@/pages/Integrations";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
+import SystemReset from "@/pages/SystemReset";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ZabbixConnectionProvider>
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
             <Route element={<ProtectedRoutes />}>
@@ -71,10 +74,12 @@ const App = () => (
               <Route path="/zabbix-connections" element={<ZabbixConnections />} />
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/infrastructure-maps" element={<InfrastructureMaps />} />
+              <Route path="/system-reset" element={<SystemReset />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ZabbixConnectionProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ export default function FavoriteMetricsWidget() {
     queryKey: ["favorite-metrics-values", itemIds.join(",")],
     queryFn: async () => {
       if (itemIds.length === 0) return {};
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getItems", params: { itemids: itemIds, output: ["itemid", "lastvalue", "lastclock", "units", "name", "key_"] } },
       });
       if (error) return {};

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -268,7 +269,7 @@ function HostDetailView({
   const { data: hostItems = [], isLoading: itemsLoading, refetch: refetchItems } = useQuery({
     queryKey: ["zabbix-host-items-detail", host.hostid],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getItemsByHost", params: { hostid: host.hostid } },
       });
       if (error) throw error;
@@ -282,7 +283,7 @@ function HostDetailView({
   const { data: hostProblems = [], isLoading: problemsLoading, refetch: refetchProblems } = useQuery({
     queryKey: ["zabbix-host-problems", host.hostid],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getActiveProblemsByHost", params: { hostid: host.hostid } },
       });
       if (error) throw error;

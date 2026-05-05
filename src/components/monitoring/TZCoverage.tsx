@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,7 +96,7 @@ export default function TZCoverage() {
   const { data: zabbixHosts = [] } = useQuery({
     queryKey: ["zabbix", "getHosts"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", { body: { action: "getHosts" } });
+      const { data, error } = await invokeZabbix( { body: { action: "getHosts" } });
       if (error) throw error;
       return (data?.result ?? []) as any[];
     },
@@ -200,7 +201,7 @@ export default function TZCoverage() {
       // Pre-fetch items for each host once
       const hostItems = new Map<string, any[]>();
       for (const h of zabbixHosts) {
-        const { data } = await supabase.functions.invoke("zabbix-proxy", {
+        const { data } = await invokeZabbix( {
           body: { action: "getItemsByHost", params: { hostid: h.hostid } },
         });
         hostItems.set(h.hostid, data?.result || []);

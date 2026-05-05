@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { Link } from "react-router-dom";
 import { format, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -546,7 +547,7 @@ const RecentEventsWidget: WidgetMeta["Component"] = () => {
   const { data, isError } = useQuery({
     queryKey: ["dashboard-zbx-problems"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getProblems" },
       });
       if (error) throw error;

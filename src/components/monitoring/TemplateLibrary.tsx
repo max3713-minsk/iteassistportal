@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +54,7 @@ export default function TemplateLibrary() {
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["zbx-all-templates"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getTemplates" },
       });
       if (error) throw error;
@@ -67,7 +68,7 @@ export default function TemplateLibrary() {
     queryKey: ["zbx-template-detail", selectedId],
     queryFn: async () => {
       if (!selectedId) return null;
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getTemplateDetail", params: { templateid: selectedId } },
       });
       if (error) throw error;
@@ -80,7 +81,7 @@ export default function TemplateLibrary() {
   const { data: hosts = [] } = useQuery({
     queryKey: ["zabbix", "getHosts"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "getHosts" },
       });
       if (error) throw error;
@@ -124,7 +125,7 @@ export default function TemplateLibrary() {
       const results: { hostid: string; ok: boolean; error?: string }[] = [];
       for (const hostid of hostIds) {
         try {
-          const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+          const { data, error } = await invokeZabbix( {
             body: {
               action: "updateHostTemplates",
               params: { hostid, templateids: tplIds, mode: "link" },

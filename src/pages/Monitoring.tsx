@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +42,7 @@ function useZabbixData(action: string, enabled = true) {
   return useQuery({
     queryKey: ["zabbix", action],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action },
       });
       if (error) throw error;
@@ -130,7 +131,7 @@ export default function Monitoring() {
 
   const acknowledgeEvent = async (eventid: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("zabbix-proxy", {
+      const { data, error } = await invokeZabbix( {
         body: { action: "acknowledgeEvent", params: { eventids: [eventid], message: "Признано через портал ITEA" } },
       });
       if (error) throw error;
