@@ -50,14 +50,13 @@ const fail = (error: string, status = 500) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-/* ─── Zabbix auth session (cached for 1 hour per ТЗ) ─── */
-let authTokenCache: { token: string; ts: number } | null = null;
+/* ─── Zabbix auth session (per connection, 1h TTL) ─── */
+const authTokenCache = new Map<string, { token: string; ts: number }>();
 const AUTH_TTL = 60 * 60 * 1000; // 1 hour
 
-async function getAuthToken(apiUrl: string, user: string, password: string): Promise<string> {
-  if (authTokenCache && Date.now() - authTokenCache.ts < AUTH_TTL) {
-    return authTokenCache.token;
-  }
+async function getAuthToken(cacheKey: string, apiUrl: string, user: string, password: string): Promise<string> {
+  const entry = authTokenCache.get(cacheKey);
+  if (entry && Date.now() - entry.ts < AUTH_TTL) return entry.token;
 
   const res = await fetchWithTimeout(apiUrl, {
     method: "POST",
@@ -66,7 +65,7 @@ async function getAuthToken(apiUrl: string, user: string, password: string): Pro
   });
   const data = await res.json();
   if (!data.result) throw new Error("Ошибка авторизации Zabbix");
-  authTokenCache = { token: data.result, ts: Date.now() };
+  authTokenCache.set(cacheKey, { token: data.result, ts: Date.now() });
   return data.result;
 }
 
