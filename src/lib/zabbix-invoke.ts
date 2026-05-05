@@ -19,7 +19,9 @@ function activeConnectionId(): string | null {
  * Drop-in replacement for `invokeZabbix( { body })`
  * that automatically injects `connection_id` from the global picker.
  */
-export function invokeZabbix<T = unknown>(payload: { body?: Record<string, unknown> } = {}) {
+// Return type kept as `any` so legacy callers that read `data.result` / `data.error`
+// keep working without per-call generic annotations.
+export function invokeZabbix<T = any>(payload: { body?: Record<string, unknown> } = {}) {
   const id = activeConnectionId();
   const nextBody = { ...(payload.body ?? {}), ...(id ? { connection_id: id } : {}) };
   return supabase.functions.invoke<T>("zabbix-proxy", { body: nextBody });
