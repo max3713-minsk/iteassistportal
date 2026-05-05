@@ -412,7 +412,7 @@ Deno.serve(async (req) => {
         } catch { /* ignore */ }
 
         // Invalidate cached auth token since we just did a fresh login
-        authTokenCache = null;
+        authTokenCache.delete(connCacheKey);
 
         return ok({ ok: true, data: { version: zabbixVersion }, rawLogin: loginData });
       } catch (e: unknown) {
@@ -426,7 +426,7 @@ Deno.serve(async (req) => {
       const { scriptid, hostid } = extraParams || {};
       if (!scriptid || !hostid) return fail("scriptid и hostid обязательны", 400);
 
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
       const { eventids, message: ackMessage, ackAction } = extraParams || {};
       if (!eventids) return fail("eventids обязателен", 400);
 
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -481,7 +481,7 @@ Deno.serve(async (req) => {
       const { name, visible_name, ip, port, group_name, templates, protocol_type } = extraParams || {};
       if (!name || !ip) return fail("name и ip обязательны", 400);
 
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
 
       // 1) Get or create host group
       let groupId: string | null = null;
@@ -543,7 +543,7 @@ Deno.serve(async (req) => {
     if (action === "testHostConnectivity") {
       const { hostid } = extraParams || {};
       if (!hostid) return fail("hostid обязателен", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const itemsRes = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -562,7 +562,7 @@ Deno.serve(async (req) => {
     if (action === "updateHostTemplates") {
       const { hostid, templateids, mode } = extraParams || {};
       if (!hostid || !Array.isArray(templateids)) return fail("hostid и templateids обязательны", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
 
       // mode: "link" | "unlink" | "replace" (default replace)
       const params: Record<string, unknown> = { hostid };
@@ -596,7 +596,7 @@ Deno.serve(async (req) => {
     if (action === "getHostDetail") {
       const { hostid } = extraParams || {};
       if (!hostid) return fail("hostid обязателен", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
     if (action === "getTemplateDetail") {
       const { templateid } = extraParams || {};
       if (!templateid) return fail("templateid обязателен", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -646,7 +646,7 @@ Deno.serve(async (req) => {
     if (action === "getActiveProblemsByHost") {
       const { hostid } = extraParams || {};
       if (!hostid) return fail("hostid обязателен", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -676,7 +676,7 @@ Deno.serve(async (req) => {
       const cached = getCached(cacheKey, 30000);
       if (cached !== null) return ok({ result: cached, cached: true });
 
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -702,7 +702,7 @@ Deno.serve(async (req) => {
       if (!eventids) return fail("eventids обязателен", 400);
       const ids = Array.isArray(eventids) ? eventids : [eventids];
 
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const msg = closeMessage || "Закрыто через портал ITEA";
 
       const callAck = async (actionBitmap: number) => {
@@ -748,7 +748,7 @@ Deno.serve(async (req) => {
     if (action === "massAcknowledge") {
       const { eventids, message: ackMessage, close } = extraParams || {};
       if (!Array.isArray(eventids) || eventids.length === 0) return fail("eventids[] обязателен", 400);
-      const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
       const actionBitmap = close ? 7 : 6; // close ? close+ack+msg : ack+msg
       const res = await fetchWithTimeout(apiUrl, {
         method: "POST", headers,
@@ -776,7 +776,7 @@ Deno.serve(async (req) => {
     }
 
     // Get auth token (cached)
-    const authToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+    const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
 
     const dataResponse = await fetchWithTimeout(apiUrl, {
       method: "POST", headers,
@@ -793,8 +793,8 @@ Deno.serve(async (req) => {
     if (data.error) {
       // Auth expired - retry once
       if (data.error.code === -32602 || data.error.data === "Session terminated") {
-        authTokenCache = null;
-        const newToken = await getAuthToken(apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+        authTokenCache.delete(connCacheKey);
+        const newToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
         const retryRes = await fetchWithTimeout(apiUrl, {
           method: "POST", headers,
           body: JSON.stringify({
