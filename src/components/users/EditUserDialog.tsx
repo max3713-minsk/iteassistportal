@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
 import type { UserProfile } from "@/pages/UsersAdmin";
+import { NON_ADMIN_MODULES } from "@/lib/modules";
 
 type AppRole = "admin" | "engineer" | "customer";
 
@@ -19,17 +20,7 @@ const roleLabels: Record<AppRole, string> = {
   customer: "Заказчик",
 };
 
-const MODULES = [
-  { key: "dashboard", label: "Панель управления" },
-  { key: "sites", label: "ЦОД" },
-  { key: "equipment", label: "Оборудование" },
-  { key: "schedules", label: "Календарь ТО" },
-  { key: "protocols", label: "Протоколы" },
-  { key: "tickets", label: "Заявки" },
-  { key: "documents", label: "Документация" },
-  { key: "monitoring", label: "Мониторинг" },
-  { key: "help", label: "Справка" },
-];
+const MODULES = NON_ADMIN_MODULES;
 
 interface EditUserDialogProps {
   userId: string;
