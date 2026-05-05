@@ -23,6 +23,7 @@ import Organizations from "@/pages/Organizations";
 import ZabbixConnections from "@/pages/ZabbixConnections";
 import Integrations from "@/pages/Integrations";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
+import SystemReset from "@/pages/SystemReset";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/zabbix-connections" element={<ZabbixConnections />} />
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/infrastructure-maps" element={<InfrastructureMaps />} />
+              <Route path="/system-reset" element={<SystemReset />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />
