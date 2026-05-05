@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type ZabbixConnection = {
@@ -31,6 +31,7 @@ const ZabbixConnectionContext = createContext<Ctx>({
 const STORAGE_KEY = "zabbix.activeConnectionId";
 
 export function ZabbixConnectionProvider({ children }: { children: ReactNode }) {
+  const qc = useQueryClient();
   const [activeId, setActiveIdState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(STORAGE_KEY);
@@ -68,7 +69,16 @@ export function ZabbixConnectionProvider({ children }: { children: ReactNode }) 
       if (id) localStorage.setItem(STORAGE_KEY, id);
       else localStorage.removeItem(STORAGE_KEY);
     } catch { /* ignore */ }
-  }, []);
+    // Refresh anything that may depend on the active connection.
+    // Conservative invalidation: anything whose first key segment
+    // contains "zabbix" or "monitoring".
+    qc.invalidateQueries({
+      predicate: (q) => {
+        const k = q.queryKey?.[0];
+        return typeof k === "string" && (k.includes("zabbix") || k.includes("monitoring") || k.includes("hosts") || k.includes("problems") || k.includes("events"));
+      },
+    });
+  }, [qc]);
 
   const active = useMemo(
     () => connections.find((c) => c.id === activeId) ?? null,
