@@ -292,22 +292,56 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data: settings, error: settingsError } = await supabaseAdmin
-    .from("zabbix_settings")
-    .select("*")
-    .limit(1)
-    .single();
+  // Resolve which Zabbix connection to use:
+  // 1) explicit `connection_id` in request body (preferred — set by global picker),
+  // 2) the row in `zabbix_connections` flagged is_default,
+  // 3) any active row in `zabbix_connections`,
+  // 4) legacy `zabbix_settings` singleton (back-compat).
+  let bodyParsed: Record<string, unknown> = {};
+  try { bodyParsed = await req.clone().json(); } catch { /* ignore — handled below */ }
+  const explicitConnId = typeof bodyParsed?.connection_id === "string" ? bodyParsed.connection_id as string : null;
 
-  if (settingsError || !settings) {
-    return fail("Настройки Zabbix не сконфигурированы. Перейдите в Мониторинг → Настройка.");
+  let ZABBIX_URL = "", ZABBIX_USER = "", ZABBIX_PASSWORD = "";
+  let resolvedConnId: string | null = null;
+
+  if (explicitConnId) {
+    const { data: conn } = await supabaseAdmin
+      .from("zabbix_connections")
+      .select("id, zabbix_url, zabbix_user, zabbix_password, is_active")
+      .eq("id", explicitConnId)
+      .maybeSingle();
+    if (conn && conn.is_active) {
+      ZABBIX_URL = conn.zabbix_url; ZABBIX_USER = conn.zabbix_user; ZABBIX_PASSWORD = conn.zabbix_password;
+      resolvedConnId = conn.id;
+    }
   }
-  if (!settings.is_active) {
-    return fail("Подключение к Zabbix отключено в настройках.");
+  if (!ZABBIX_URL) {
+    const { data: conns } = await supabaseAdmin
+      .from("zabbix_connections")
+      .select("id, zabbix_url, zabbix_user, zabbix_password, is_default")
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .limit(1);
+    if (conns && conns.length) {
+      const c = conns[0] as any;
+      ZABBIX_URL = c.zabbix_url; ZABBIX_USER = c.zabbix_user; ZABBIX_PASSWORD = c.zabbix_password;
+      resolvedConnId = c.id;
+    }
+  }
+  if (!ZABBIX_URL) {
+    const { data: settings, error: settingsError } = await supabaseAdmin
+      .from("zabbix_settings").select("*").limit(1).single();
+    if (settingsError || !settings) {
+      return fail("Подключение Zabbix не сконфигурировано. Добавьте подключение в разделе «Подключения Zabbix».");
+    }
+    if (!settings.is_active) {
+      return fail("Подключение к Zabbix отключено в настройках.");
+    }
+    ZABBIX_URL = settings.zabbix_url; ZABBIX_USER = settings.zabbix_user; ZABBIX_PASSWORD = settings.zabbix_password;
   }
 
-  const ZABBIX_URL = settings.zabbix_url;
-  const ZABBIX_USER = settings.zabbix_user;
-  const ZABBIX_PASSWORD = settings.zabbix_password;
+  // Per-connection auth-token cache key suffix
+  const connCacheKey = resolvedConnId ?? `legacy:${ZABBIX_URL}`;
 
   if (!ZABBIX_URL || !ZABBIX_USER || !ZABBIX_PASSWORD) {
     return fail("Заполните все поля подключения к Zabbix в настройках.");
