@@ -672,7 +672,7 @@ Deno.serve(async (req) => {
     if (action === "getItemsByHost") {
       const { hostid } = extraParams || {};
       if (!hostid) return fail("hostid обязателен", 400);
-      const cacheKey = `getItemsByHost:${hostid}`;
+      const cacheKey = `${connCacheKey}:getItemsByHost:${hostid}`;
       const cached = getCached(cacheKey, 30000);
       if (cached !== null) return ok({ result: cached, cached: true });
 
@@ -768,8 +768,8 @@ Deno.serve(async (req) => {
     const actionDef = getActionDef(action, extraParams);
     if (!actionDef) return fail("Unknown action", 400);
 
-    // Check cache
-    const cacheKey = `${action}:${JSON.stringify(extraParams || {})}`;
+    // Check cache (per-connection isolation)
+    const cacheKey = `${connCacheKey}:${action}:${JSON.stringify(extraParams || {})}`;
     if (actionDef.cacheTtl > 0) {
       const cached = getCached(cacheKey, actionDef.cacheTtl);
       if (cached !== null) return ok({ result: cached, cached: true });
