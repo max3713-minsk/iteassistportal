@@ -103,6 +103,50 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Require an approved factory_reset_request that this user owns.
+    const requestId = String(body?.request_id || "");
+    if (!requestId) {
+      await log("rejected_no_request", "Missing request_id");
+      return new Response(JSON.stringify({ error: "Требуется подтверждённая заявка на сброс" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: resetReq, error: reqErr } = await admin
+      .from("factory_reset_requests")
+      .select("id, requested_by, approved_by, status, expires_at")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (reqErr || !resetReq) {
+      await log("rejected_request_missing", reqErr?.message || "not found");
+      return new Response(JSON.stringify({ error: "Заявка на сброс не найдена" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (resetReq.requested_by !== userId) {
+      await log("rejected_request_owner", "Not owner");
+      return new Response(JSON.stringify({ error: "Сброс может выполнить только автор заявки" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (resetReq.status !== "approved") {
+      await log("rejected_request_status", `status=${resetReq.status}`);
+      return new Response(JSON.stringify({ error: "Заявка ещё не подтверждена вторым администратором" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!resetReq.approved_by || resetReq.approved_by === userId) {
+      await log("rejected_same_admin", "Self-approval");
+      return new Response(JSON.stringify({ error: "Подтверждение должно быть от другого администратора" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (new Date(resetReq.expires_at).getTime() < Date.now()) {
+      await log("rejected_expired", "Expired");
+      return new Response(JSON.stringify({ error: "Заявка просрочена. Создайте новую." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Re-verify password via signInWithPassword (no email exposure)
     if (!userEmail || !password) {
       await log("rejected_password", "No password/email");
@@ -138,6 +182,10 @@ Deno.serve(async (req) => {
     }
 
     await log("completed", JSON.stringify(results));
+
+    await admin.from("factory_reset_requests")
+      .update({ status: "executed", executed_at: new Date().toISOString() })
+      .eq("id", requestId);
 
     return new Response(JSON.stringify({ ok: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
