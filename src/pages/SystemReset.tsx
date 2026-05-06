@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,32 +8,63 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, ShieldAlert, Download, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle, ShieldAlert, Download, Loader2, Upload, Check, X, Clock } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
 
 const TABLES_TO_EXPORT = [
   "organizations", "sites", "equipment", "equipment_categories",
   "tickets", "ticket_comments", "ticket_status_history",
-  "maintenance_tasks", "maintenance_schedules", "maintenance_protocols", "protocol_items",
+  "maintenance_tasks", "maintenance_schedules", "maintenance_protocols", "protocol_items", "protocol_templates",
   "documents", "contracts",
   "zabbix_connections", "monitored_hosts", "monitoring_host_links",
-  "infrastructure_maps", "audit_logs",
+  "infrastructure_maps", "audit_logs", "support_schemes", "support_scheme_lines",
+  "alert_thresholds", "item_aliases", "metric_translations",
+  "tz_requirements", "tz_coverage", "holidays",
 ] as const;
 
 export default function SystemReset() {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const isAdmin = hasRole("admin");
 
   const [exporting, setExporting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [codeword, setCodeword] = useState("");
   const [password, setPassword] = useState("");
   const [purging, setPurging] = useState(false);
   const [hasExported, setHasExported] = useState(false);
+  const [reason, setReason] = useState("");
+  const [creatingRequest, setCreatingRequest] = useState(false);
+
+  const { data: requests = [] } = useQuery({
+    queryKey: ["factory-reset-requests"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("factory_reset_requests" as any)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return (data ?? []) as any[];
+    },
+    enabled: isAdmin,
+    refetchInterval: 15_000,
+  });
+
+  const myActiveRequest = requests.find(
+    (r: any) => r.requested_by === user?.id && (r.status === "pending" || r.status === "approved"),
+  );
+  const pendingForOthers = requests.filter(
+    (r: any) => r.status === "pending" && r.requested_by !== user?.id,
+  );
 
   if (!isAdmin) {
     return (
@@ -79,16 +111,73 @@ export default function SystemReset() {
     }
   }
 
+  async function handleRestoreFile(file: File, mode: "merge" | "replace") {
+    setRestoring(true);
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (!payload?.tables) throw new Error("Файл не содержит секцию tables");
+      const { data, error } = await supabase.functions.invoke("system-restore", {
+        body: { payload, mode },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const results = (data as any)?.results ?? {};
+      const total = Object.values(results).reduce((s: number, r: any) => s + (r.inserted || 0), 0);
+      toast({ title: "Восстановление завершено", description: `Загружено записей: ${total}` });
+      qc.invalidateQueries();
+    } catch (e) {
+      toast({ title: "Ошибка восстановления", description: e instanceof Error ? e.message : "—", variant: "destructive" });
+    } finally {
+      setRestoring(false);
+      if (restoreInputRef.current) restoreInputRef.current.value = "";
+    }
+  }
+
+  async function createResetRequest() {
+    setCreatingRequest(true);
+    try {
+      const { error } = await supabase.from("factory_reset_requests" as any).insert({
+        requested_by: user!.id,
+        requested_by_email: user!.email,
+        reason: reason || null,
+      } as any);
+      if (error) throw error;
+      toast({ title: "Заявка создана", description: "Дождитесь подтверждения другого администратора." });
+      setReason("");
+      qc.invalidateQueries({ queryKey: ["factory-reset-requests"] });
+    } catch (e) {
+      toast({ title: "Ошибка", description: e instanceof Error ? e.message : "—", variant: "destructive" });
+    } finally {
+      setCreatingRequest(false);
+    }
+  }
+
+  async function approveRequest(id: string) {
+    const { error } = await supabase.from("factory_reset_requests" as any)
+      .update({ status: "approved", approved_by: user!.id, approved_by_email: user!.email, approved_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    if (error) toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    else { toast({ title: "Заявка подтверждена" }); qc.invalidateQueries({ queryKey: ["factory-reset-requests"] }); }
+  }
+  async function rejectRequest(id: string) {
+    const { error } = await supabase.from("factory_reset_requests" as any)
+      .update({ status: "rejected", approved_by: user!.id, approved_by_email: user!.email, approved_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    if (error) toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    else { toast({ title: "Заявка отклонена" }); qc.invalidateQueries({ queryKey: ["factory-reset-requests"] }); }
+  }
+
   async function executePurge() {
-    if (!codeword.trim() || !password) return;
+    if (!codeword.trim() || !password || !myActiveRequest || myActiveRequest.status !== "approved") return;
     setPurging(true);
     try {
       const { data, error } = await supabase.functions.invoke("system-purge", {
-        body: { codeword: codeword.trim(), password, confirm: "PURGE" },
+        body: { codeword: codeword.trim(), password, confirm: "PURGE", request_id: myActiveRequest.id },
       });
       if (error) throw new Error(error.message);
       if ((data as { error?: string })?.error) throw new Error((data as { error?: string }).error);
-      toast({ title: "Портал сброшен", description: "Сейчас произойдёт перезагрузка." });
+      toast({ title: "Factory reset выполнен", description: "Сейчас произойдёт перезагрузка." });
       setTimeout(() => { window.location.href = "/"; window.location.reload(); }, 1200);
     } catch (e) {
       toast({ title: "Ошибка сброса", description: e instanceof Error ? e.message : "—", variant: "destructive" });
@@ -118,20 +207,85 @@ export default function SystemReset() {
           </Button>
           {hasExported && (
             <p className="text-xs text-muted-foreground">
-              Резервная копия сохранена. Восстановление из файла на текущем этапе выполняется вручную при участии администратора платформы.
+              Резервная копия сохранена. Файл можно загрузить обратно через карточку «Восстановление».
             </p>
           )}
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Восстановление из резервной копии</CardTitle>
+          <CardDescription>
+            Загрузите ранее сохранённый JSON-файл. В режиме «Слияние» уже существующие записи обновляются по идентификатору, новые — добавляются.
+            В режиме «Полная замена» сначала очищаются соответствующие таблицы.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              const mode = (e.target.dataset.mode as "merge" | "replace") || "merge";
+              handleRestoreFile(f, mode);
+            }}
+          />
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" disabled={restoring} className="gap-2"
+              onClick={() => { if (restoreInputRef.current) { restoreInputRef.current.dataset.mode = "merge"; restoreInputRef.current.click(); } }}>
+              <Upload className="h-4 w-4" /> Восстановить (слияние)
+            </Button>
+            <Button variant="destructive" disabled={restoring} className="gap-2"
+              onClick={() => {
+                if (!confirm("В режиме полной замены будут удалены все текущие записи в перечисленных таблицах. Продолжить?")) return;
+                if (restoreInputRef.current) { restoreInputRef.current.dataset.mode = "replace"; restoreInputRef.current.click(); }
+              }}>
+              <Upload className="h-4 w-4" /> Полная замена
+            </Button>
+            {restoring && <span className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Загрузка...</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending approval from others */}
+      {pendingForOthers.length > 0 && (
+        <Card className="border-amber-500/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-500">
+              <Clock className="h-5 w-5" /> Ожидают вашего подтверждения
+            </CardTitle>
+            <CardDescription>Заявки других администраторов на Factory reset.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingForOthers.map((r: any) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 p-3 border rounded-md">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{r.requested_by_email}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(r.created_at), "dd.MM.yyyy HH:mm")}</p>
+                  {r.reason && <p className="text-xs mt-1">{r.reason}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="default" onClick={() => approveRequest(r.id)} className="gap-1"><Check className="h-3 w-3" />Подтвердить</Button>
+                  <Button size="sm" variant="ghost" onClick={() => rejectRequest(r.id)} className="gap-1"><X className="h-3 w-3" />Отклонить</Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-destructive/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" /> Сброс портала «как из коробки»
+            <AlertTriangle className="h-5 w-5" /> Factory reset
           </CardTitle>
           <CardDescription>
             Удаляет все бизнес-данные: заявки, протоколы, оборудование, ЦОД, организации, подключения, карты инфраструктуры и журналы.
-            Учётные записи пользователей и их роли остаются. Действие необратимо.
+            Учётные записи пользователей и их роли остаются. Действие необратимо. Требует подтверждения другим администратором.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -143,6 +297,35 @@ export default function SystemReset() {
             </AlertDescription>
           </Alert>
 
+          {!myActiveRequest && (
+            <div className="space-y-2 p-3 border rounded-md">
+              <Label>Шаг 1. Создайте заявку на сброс</Label>
+              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Кратко опишите причину (опционально)" />
+              <Button onClick={createResetRequest} disabled={creatingRequest} variant="outline" className="gap-2">
+                <ShieldAlert className="h-4 w-4" /> Запросить Factory reset
+              </Button>
+            </div>
+          )}
+
+          {myActiveRequest && (
+            <Alert className={myActiveRequest.status === "approved" ? "border-emerald-500/40" : "border-amber-500/40"}>
+              <AlertTitle className="flex items-center gap-2">
+                {myActiveRequest.status === "approved"
+                  ? <><Check className="h-4 w-4 text-emerald-500" /> Заявка подтверждена</>
+                  : <><Clock className="h-4 w-4 text-amber-500" /> Заявка ожидает подтверждения</>
+                }
+                <Badge variant="outline" className="ml-auto">
+                  {myActiveRequest.status === "approved"
+                    ? `Подтвердил: ${myActiveRequest.approved_by_email}`
+                    : "Нужен второй администратор"}
+                </Badge>
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                Создана {format(new Date(myActiveRequest.created_at), "dd.MM.yyyy HH:mm")}. Действительна 24 часа.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Кодовое слово сервисного режима</Label>
@@ -151,6 +334,7 @@ export default function SystemReset() {
                 value={codeword}
                 onChange={(e) => setCodeword(e.target.value)}
                 placeholder="••••••••"
+                disabled={!myActiveRequest || myActiveRequest.status !== "approved"}
               />
             </div>
             <div className="space-y-2">
@@ -159,18 +343,19 @@ export default function SystemReset() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={!myActiveRequest || myActiveRequest.status !== "approved"}
               />
             </div>
           </div>
 
           <Button
             variant="destructive"
-            disabled={!codeword.trim() || !password || purging}
+            disabled={!codeword.trim() || !password || purging || !myActiveRequest || myActiveRequest.status !== "approved"}
             onClick={() => setConfirmOpen(true)}
             className="gap-2"
           >
             {purging ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
-            Сбросить портал
+            Выполнить Factory reset
           </Button>
         </CardContent>
       </Card>
@@ -178,7 +363,7 @@ export default function SystemReset() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Подтвердите сброс</AlertDialogTitle>
+            <AlertDialogTitle className="text-destructive">Подтвердите Factory reset</AlertDialogTitle>
             <AlertDialogDescription>
               {hasExported
                 ? "Резервная копия скачана. Все бизнес-данные будут безвозвратно удалены."
