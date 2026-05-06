@@ -364,6 +364,54 @@ export type Database = {
         }
         Relationships: []
       }
+      factory_reset_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_email: string | null
+          created_at: string
+          executed_at: string | null
+          expires_at: string
+          id: string
+          reason: string | null
+          rejected_reason: string | null
+          requested_by: string
+          requested_by_email: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_email?: string | null
+          created_at?: string
+          executed_at?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string | null
+          rejected_reason?: string | null
+          requested_by: string
+          requested_by_email?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_email?: string | null
+          created_at?: string
+          executed_at?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string | null
+          rejected_reason?: string | null
+          requested_by?: string
+          requested_by_email?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gitlab_ticket_links: {
         Row: {
           created_at: string
@@ -553,13 +601,20 @@ export type Database = {
           contract_id: string | null
           created_at: string
           created_by: string | null
+          executor_name: string | null
+          executor_user_id: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id: string
           notes: string | null
           period_end: string
           period_start: string
+          responsible_name: string | null
+          responsible_user_id: string | null
+          signed_executor_at: string | null
+          signed_responsible_at: string | null
           site_id: string
           status: Database["public"]["Enums"]["protocol_status"]
+          template_id: string | null
           ticket_id: string | null
           updated_at: string
         }
@@ -569,13 +624,20 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          executor_name?: string | null
+          executor_user_id?: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           notes?: string | null
           period_end: string
           period_start: string
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          signed_executor_at?: string | null
+          signed_responsible_at?: string | null
           site_id: string
           status?: Database["public"]["Enums"]["protocol_status"]
+          template_id?: string | null
           ticket_id?: string | null
           updated_at?: string
         }
@@ -585,13 +647,20 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          executor_name?: string | null
+          executor_user_id?: string | null
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           notes?: string | null
           period_end?: string
           period_start?: string
+          responsible_name?: string | null
+          responsible_user_id?: string | null
+          signed_executor_at?: string | null
+          signed_responsible_at?: string | null
           site_id?: string
           status?: Database["public"]["Enums"]["protocol_status"]
+          template_id?: string | null
           ticket_id?: string | null
           updated_at?: string
         }
@@ -608,6 +677,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_protocols_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "protocol_templates"
             referencedColumns: ["id"]
           },
           {
@@ -670,30 +746,51 @@ export type Database = {
           category_id: string | null
           created_at: string
           description: string | null
+          equipment_id: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id: string
+          is_active: boolean
           is_automatable: boolean | null
+          is_system: boolean
+          organization_id: string | null
+          site_id: string | null
+          sort_order: number
           title: string
+          updated_at: string
         }
         Insert: {
           automation_script?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
+          equipment_id?: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
+          is_active?: boolean
           is_automatable?: boolean | null
+          is_system?: boolean
+          organization_id?: string | null
+          site_id?: string | null
+          sort_order?: number
           title: string
+          updated_at?: string
         }
         Update: {
           automation_script?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
+          equipment_id?: string | null
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
+          is_active?: boolean
           is_automatable?: boolean | null
+          is_system?: boolean
+          organization_id?: string | null
+          site_id?: string | null
+          sort_order?: number
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -701,6 +798,27 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_tasks_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_tasks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -1249,6 +1367,92 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "maintenance_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocol_templates: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          default_executor_id: string | null
+          default_responsible_id: string | null
+          description: string | null
+          frequency: Database["public"]["Enums"]["maintenance_frequency"] | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string | null
+          signatory_executor_label: string | null
+          signatory_responsible_label: string | null
+          site_id: string | null
+          template_file_name: string | null
+          template_file_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_executor_id?: string | null
+          default_responsible_id?: string | null
+          description?: string | null
+          frequency?:
+            | Database["public"]["Enums"]["maintenance_frequency"]
+            | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id?: string | null
+          signatory_executor_label?: string | null
+          signatory_responsible_label?: string | null
+          site_id?: string | null
+          template_file_name?: string | null
+          template_file_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_executor_id?: string | null
+          default_responsible_id?: string | null
+          description?: string | null
+          frequency?:
+            | Database["public"]["Enums"]["maintenance_frequency"]
+            | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string | null
+          signatory_executor_label?: string | null
+          signatory_responsible_label?: string | null
+          site_id?: string | null
+          template_file_name?: string | null
+          template_file_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_templates_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_templates_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
