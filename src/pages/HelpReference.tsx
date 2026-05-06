@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Info, Clock, AlertTriangle, ListChecks, BookOpen } from "lucide-react";
 import WorkScopeReference from "@/components/help/WorkScopeReference";
+import WorkScopeManager from "@/components/help/WorkScopeManager";
 import UserManual from "@/components/help/UserManual";
+import { useAuth } from "@/hooks/useAuth";
 
 const priorities = [
   {
@@ -63,6 +65,8 @@ const priorities = [
 ];
 
 export default function HelpReference() {
+  const { hasRole } = useAuth();
+  const canManage = hasRole("admin") || hasRole("engineer");
   return (
     <div className="space-y-6">
       <h1 className="font-heading text-2xl font-bold">Справка</h1>
@@ -185,7 +189,7 @@ export default function HelpReference() {
         </TabsContent>
 
         <TabsContent value="scope" className="mt-4">
-          <WorkScopeReference />
+          {canManage ? <WorkScopeManager /> : <WorkScopeReference />}
         </TabsContent>
       </Tabs>
     </div>
