@@ -70,6 +70,10 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
   const [customMode, setCustomMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Set<string>>(new Set());
+  const [templateId, setTemplateId] = useState<string>("");
+  const [executorId, setExecutorId] = useState<string>("");
+  const [responsibleId, setResponsibleId] = useState<string>("");
+  const [markAllDone, setMarkAllDone] = useState(false);
 
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -122,6 +126,42 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
     },
   });
 
+  const { data: templates = [] } = useQuery({
+    queryKey: ["protocol-templates", frequency, selectedSite?.organization_id, siteId],
+    queryFn: async () => {
+      let q = supabase.from("protocol_templates").select("*").eq("is_active", true);
+      const { data } = await q;
+      return (data ?? []).filter((t: any) =>
+        (!t.frequency || t.frequency === frequency) &&
+        (!t.site_id || t.site_id === siteId) &&
+        (!t.organization_id || t.organization_id === selectedSite?.organization_id),
+      );
+    },
+  });
+
+  const { data: portalUsers = [] } = useQuery({
+    queryKey: ["portal-users-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, organization")
+        .eq("is_active", true)
+        .order("full_name");
+      return data ?? [];
+    },
+  });
+
+  // Apply selected template defaults
+  useEffect(() => {
+    if (!templateId) return;
+    const t = templates.find((x: any) => x.id === templateId);
+    if (!t) return;
+    if (t.default_executor_id && !executorId) setExecutorId(t.default_executor_id);
+    if (t.default_responsible_id && !responsibleId) setResponsibleId(t.default_responsible_id);
+    if (t.contract_id && !contractId) setContractId(t.contract_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
+
   // Default: pre-select all when entering custom mode or data changes
   useEffect(() => {
     if (customMode) {
@@ -161,9 +201,16 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
           frequency,
           period_start: period.start,
           period_end: period.end,
-          status: "in_progress",
+          status: markAllDone ? "completed" : "in_progress",
           notes: notes || null,
           created_by: session?.user.id,
+          template_id: templateId || null,
+          executor_user_id: executorId || null,
+          executor_name: portalUsers.find((u: any) => u.user_id === executorId)?.full_name || null,
+          responsible_user_id: responsibleId || null,
+          responsible_name: portalUsers.find((u: any) => u.user_id === responsibleId)?.full_name || null,
+          completed_at: markAllDone ? new Date().toISOString() : null,
+          completed_by: markAllDone ? session?.user.id : null,
         })
         .select("id")
         .single();
@@ -172,11 +219,18 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
       const eqs = (customMode ? equipment.filter((e: any) => selectedEquipmentIds.has(e.id)) : equipment) as any[];
       const ts = (customMode ? tasks.filter((t: any) => selectedTaskIds.has(t.id)) : tasks) as any[];
 
-      const items: { protocol_id: string; equipment_id: string; task_id: string }[] = [];
+      const items: any[] = [];
       for (const eq of eqs) {
         for (const task of ts) {
           if (!task.category_id || task.category_id === eq.category_id) {
-            items.push({ protocol_id: protocol.id, equipment_id: eq.id, task_id: task.id });
+            items.push({
+              protocol_id: protocol.id,
+              equipment_id: eq.id,
+              task_id: task.id,
+              status: markAllDone ? "done" : "pending",
+              completed_by: markAllDone ? session?.user.id : null,
+              completed_at: markAllDone ? new Date().toISOString() : null,
+            });
           }
         }
       }
@@ -196,6 +250,7 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
       setCustomMode(false);
       setSelectedTaskIds(new Set());
       setSelectedEquipmentIds(new Set());
+      setTemplateId(""); setExecutorId(""); setResponsibleId(""); setMarkAllDone(false);
       toast({ title: "Протокол создан", description: `Сформировано пунктов: ${r.count}` });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
@@ -260,6 +315,62 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
           <div className="space-y-2">
             <Label>Примечания</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-2">
+              <Label>Шаблон протокола</Label>
+              <Select value={templateId || "__none__"} onValueChange={(v) => setTemplateId(v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Без шаблона" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Без шаблона —</SelectItem>
+                  {templates.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {templates.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Нет подходящих шаблонов. Создать можно в Справке → Шаблоны протоколов.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Исполнитель</Label>
+              <Select value={executorId || "__none__"} onValueChange={(v) => setExecutorId(v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Не указан —</SelectItem>
+                  {portalUsers.map((u: any) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name}{u.organization ? ` · ${u.organization}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Ответственный</Label>
+              <Select value={responsibleId || "__none__"} onValueChange={(v) => setResponsibleId(v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Не указан" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Не указан —</SelectItem>
+                  {portalUsers.map((u: any) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name}{u.organization ? ` · ${u.organization}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3">
+            <Checkbox id="mark-all-done" checked={markAllDone} onCheckedChange={(v) => setMarkAllDone(!!v)} />
+            <Label htmlFor="mark-all-done" className="cursor-pointer">
+              Сразу отметить все пункты как выполненные (протокол создаётся в статусе «Завершён»)
+            </Label>
           </div>
 
           <Card className="bg-muted/30">

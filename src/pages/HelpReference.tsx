@@ -2,10 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, Clock, AlertTriangle, ListChecks, BookOpen } from "lucide-react";
+import { Info, Clock, AlertTriangle, ListChecks, BookOpen, FileText } from "lucide-react";
 import WorkScopeReference from "@/components/help/WorkScopeReference";
 import WorkScopeManager from "@/components/help/WorkScopeManager";
 import UserManual from "@/components/help/UserManual";
+import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
 import { useAuth } from "@/hooks/useAuth";
 
 const priorities = [
@@ -85,6 +86,12 @@ export default function HelpReference() {
             <ListChecks className="h-4 w-4" />
             Состав работ
           </TabsTrigger>
+          {canManage && (
+            <TabsTrigger value="templates" className="gap-1.5">
+              <FileText className="h-4 w-4" />
+              Шаблоны протоколов
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="manual" className="mt-4">
@@ -191,6 +198,12 @@ export default function HelpReference() {
         <TabsContent value="scope" className="mt-4">
           {canManage ? <WorkScopeManager /> : <WorkScopeReference />}
         </TabsContent>
+
+        {canManage && (
+          <TabsContent value="templates" className="mt-4">
+            <ProtocolTemplatesManager />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
