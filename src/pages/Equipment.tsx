@@ -316,6 +316,7 @@ export default function Equipment() {
                 <TableHead>Кол-во</TableHead>
                 <TableHead>Мониторинг</TableHead>
                 <TableHead>Статус</TableHead>
+                <TableHead>Здоровье</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
               </TableRow>
             </TableHeader>
@@ -354,6 +355,9 @@ export default function Equipment() {
                       <Badge variant={statusVariant[eq.status ?? "active"] ?? "outline"}>
                         {EQUIPMENT_STATUSES.find((s) => s.value === (eq.status ?? "active"))?.label ?? eq.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {healthMap[eq.id] ? <HealthIndicator result={healthMap[eq.id]} compact /> : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     {isStaff && (
                       <TableCell>
