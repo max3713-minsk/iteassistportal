@@ -94,6 +94,7 @@ export default function AppSidebar() {
     const v = typeof window !== "undefined" ? localStorage.getItem(ADMIN_OPEN_KEY) : null;
     return v === "1";
   });
+  const [handoverOpen, setHandoverOpen] = useState(false);
   useEffect(() => {
     localStorage.setItem(ADMIN_OPEN_KEY, adminOpen ? "1" : "0");
   }, [adminOpen]);
