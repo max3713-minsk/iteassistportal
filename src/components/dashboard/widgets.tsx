@@ -20,6 +20,59 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
 import GraphChart from "@/components/monitoring/GraphChart";
+import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
+import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
+import { HealthIndicator } from "@/components/equipment/HealthIndicator";
+
+function EquipmentHealthWidget() {
+  const { data: equipment = [] } = useQuery({
+    queryKey: ["equipment-health-widget"],
+    queryFn: async () => {
+      const { data } = await supabase.from("equipment").select("id, name, status, created_at, sites(name)").limit(500);
+      return data ?? [];
+    },
+  });
+  const { data: healthMap = {} } = useEquipmentHealth(equipment as any[]);
+
+  const sorted = (equipment as any[])
+    .map((e) => ({ eq: e, h: healthMap[e.id] }))
+    .filter((x) => x.h)
+    .sort((a, b) => a.h!.score - b.h!.score)
+    .slice(0, 5);
+
+  if (sorted.length === 0) {
+    return <div className="p-4 text-sm text-muted-foreground">Нет данных</div>;
+  }
+  return (
+    <div className="p-3 space-y-2 h-full overflow-y-auto">
+      {sorted.map(({ eq, h }) => {
+        const cfg = HEALTH_GRADE_CONFIG[h!.grade];
+        const main = h!.factors.sort((a, b) => a.impact - b.impact)[0];
+        return (
+          <Link to="/equipment" key={eq.id} className="block rounded-lg border p-2.5 hover:bg-muted/40 transition-colors">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium truncate">{eq.name}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{eq.sites?.name ?? "—"}</div>
+              </div>
+              <HealthIndicator result={h!} compact />
+            </div>
+            <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+              <div className="h-full transition-all" style={{ width: `${h!.score}%`, background: cfg.color }} />
+            </div>
+            {main && (
+              <div className="text-[11px] text-muted-foreground mt-1.5 truncate">
+                <span className="font-medium text-foreground">{main.name}:</span> {main.description}
+              </div>
+            )}
+          </Link>
+        );
+      })}
+      <Link to="/equipment" className="block text-xs text-primary hover:underline text-center py-1">Все устройства →</Link>
+    </div>
+  );
+}
+
 
 /* ============ Types ============ */
 export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "radial" | "list";
@@ -725,6 +778,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     description: "Быстрый доступ к графикам из библиотеки. Клик — переход к разделу Графики.",
     category: "Мониторинг", icon: LineChartIcon, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
     Component: SavedGraphsWidget,
+  },
+  "equipment-health": {
+    type: "equipment-health", title: "Здоровье инфраструктуры",
+    description: "Топ-5 устройств с наихудшим Health Score и главные риски.",
+    category: "Оборудование", icon: Activity, defaultW: 4, defaultH: 5, minW: 3, minH: 4,
+    Component: EquipmentHealthWidget,
   },
 };
 

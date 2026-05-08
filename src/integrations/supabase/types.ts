@@ -1715,6 +1715,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_ai_analyses: {
+        Row: {
+          analysis: Json
+          created_at: string
+          id: string
+          model: string | null
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          analysis: Json
+          created_at?: string
+          id?: string
+          model?: string | null
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          analysis?: Json
+          created_at?: string
+          id?: string
+          model?: string | null
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ticket_comments: {
         Row: {
           content: string

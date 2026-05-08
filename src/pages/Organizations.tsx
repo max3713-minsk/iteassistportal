@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/users/ConfirmDialog";
 import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow } from "lucide-react";
 import { logAudit } from "@/lib/audit";
 import SupportSchemeView from "@/components/organizations/SupportSchemeView";
+import { ClientReportWizard } from "@/components/organizations/ClientReportWizard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Organizations() {
@@ -50,6 +51,7 @@ export default function Organizations() {
           <TabsTrigger value="orgs">Организации</TabsTrigger>
           <TabsTrigger value="contracts">Договоры</TabsTrigger>
           <TabsTrigger value="support"><Workflow className="h-3.5 w-3.5 mr-1.5" />Схема поддержки</TabsTrigger>
+          <TabsTrigger value="reports"><FileText className="h-3.5 w-3.5 mr-1.5" />Отчёты</TabsTrigger>
         </TabsList>
         <TabsContent value="orgs">
           <OrganizationsTab toast={toast} qc={qc} />
@@ -59,6 +61,9 @@ export default function Organizations() {
         </TabsContent>
         <TabsContent value="support">
           <SupportTab />
+        </TabsContent>
+        <TabsContent value="reports">
+          <ClientReportWizard />
         </TabsContent>
       </Tabs>
     </div>

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
-  Plug, ChevronDown, ChevronRight, Network, ShieldAlert,
+  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import KillSwitch, { useLogoKillTrigger } from "@/components/KillSwitch";
+import { ShiftHandoverDialog } from "@/components/ShiftHandoverDialog";
 
 type NavItem = {
   to: string;
@@ -93,6 +94,7 @@ export default function AppSidebar() {
     const v = typeof window !== "undefined" ? localStorage.getItem(ADMIN_OPEN_KEY) : null;
     return v === "1";
   });
+  const [handoverOpen, setHandoverOpen] = useState(false);
   useEffect(() => {
     localStorage.setItem(ADMIN_OPEN_KEY, adminOpen ? "1" : "0");
   }, [adminOpen]);
@@ -257,6 +259,16 @@ export default function AppSidebar() {
       </div>
 
       <div className="px-3 py-3 border-t border-sidebar-border">
+        {(hasRole("admin") || hasRole("engineer")) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start gap-2 mb-2"
+            onClick={() => setHandoverOpen(true)}
+          >
+            <DoorOpen className="h-4 w-4" />Сдать смену
+          </Button>
+        )}
         <div className="px-3 py-2 mb-2 flex items-center justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? "—"}</p>
@@ -275,6 +287,7 @@ export default function AppSidebar() {
         </Button>
       </div>
       <KillSwitch open={kill.open} onOpenChange={kill.setOpen} />
+      <ShiftHandoverDialog open={handoverOpen} onOpenChange={setHandoverOpen} />
     </aside>
   );
 }
