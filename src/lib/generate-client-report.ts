@@ -68,7 +68,7 @@ function calcSLA(tickets: any[]) {
 function p(text: string, opts: any = {}): Paragraph {
   return new Paragraph({ children: [new TextRun({ text, ...opts })], spacing: { after: 120 } });
 }
-function h(text: string, level: HeadingLevel): Paragraph {
+function h(text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel]): Paragraph {
   return new Paragraph({ heading: level, children: [new TextRun({ text, bold: true })], spacing: { before: 240, after: 160 } });
 }
 function cell(text: string, bold = false): TableCell {
