@@ -45,6 +45,7 @@ import { ru } from "date-fns/locale";
 import { SLATimer } from "@/components/tickets/SLATimer";
 import { cn } from "@/lib/utils";
 import { EquipmentSummary } from "@/components/tickets/EquipmentSummary";
+import { AIAnalysisTab } from "@/components/tickets/AIAnalysisTab";
 
 interface Props {
   ticket: any;
@@ -747,6 +748,12 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
               )}
             </div>
           </TabsContent>
+
+          {isStaff && ticket.request_type === "incident" && (
+            <TabsContent value="ai" className="mt-0">
+              <AIAnalysisTab ticketId={ticket.id} />
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
