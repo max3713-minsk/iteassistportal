@@ -12,6 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Server, Pencil, Trash2, Filter, Activity } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
+import { HealthIndicator } from "@/components/equipment/HealthIndicator";
+import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
@@ -162,10 +165,33 @@ export default function Equipment() {
     });
   }, [equipment, filterSite, filterCategory]);
 
+  const { data: healthMap = {} } = useEquipmentHealth(filteredEquipment);
+  const avgHealth = useMemo(() => {
+    const vals = Object.values(healthMap);
+    if (vals.length === 0) return null;
+    return Math.round(vals.reduce((s, h) => s + h.score, 0) / vals.length);
+  }, [healthMap]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="font-heading text-2xl font-bold">Оборудование</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-heading text-2xl font-bold">Оборудование</h1>
+          {avgHealth !== null && (
+            <Badge
+              variant="outline"
+              className="gap-1.5"
+              style={{
+                color: HEALTH_GRADE_CONFIG[
+                  avgHealth >= 85 ? "excellent" : avgHealth >= 70 ? "good" : avgHealth >= 50 ? "fair" : avgHealth >= 30 ? "poor" : "critical"
+                ].color,
+                borderColor: "currentColor",
+              }}
+            >
+              Health Score · {avgHealth}/100
+            </Badge>
+          )}
+        </div>
         {isStaff && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
             <DialogTrigger asChild>
