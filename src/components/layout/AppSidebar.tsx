@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
-  Plug, ChevronDown, ChevronRight, Network, ShieldAlert,
+  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import KillSwitch, { useLogoKillTrigger } from "@/components/KillSwitch";
+import { ShiftHandoverDialog } from "@/components/ShiftHandoverDialog";
 
 type NavItem = {
   to: string;
