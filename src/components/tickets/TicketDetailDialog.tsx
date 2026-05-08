@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock } from "lucide-react";
+import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock, Sparkles, RefreshCw, CheckSquare, Square } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -446,12 +446,17 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-2">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={cn("grid w-full", isStaff && ticket.request_type === "incident" ? "grid-cols-4" : "grid-cols-3")}>
             <TabsTrigger value="info">Информация</TabsTrigger>
             <TabsTrigger value="comments">
               Комментарии ({comments.length})
             </TabsTrigger>
             <TabsTrigger value="history">История</TabsTrigger>
+            {isStaff && ticket.request_type === "incident" && (
+              <TabsTrigger value="ai" className="gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />ИИ-анализ
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Info tab */}
