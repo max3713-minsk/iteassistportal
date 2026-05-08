@@ -20,6 +20,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
 import GraphChart from "@/components/monitoring/GraphChart";
+import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
+import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
+import { HealthIndicator } from "@/components/equipment/HealthIndicator";
 
 /* ============ Types ============ */
 export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "radial" | "list";
@@ -725,6 +728,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     description: "Быстрый доступ к графикам из библиотеки. Клик — переход к разделу Графики.",
     category: "Мониторинг", icon: LineChartIcon, defaultW: 6, defaultH: 7, minW: 3, minH: 4,
     Component: SavedGraphsWidget,
+  },
+  "equipment-health": {
+    type: "equipment-health", title: "Здоровье инфраструктуры",
+    description: "Топ-5 устройств с наихудшим Health Score и главные риски.",
+    category: "Оборудование", icon: Activity, defaultW: 4, defaultH: 5, minW: 3, minH: 4,
+    Component: EquipmentHealthWidget,
   },
 };
 
