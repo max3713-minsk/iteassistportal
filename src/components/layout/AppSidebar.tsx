@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
-  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen,
+  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     id: "service",
     title: "Обслуживание",
     items: [
+      { to: "/work-scope", icon: ListChecks, label: "Регламент работ", roles: [], moduleKey: "protocols" },
       { to: "/protocols", icon: ClipboardList, label: "Протоколы", roles: [], moduleKey: "protocols" },
       { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", roles: [], moduleKey: "schedules" },
       { to: "/documents", icon: FileArchive, label: "Документация", roles: [], moduleKey: "documents" },
@@ -74,8 +75,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     adminOnly: true,
     items: [
       { to: "/organizations", icon: Briefcase, label: "Организации и Договоры", roles: ["admin"], moduleKey: "organizations" },
-      { to: "/zabbix-connections", icon: Plug, label: "Подключения Zabbix", roles: ["admin"], moduleKey: "zabbix" },
-      { to: "/integrations", icon: Plug, label: "Интеграции", roles: ["admin"], moduleKey: "integrations" },
+      { to: "/connections", icon: Plug, label: "Подключения", roles: ["admin"], moduleKey: "integrations" },
       { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
       { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
       { to: "/system-reset", icon: ShieldAlert, label: "Сервисные операции", roles: ["admin"], moduleKey: "audit" },
