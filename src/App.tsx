@@ -22,6 +22,8 @@ import Notifications from "@/pages/Notifications";
 import Organizations from "@/pages/Organizations";
 import ZabbixConnections from "@/pages/ZabbixConnections";
 import Integrations from "@/pages/Integrations";
+import Connections from "@/pages/Connections";
+import WorkScope from "@/pages/WorkScope";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
 import SystemReset from "@/pages/SystemReset";
 import NotFound from "@/pages/NotFound";
@@ -71,8 +73,10 @@ const App = () => (
               <Route path="/monitoring" element={<Monitoring />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/organizations" element={<Organizations />} />
-              <Route path="/zabbix-connections" element={<ZabbixConnections />} />
-              <Route path="/integrations" element={<Integrations />} />
+              <Route path="/connections" element={<Connections />} />
+              <Route path="/zabbix-connections" element={<Navigate to="/connections?tab=zabbix" replace />} />
+              <Route path="/integrations" element={<Navigate to="/connections?tab=gitlab" replace />} />
+              <Route path="/work-scope" element={<WorkScope />} />
               <Route path="/infrastructure-maps" element={<InfrastructureMaps />} />
               <Route path="/system-reset" element={<SystemReset />} />
               <Route path="/help" element={<HelpReference />} />
