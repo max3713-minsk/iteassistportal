@@ -16,8 +16,7 @@ export const PORTAL_MODULES: ModuleDef[] = [
   { key: "monitoring",    label: "Мониторинг и Карта",      group: "Мониторинг" },
   { key: "help",          label: "Справка",                 group: "Справка" },
   { key: "organizations", label: "Организации и Договоры",  group: "Администрирование", adminOnly: true },
-  { key: "zabbix",        label: "Подключения Zabbix",      group: "Администрирование", adminOnly: true },
-  { key: "integrations",  label: "Интеграции",              group: "Администрирование", adminOnly: true },
+  { key: "integrations",  label: "Подключения",             group: "Администрирование", adminOnly: true },
   { key: "users",         label: "Пользователи",            group: "Администрирование", adminOnly: true },
   { key: "audit",         label: "Журнал событий",          group: "Администрирование", adminOnly: true },
 ];

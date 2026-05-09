@@ -16,10 +16,10 @@ import MonitoringHosts from "@/components/monitoring/MonitoringHosts";
 import MonitoringProblems from "@/components/monitoring/MonitoringProblems";
 import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
 import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
-import ZabbixSettings from "@/components/monitoring/ZabbixSettings";
 import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
+import { Plug } from "lucide-react";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -237,7 +237,19 @@ export default function Monitoring() {
         </TabsContent>
 
         <TabsContent value="config" className="space-y-6">
-          <ZabbixSettings />
+          <Card>
+            <CardContent className="py-8 text-center space-y-3">
+              <Plug className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Настройки подключения к Zabbix управляются в разделе Администрирование
+              </p>
+              <Link to="/connections?tab=zabbix">
+                <Button variant="outline" size="sm">
+                  Перейти к настройкам подключений →
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
           <HostManagement />
           <TemplateLibrary />
         </TabsContent>

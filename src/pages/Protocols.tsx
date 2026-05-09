@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon } from "lucide-react";
+import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon, FileText, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -14,17 +14,20 @@ import { logAudit } from "@/lib/audit";
 import ProtocolList from "@/components/protocols/ProtocolList";
 import ProtocolDetail from "@/components/protocols/ProtocolDetail";
 import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
+import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
 import { exportProtocolDocx } from "@/lib/export-protocol-docx";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 export default function Protocols() {
-  const { isStaff, user } = useAuth();
+  const { isStaff, user, hasRole } = useAuth();
+  const canManage = hasRole("admin") || hasRole("engineer");
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get("date") || "";
+  const topTab = searchParams.get("tab") === "templates" ? "templates" : "list";
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterSite, setFilterSite] = useState("all");
@@ -291,6 +294,31 @@ export default function Protocols() {
 
   return (
     <div>
+      <Tabs
+        value={topTab}
+        onValueChange={(v) => {
+          const next = new URLSearchParams(searchParams);
+          if (v === "templates") next.set("tab", "templates"); else next.delete("tab");
+          setSearchParams(next, { replace: true });
+        }}
+        className="mb-4"
+      >
+        <TabsList>
+          <TabsTrigger value="list" className="gap-1.5">
+            <ListChecks className="h-3.5 w-3.5" /> Протоколы
+          </TabsTrigger>
+          {canManage && (
+            <TabsTrigger value="templates" className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Шаблоны
+            </TabsTrigger>
+          )}
+        </TabsList>
+      </Tabs>
+
+      {topTab === "templates" && canManage ? (
+        <ProtocolTemplatesManager />
+      ) : (
+      <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold">Протоколы обслуживания</h1>
         {isStaff && <CreateProtocolDialog defaultDate={dateParam} />}
@@ -395,6 +423,8 @@ export default function Protocols() {
           onToggleSelect={isStaff ? toggleSelect : undefined}
           onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
         />
+      )}
+      </>
       )}
     </div>
   );
