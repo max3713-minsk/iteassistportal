@@ -20,8 +20,6 @@ import HelpReference from "@/pages/HelpReference";
 import Monitoring from "@/pages/Monitoring";
 import Notifications from "@/pages/Notifications";
 import Organizations from "@/pages/Organizations";
-import ZabbixConnections from "@/pages/ZabbixConnections";
-import Integrations from "@/pages/Integrations";
 import Connections from "@/pages/Connections";
 import WorkScope from "@/pages/WorkScope";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
