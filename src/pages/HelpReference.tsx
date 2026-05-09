@@ -3,10 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Info, Clock, AlertTriangle, ListChecks, BookOpen, FileText } from "lucide-react";
-import WorkScopeReference from "@/components/help/WorkScopeReference";
-import WorkScopeManager from "@/components/help/WorkScopeManager";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import UserManual from "@/components/help/UserManual";
-import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
 import { useAuth } from "@/hooks/useAuth";
 
 const priorities = [
@@ -82,19 +81,25 @@ export default function HelpReference() {
             <Clock className="h-4 w-4" />
             SLA и приоритеты
           </TabsTrigger>
-          <TabsTrigger value="scope" className="gap-1.5">
-            <ListChecks className="h-4 w-4" />
-            Состав работ
-          </TabsTrigger>
-          {canManage && (
-            <TabsTrigger value="templates" className="gap-1.5">
-              <FileText className="h-4 w-4" />
-              Шаблоны протоколов
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="manual" className="mt-4">
+          {canManage && (
+            <Card className="mb-4">
+              <CardContent className="pt-4 flex flex-wrap gap-3">
+                <Link to="/work-scope">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <ListChecks className="h-4 w-4" /> Регламент работ
+                  </Button>
+                </Link>
+                <Link to="/protocols?tab=templates">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <FileText className="h-4 w-4" /> Шаблоны протоколов
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
           <UserManual />
         </TabsContent>
 
@@ -194,16 +199,6 @@ export default function HelpReference() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="scope" className="mt-4">
-          {canManage ? <WorkScopeManager /> : <WorkScopeReference />}
-        </TabsContent>
-
-        {canManage && (
-          <TabsContent value="templates" className="mt-4">
-            <ProtocolTemplatesManager />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
