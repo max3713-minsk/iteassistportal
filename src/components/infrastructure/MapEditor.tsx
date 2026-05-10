@@ -295,10 +295,7 @@ function EditorInner({ initial, readOnly, onSave, saving }: Props) {
         };
       }),
     );
-    setSelectedEdge((se) => (se ? es2(es => es)._ as any : se) as any); // no-op; refresh below
   };
-  // tiny helper to avoid TS unused warning
-  const es2 = (_: any) => ({ _: null });
 
   // Sync selected edge after edits
   useEffect(() => {
