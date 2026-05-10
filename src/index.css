@@ -130,3 +130,12 @@
   z-index: 50;
   cursor: grabbing;
 }
+
+/* ─── Infrastructure map: data-flow edge animation ─── */
+.lovable-flow-edge .react-flow__edge-path {
+  stroke-dasharray: 8 6;
+  animation: lovable-flow-dash 1.2s linear infinite;
+}
+@keyframes lovable-flow-dash {
+  to { stroke-dashoffset: -28; }
+}
