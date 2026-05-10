@@ -257,7 +257,7 @@ function EditorInner({ initial, readOnly, onSave, saving }: Props) {
     [rfi, readOnly, setNodes],
   );
 
-  const updateSelected = (patch: Partial<DeviceNodeData> & { equipmentId?: string | null }) => {
+  const updateSelected = (patch: Partial<DeviceNodeData> & { equipmentId?: string | null; live?: boolean }) => {
     if (!selected) return;
     setNodes((ns) =>
       ns.map((n) => (n.id === selected.id ? { ...n, data: { ...(n.data as any), ...patch } } : n)),
