@@ -13,6 +13,8 @@ import { Plus, Network, Trash2, Pencil, ArrowLeft } from "lucide-react";
 import MapEditor, { MapDoc } from "@/components/infrastructure/MapEditor";
 import { logAudit } from "@/lib/audit";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function InfrastructureMaps() {
   const { isStaff, user } = useAuth();
@@ -23,7 +25,7 @@ export default function InfrastructureMaps() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  const { data: maps = [] } = useQuery({
+  const { data: maps = [], isLoading: mapsLoading } = useQuery({
     queryKey: ["infra-maps"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -158,17 +160,27 @@ export default function InfrastructureMaps() {
       </div>
 
       {maps.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Network className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground">Схемы ещё не созданы</p>
-            {isStaff && (
-              <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" />Создать первую схему
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        mapsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-32 w-full rounded-none" />
+                <CardContent className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Network}
+            title="Схемы инфраструктуры ещё не созданы"
+            description="Создайте интерактивную карту ЦОД, сети или связи между устройствами. Узлы можно привязать к Zabbix-хостам, чтобы видеть статус в реальном времени."
+            action={isStaff ? { label: "Создать первую схему", onClick: () => setCreateOpen(true), icon: Plus } : undefined}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {maps.map((m) => {
