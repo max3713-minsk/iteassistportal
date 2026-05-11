@@ -1,13 +1,14 @@
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { Eye, ClipboardList } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Eye, ClipboardList, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -48,15 +49,35 @@ interface Props {
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onToggleSelectAll?: (ids: string[]) => void;
+  loading?: boolean;
+  onCreate?: () => void;
 }
 
-export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll }: Props) {
+export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate }: Props) {
+  if (loading) {
+    return (
+      <Card className="p-4 space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 flex-[2]" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        ))}
+      </Card>
+    );
+  }
   if (protocols.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center py-12">
-        <ClipboardList className="h-12 w-12 text-muted-foreground/40 mb-4" />
-        <p className="text-muted-foreground">Протоколы не найдены</p>
-      </Card>
+      <EmptyState
+        icon={ClipboardList}
+        title="Протоколы не найдены"
+        description="По выбранным фильтрам пока ничего нет. Создайте новый протокол ТО или сбросьте фильтры."
+        action={onCreate ? { label: "Создать протокол", onClick: onCreate, icon: Plus } : undefined}
+      />
     );
   }
 
