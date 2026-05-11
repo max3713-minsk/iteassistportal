@@ -16,6 +16,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import KillSwitch, { useLogoKillTrigger } from "@/components/KillSwitch";
 import { ShiftHandoverDialog } from "@/components/ShiftHandoverDialog";
+import { AvatarHash } from "@/components/ui/avatar-hash";
 
 type NavItem = {
   to: string;
@@ -269,10 +270,13 @@ export default function AppSidebar() {
             <DoorOpen className="h-4 w-4" />Сдать смену
           </Button>
         )}
-        <div className="px-3 py-2 mb-2 flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? "—"}</p>
-            <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+        <div className="px-3 py-2 mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <AvatarHash name={profile?.full_name ?? user?.email} email={user?.email} size="md" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? user?.email ?? "—"}</p>
+              <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+            </div>
           </div>
           <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
         </div>

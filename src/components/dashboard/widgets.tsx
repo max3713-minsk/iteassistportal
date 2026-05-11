@@ -23,6 +23,8 @@ import GraphChart from "@/components/monitoring/GraphChart";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
+import { Sparkline } from "@/components/ui/sparkline";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 function EquipmentHealthWidget() {
   const { data: equipment = [] } = useQuery({
@@ -257,6 +259,196 @@ const SummaryWidget: WidgetMeta["Component"] = () => {
         ))}
       </CardContent>
     </Card>
+  );
+};
+
+/* ============ KPI trends with sparklines ============ */
+function buildDayBuckets(days: number) {
+  const arr: { date: Date; key: string }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = subDays(new Date(), i);
+    arr.push({ date: d, key: format(d, "yyyy-MM-dd") });
+  }
+  return arr;
+}
+
+function deltaPercent(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+function KpiCard({
+  label, value, series, delta, lowerIsBetter, accent,
+}: {
+  label: string; value: number; series: number[]; delta: number | null;
+  lowerIsBetter?: boolean; accent: string;
+}) {
+  const trendDir: "up" | "down" | "neutral" =
+    delta == null || delta === 0 ? "neutral" : delta > 0 ? "up" : "down";
+  const isGood =
+    delta == null
+      ? null
+      : lowerIsBetter
+        ? delta < 0
+        : delta > 0;
+  const TrendIcon = trendDir === "up" ? TrendingUp : trendDir === "down" ? TrendingDown : Minus;
+  return (
+    <div className="rounded-xl border bg-card p-4 flex flex-col gap-2 hover:border-primary/40 transition-colors">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground truncate">{label}</span>
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5 text-[11px] font-medium tabular-nums px-1.5 py-0.5 rounded-full",
+            isGood == null && "bg-muted text-muted-foreground",
+            isGood === true && "bg-emerald-500/15 text-emerald-500",
+            isGood === false && "bg-red-500/15 text-red-500",
+          )}
+          title="Изменение к прошлой неделе"
+        >
+          <TrendIcon className="h-3 w-3" />
+          {delta == null ? "—" : `${delta > 0 ? "+" : ""}${delta}%`}
+        </span>
+      </div>
+      <div className="flex items-end justify-between gap-2">
+        <div
+          className="text-3xl font-heading font-bold leading-none"
+          style={{ color: accent }}
+        >
+          {value}
+        </div>
+        <Sparkline data={series} trend={trendDir} width={88} height={28} />
+      </div>
+    </div>
+  );
+}
+
+const KpiTrendsWidget: WidgetMeta["Component"] = () => {
+  const { data } = useQuery({
+    queryKey: ["dashboard-kpi-trends"],
+    queryFn: async () => {
+      const since = subDays(new Date(), 13).toISOString();
+      const sinceDate = subDays(new Date(), 13);
+      const [ticketsCreated, ticketsClosed, openTicketsRes, protocolsCompleted, protocolsActive] =
+        await Promise.all([
+          supabase.from("tickets").select("created_at").gte("created_at", since),
+          supabase
+            .from("tickets")
+            .select("updated_at,status")
+            .gte("updated_at", since)
+            .in("status", ["resolved", "closed"]),
+          supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .in("status", ["open", "in_progress", "waiting", "overdue"]),
+          supabase
+            .from("maintenance_protocols")
+            .select("completed_at")
+            .gte("completed_at", since)
+            .not("completed_at", "is", null),
+          supabase
+            .from("maintenance_protocols")
+            .select("*", { count: "exact", head: true })
+            .in("status", ["pending", "in_progress"]),
+        ]);
+
+      const buckets = buildDayBuckets(14);
+      const bucketIndex = new Map(buckets.map((b, i) => [b.key, i]));
+
+      const seriesCreated = new Array(14).fill(0);
+      (ticketsCreated.data ?? []).forEach((t) => {
+        const k = format(new Date(t.created_at as string), "yyyy-MM-dd");
+        const i = bucketIndex.get(k);
+        if (i != null) seriesCreated[i] += 1;
+      });
+      const seriesClosed = new Array(14).fill(0);
+      (ticketsClosed.data ?? []).forEach((t) => {
+        const k = format(new Date(t.updated_at as string), "yyyy-MM-dd");
+        const i = bucketIndex.get(k);
+        if (i != null) seriesClosed[i] += 1;
+      });
+      const seriesProtocols = new Array(14).fill(0);
+      (protocolsCompleted.data ?? []).forEach((p) => {
+        if (!p.completed_at) return;
+        const k = format(new Date(p.completed_at as string), "yyyy-MM-dd");
+        const i = bucketIndex.get(k);
+        if (i != null) seriesProtocols[i] += 1;
+      });
+
+      const sumLast = (a: number[]) => a.slice(7).reduce((s, n) => s + n, 0);
+      const sumPrev = (a: number[]) => a.slice(0, 7).reduce((s, n) => s + n, 0);
+
+      const createdLast = sumLast(seriesCreated);
+      const createdPrev = sumPrev(seriesCreated);
+      const closedLast = sumLast(seriesClosed);
+      const closedPrev = sumPrev(seriesClosed);
+      const protocolsLast = sumLast(seriesProtocols);
+      const protocolsPrev = sumPrev(seriesProtocols);
+
+      // Open tickets sparkline = cumulative net change derived from created/closed
+      const currentOpen = openTicketsRes.count ?? 0;
+      let running = currentOpen;
+      const seriesOpen: number[] = new Array(14).fill(0);
+      for (let i = 13; i >= 0; i--) {
+        seriesOpen[i] = running;
+        running = running - seriesCreated[i] + seriesClosed[i];
+      }
+      const openLast = currentOpen;
+      const openPrev = seriesOpen[6] ?? currentOpen;
+
+      void sinceDate; // referenced for clarity
+
+      return {
+        cards: [
+          {
+            label: "Открытые заявки",
+            value: openLast,
+            series: seriesOpen,
+            delta: deltaPercent(openLast, openPrev),
+            lowerIsBetter: true,
+            accent: "hsl(0 72% 55%)",
+          },
+          {
+            label: "Новые за 7 дней",
+            value: createdLast,
+            series: seriesCreated,
+            delta: deltaPercent(createdLast, createdPrev),
+            lowerIsBetter: true,
+            accent: "hsl(217 91% 60%)",
+          },
+          {
+            label: "Закрыто за 7 дней",
+            value: closedLast,
+            series: seriesClosed,
+            delta: deltaPercent(closedLast, closedPrev),
+            lowerIsBetter: false,
+            accent: "hsl(142 71% 45%)",
+          },
+          {
+            label: "Протоколов завершено",
+            value: protocolsLast,
+            series: seriesProtocols,
+            delta: deltaPercent(protocolsLast, protocolsPrev),
+            lowerIsBetter: false,
+            accent: "hsl(160 84% 39%)",
+          },
+        ],
+        activeProtocols: protocolsActive.count ?? 0,
+      };
+    },
+  });
+
+  return (
+    <WidgetShell title="KPI · тренды недели" icon={Activity}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 h-full content-start">
+        {(data?.cards ?? new Array(4).fill(null)).map((c, i) =>
+          c ? (
+            <KpiCard key={c.label} {...c} />
+          ) : (
+            <div key={i} className="rounded-xl border bg-card/40 h-[110px] animate-pulse" />
+          ),
+        )}
+      </div>
+    </WidgetShell>
   );
 };
 
@@ -710,6 +902,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     type: "summary", title: "Сводка", description: "Ключевые показатели: ЦОД, оборудование, заявки, протоколы.",
     category: "Сводка", icon: Building2, defaultW: 12, defaultH: 3, minW: 4, minH: 3,
     Component: SummaryWidget,
+  },
+  "kpi-trends": {
+    type: "kpi-trends",
+    title: "KPI · тренды недели",
+    description: "Открытые заявки, новые за неделю, закрытые, протоколы — со спарклайнами и сравнением к прошлой неделе.",
+    category: "Сводка", icon: Activity, defaultW: 12, defaultH: 4, minW: 4, minH: 4,
+    Component: KpiTrendsWidget,
   },
   "tickets-by-status": {
     type: "tickets-by-status", title: "Заявки по статусам", description: "Распределение всех заявок по статусам.",
