@@ -23,6 +23,8 @@ import GraphChart from "@/components/monitoring/GraphChart";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
+import { Sparkline } from "@/components/ui/sparkline";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 function EquipmentHealthWidget() {
   const { data: equipment = [] } = useQuery({
@@ -710,6 +712,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     type: "summary", title: "Сводка", description: "Ключевые показатели: ЦОД, оборудование, заявки, протоколы.",
     category: "Сводка", icon: Building2, defaultW: 12, defaultH: 3, minW: 4, minH: 3,
     Component: SummaryWidget,
+  },
+  "kpi-trends": {
+    type: "kpi-trends",
+    title: "KPI · тренды недели",
+    description: "Открытые заявки, новые за неделю, закрытые, протоколы — со спарклайнами и сравнением к прошлой неделе.",
+    category: "Сводка", icon: Activity, defaultW: 12, defaultH: 4, minW: 4, minH: 4,
+    Component: KpiTrendsWidget,
   },
   "tickets-by-status": {
     type: "tickets-by-status", title: "Заявки по статусам", description: "Распределение всех заявок по статусам.",
