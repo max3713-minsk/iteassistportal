@@ -16,6 +16,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import KillSwitch, { useLogoKillTrigger } from "@/components/KillSwitch";
 import { ShiftHandoverDialog } from "@/components/ShiftHandoverDialog";
+import { AvatarHash } from "@/components/ui/avatar-hash";
 
 type NavItem = {
   to: string;
