@@ -413,17 +413,14 @@ export default function Protocols() {
         </p>
       )}
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Загрузка...</p>
-      ) : (
-        <ProtocolList
-          protocols={filtered}
-          onSelect={setSelectedId}
-          selectedIds={isStaff ? selectedIds : undefined}
-          onToggleSelect={isStaff ? toggleSelect : undefined}
-          onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
-        />
-      )}
+      <ProtocolList
+        loading={isLoading}
+        protocols={filtered}
+        onSelect={setSelectedId}
+        selectedIds={isStaff ? selectedIds : undefined}
+        onToggleSelect={isStaff ? toggleSelect : undefined}
+        onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
+      />
       </>
       )}
     </div>
