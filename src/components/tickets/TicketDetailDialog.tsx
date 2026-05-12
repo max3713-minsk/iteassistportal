@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock, Sparkles, RefreshCw, CheckSquare, Square, Inbox } from "lucide-react";
+import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock, Sparkles, RefreshCw, CheckSquare, Square } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
