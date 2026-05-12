@@ -46,6 +46,10 @@ import { SLATimer } from "@/components/tickets/SLATimer";
 import { cn } from "@/lib/utils";
 import { EquipmentSummary } from "@/components/tickets/EquipmentSummary";
 import { AIAnalysisTab } from "@/components/tickets/AIAnalysisTab";
+import { TicketLinks } from "@/components/tickets/TicketLinks";
+import { MentionInput, MentionText } from "@/components/tickets/MentionInput";
+import { CommentReactions } from "@/components/tickets/CommentReactions";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Props {
   ticket: any;
@@ -57,6 +61,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
+  const [mentions, setMentions] = useState<string[]>([]);
   const [isInternal, setIsInternal] = useState(false);
   const [transitionComment, setTransitionComment] = useState("");
   const [pendingTransition, setPendingTransition] = useState<string | null>(null);
@@ -175,6 +180,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
         user_id: user!.id,
         content: comment.trim(),
         is_internal: internal,
+        mentions,
       });
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
@@ -210,9 +216,27 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
           url,
         },
       });
+
+      // Notify mentioned users
+      if (mentions.length) {
+        notify({
+          event_type: "ticket.mention",
+          priority: ticket.priority,
+          title: `Вас упомянули: ${ticket.title}`,
+          body: comment.trim().slice(0, 400),
+          payload: {
+            ticket_id: ticket.id,
+            author_id: user!.id,
+            author_name: authorProfile?.full_name || user!.email,
+            url,
+          },
+          target_user_ids: mentions,
+        });
+      }
     },
     onSuccess: () => {
       setComment("");
+      setMentions([]);
       setIsInternal(false);
       refetchComments();
       toast({ title: "Комментарий добавлен" });
@@ -470,6 +494,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
 
             {ticket.equipment_id && <EquipmentSummary equipmentId={ticket.equipment_id} />}
 
+            <TicketLinks ticketId={ticket.id} canEdit={isStaff} />
+
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Приоритет:</span>{" "}
@@ -679,11 +705,19 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                         {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
                       </span>
                     </div>
-                    <p className="whitespace-pre-wrap">{c.content}</p>
+                    <MentionText text={c.content} />
+                    <CommentReactions commentId={c.id} />
                   </div>
                 ))}
               {comments.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">Комментариев пока нет</p>
+                <EmptyState
+                  icon={MessageSquare}
+                  title="Пока никто не написал"
+                  description={isStaff
+                    ? "Оставьте первый комментарий — заказчик увидит его в портале."
+                    : "Здесь появятся ответы инженера. Опишите ваш вопрос ниже."}
+                  className="py-6"
+                />
               )}
             </div>
             {!["closed", "cancelled"].includes(ticket.status) && (
@@ -697,11 +731,11 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Input
+                  <MentionInput
                     value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder={isInternal ? "Внутренняя заметка..." : "Напишите комментарий..."}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && commentMutation.mutate()}
+                    onChange={(v, m) => { setComment(v); setMentions(m); }}
+                    placeholder={isInternal ? "Внутренняя заметка… @упоминание" : "Напишите комментарий… @упоминание"}
+                    onEnter={() => commentMutation.mutate()}
                   />
                   <Button
                     size="sm"
@@ -744,7 +778,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                 </div>
               ))}
               {statusHistory.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">Нет записей</p>
+                <EmptyState icon={History} title="История пуста" description="Здесь будут отображены все смены статусов и действия по заявке." className="py-6" />
               )}
             </div>
           </TabsContent>

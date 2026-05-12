@@ -197,7 +197,7 @@ export function NotificationChannels() {
         <p className="text-sm text-muted-foreground">Загрузка...</p>
       ) : channels.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
-          У вас пока нет настроенных каналов. Добавьте первый, чтобы начать получать уведомления.
+          У вас пока нет настроенных каналов. Добавьте первый, чтобы начать получать уведомления о заявках, SLA и системных событиях.
         </CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
