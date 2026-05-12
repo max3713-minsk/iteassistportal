@@ -705,11 +705,19 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                         {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
                       </span>
                     </div>
-                    <p className="whitespace-pre-wrap">{c.content}</p>
+                    <MentionText text={c.content} />
+                    <CommentReactions commentId={c.id} />
                   </div>
                 ))}
               {comments.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">Комментариев пока нет</p>
+                <EmptyState
+                  icon={MessageSquare}
+                  title="Пока никто не написал"
+                  description={isStaff
+                    ? "Оставьте первый комментарий — заказчик увидит его в портале."
+                    : "Здесь появятся ответы инженера. Опишите ваш вопрос ниже."}
+                  className="py-6"
+                />
               )}
             </div>
             {!["closed", "cancelled"].includes(ticket.status) && (
@@ -723,11 +731,11 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Input
+                  <MentionInput
                     value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder={isInternal ? "Внутренняя заметка..." : "Напишите комментарий..."}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && commentMutation.mutate()}
+                    onChange={(v, m) => { setComment(v); setMentions(m); }}
+                    placeholder={isInternal ? "Внутренняя заметка… @упоминание" : "Напишите комментарий… @упоминание"}
+                    onEnter={() => commentMutation.mutate()}
                   />
                   <Button
                     size="sm"
