@@ -494,6 +494,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
 
             {ticket.equipment_id && <EquipmentSummary equipmentId={ticket.equipment_id} />}
 
+            <TicketLinks ticketId={ticket.id} canEdit={isStaff} />
+
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Приоритет:</span>{" "}
