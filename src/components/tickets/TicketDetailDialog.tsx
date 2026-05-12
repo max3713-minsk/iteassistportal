@@ -778,7 +778,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                 </div>
               ))}
               {statusHistory.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">Нет записей</p>
+                <EmptyState icon={History} title="История пуста" description="Здесь будут отображены все смены статусов и действия по заявке." className="py-6" />
               )}
             </div>
           </TabsContent>
