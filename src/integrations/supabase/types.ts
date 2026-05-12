@@ -1742,12 +1742,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_comments: {
         Row: {
           content: string
           created_at: string
           id: string
           is_internal: boolean | null
+          mentions: string[]
           ticket_id: string
           user_id: string
         }
@@ -1756,6 +1789,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal?: boolean | null
+          mentions?: string[]
           ticket_id: string
           user_id: string
         }
@@ -1764,6 +1798,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal?: boolean | null
+          mentions?: string[]
           ticket_id?: string
           user_id?: string
         }
@@ -1776,6 +1811,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ticket_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["ticket_link_kind"]
+          note: string | null
+          source_ticket_id: string
+          target_ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["ticket_link_kind"]
+          note?: string | null
+          source_ticket_id: string
+          target_ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["ticket_link_kind"]
+          note?: string | null
+          source_ticket_id?: string
+          target_ticket_id?: string
+        }
+        Relationships: []
       }
       ticket_status_history: {
         Row: {
@@ -2289,6 +2354,13 @@ export type Database = {
         | "on_request"
       monitoring_protocol: "SNMP" | "IPMI" | "SSH" | "HTTP" | "HTTPS" | "Agent"
       protocol_status: "pending" | "in_progress" | "completed" | "overdue"
+      ticket_link_kind:
+        | "related"
+        | "duplicate"
+        | "parent"
+        | "child"
+        | "blocks"
+        | "blocked_by"
       ticket_priority: "P1" | "P2" | "P3" | "P4"
       ticket_status:
         | "open"
@@ -2447,6 +2519,14 @@ export const Constants = {
       ],
       monitoring_protocol: ["SNMP", "IPMI", "SSH", "HTTP", "HTTPS", "Agent"],
       protocol_status: ["pending", "in_progress", "completed", "overdue"],
+      ticket_link_kind: [
+        "related",
+        "duplicate",
+        "parent",
+        "child",
+        "blocks",
+        "blocked_by",
+      ],
       ticket_priority: ["P1", "P2", "P3", "P4"],
       ticket_status: [
         "open",
