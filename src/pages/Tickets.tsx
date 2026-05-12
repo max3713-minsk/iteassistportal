@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X } from "lucide-react";
+import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X, Inbox } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog";
 import { TicketDetailDialog } from "@/components/tickets/TicketDetailDialog";
 import { SLATimer } from "@/components/tickets/SLATimer";
 import { TicketKanban } from "@/components/tickets/TicketKanban";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -215,12 +216,21 @@ export default function Tickets() {
           </div>
         </Card>
       ) : tickets.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Ticket className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground">{hasActiveFilters ? "Ничего не найдено по выбранным фильтрам" : "Заявок пока нет"}</p>
-          </CardContent>
-        </Card>
+        hasActiveFilters ? (
+          <EmptyState
+            icon={Search}
+            title="Ничего не найдено"
+            description="Попробуйте изменить фильтры или сбросить их."
+            action={{ label: "Сбросить фильтры", icon: X, onClick: resetFilters }}
+          />
+        ) : (
+          <EmptyState
+            icon={Inbox}
+            title="Заявок пока нет"
+            description="Создайте первую заявку — инженеры получат уведомление и SLA-таймер запустится автоматически."
+            action={{ label: "Новая заявка", icon: Plus, onClick: () => setCreateOpen(true) }}
+          />
+        )
       ) : view === "kanban" ? (
         <TicketKanban tickets={tickets} onSelect={setSelectedTicket} />
       ) : (
