@@ -12,6 +12,7 @@ import {
 import { Link2, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
+import { toastWithUndo } from "@/lib/toast-undo";
 
 const KIND_LABELS: Record<string, string> = {
   related: "Связанная",
@@ -98,13 +99,24 @@ export function TicketLinks({ ticketId, canEdit }: Props) {
   }
 
   async function removeLink(id: string) {
-    const { error } = await supabase.from("ticket_links").delete().eq("id", id);
-    if (error) {
-      toast.error("Не удалось удалить", { description: error.message });
-      return;
-    }
-    toast.success("Связь удалена");
-    qc.invalidateQueries({ queryKey: ["ticket-links", ticketId] });
+    const link = links.find((l: any) => l.id === id);
+    if (!link) return;
+    // Optimistically hide
+    qc.setQueryData(["ticket-links", ticketId], (old: any[] = []) =>
+      old.filter((l) => l.id !== id),
+    );
+    toastWithUndo({
+      message: "Связь удалена",
+      description: link.other?.title ?? undefined,
+      onCommit: async () => {
+        const { error } = await supabase.from("ticket_links").delete().eq("id", id);
+        if (error) throw error;
+        qc.invalidateQueries({ queryKey: ["ticket-links", ticketId] });
+      },
+      onUndo: () => {
+        qc.invalidateQueries({ queryKey: ["ticket-links", ticketId] });
+      },
+    });
   }
 
   return (
