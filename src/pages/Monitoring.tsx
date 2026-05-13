@@ -24,14 +24,15 @@ import { Plug } from "lucide-react";
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
   return useQuery({
-    queryKey: ["zabbix-settings-active"],
+    queryKey: ["zabbix-connections-any-active"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("zabbix_settings")
-        .select("id, is_active")
+        .from("zabbix_connections")
+        .select("id")
+        .eq("is_active", true)
         .limit(1)
         .maybeSingle();
-      return data?.is_active === true;
+      return !!data;
     },
     staleTime: 60000,
   });

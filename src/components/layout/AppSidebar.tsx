@@ -140,8 +140,8 @@ export default function AppSidebar() {
     queryKey: ["sidebar-zabbix-status"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("zabbix_settings")
-        .select("is_active")
+        .from("zabbix_connections")
+        .select("id")
         .eq("is_active", true)
         .limit(1)
         .maybeSingle();
