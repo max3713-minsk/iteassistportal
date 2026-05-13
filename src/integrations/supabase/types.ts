@@ -2243,39 +2243,6 @@ export type Database = {
           },
         ]
       }
-      zabbix_settings: {
-        Row: {
-          id: string
-          is_active: boolean
-          updated_at: string
-          updated_by: string | null
-          vpn_info: string | null
-          zabbix_password: string
-          zabbix_url: string
-          zabbix_user: string
-        }
-        Insert: {
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          updated_by?: string | null
-          vpn_info?: string | null
-          zabbix_password?: string
-          zabbix_url?: string
-          zabbix_user?: string
-        }
-        Update: {
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          updated_by?: string | null
-          vpn_info?: string | null
-          zabbix_password?: string
-          zabbix_url?: string
-          zabbix_user?: string
-        }
-        Relationships: []
-      }
       zabbix_template_library: {
         Row: {
           category: string | null

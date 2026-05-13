@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 export default function ZabbixConnectionPicker({ className }: { className?: string }) {
   const { connections, active, setActiveId, isLoading } = useZabbixConnection();
   if (isLoading) return null;
-  if (connections.length === 0) return null;
+  // Hide when there's nothing to choose between — the live status indicator already
+  // tells the user whether monitoring is connected, so the picker is just noise.
+  if (connections.length < 2) return null;
 
   return (
     <DropdownMenu>

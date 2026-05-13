@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.zabbix_settings CASCADE;

@@ -42,7 +42,6 @@ const PURGE_TABLES = [
   "contracts",
   "organizations",
   "zabbix_connections",
-  "zabbix_settings",
 ];
 
 Deno.serve(async (req) => {

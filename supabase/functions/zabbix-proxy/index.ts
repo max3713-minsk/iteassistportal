@@ -294,8 +294,7 @@ Deno.serve(async (req) => {
   // Resolve which Zabbix connection to use:
   // 1) explicit `connection_id` in request body (preferred — set by global picker),
   // 2) the row in `zabbix_connections` flagged is_default,
-  // 3) any active row in `zabbix_connections`,
-  // 4) legacy `zabbix_settings` singleton (back-compat).
+  // 3) any active row in `zabbix_connections`.
   let bodyParsed: Record<string, unknown> = {};
   try { bodyParsed = await req.clone().json(); } catch { /* ignore — handled below */ }
   const explicitConnId = typeof bodyParsed?.connection_id === "string" ? bodyParsed.connection_id as string : null;
@@ -328,15 +327,7 @@ Deno.serve(async (req) => {
     }
   }
   if (!ZABBIX_URL) {
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from("zabbix_settings").select("*").limit(1).single();
-    if (settingsError || !settings) {
-      return fail("Подключение Zabbix не сконфигурировано. Добавьте подключение в разделе «Подключения Zabbix».");
-    }
-    if (!settings.is_active) {
-      return fail("Подключение к Zabbix отключено в настройках.");
-    }
-    ZABBIX_URL = settings.zabbix_url; ZABBIX_USER = settings.zabbix_user; ZABBIX_PASSWORD = settings.zabbix_password;
+    return fail("Подключение Zabbix не сконфигурировано. Добавьте подключение в разделе «Подключения».");
   }
 
   // Per-connection auth-token cache key suffix
