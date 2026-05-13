@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
-import { Activity, AlertTriangle, RefreshCw, Settings, LayoutDashboard } from "lucide-react";
+import { Activity, AlertTriangle, RefreshCw, Boxes, LayoutDashboard } from "lucide-react";
 import { priorityToIncident, priorityLabel } from "@/components/monitoring/monitoringUtils";
 
 import MonitoringHosts from "@/components/monitoring/MonitoringHosts";
@@ -19,7 +19,6 @@ import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
-import { Plug } from "lucide-react";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -170,11 +169,11 @@ export default function Monitoring() {
             <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               {!isZabbixConfigured
-                ? "Zabbix не сконфигурирован. Перейдите в Настройка для подключения."
+                ? "Zabbix не сконфигурирован. Добавьте подключение в разделе «Подключения»."
                 : "Нет связи с сервером мониторинга. Данные могут быть неактуальны."}
             </p>
-            <Button size="sm" variant="outline" onClick={() => setTab("config")}>
-              Проверить настройки
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/connections?tab=zabbix">Перейти к подключениям →</Link>
             </Button>
           </CardContent>
         </Card>
@@ -187,9 +186,9 @@ export default function Monitoring() {
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
           <TabsTrigger value="tz">Покрытие ТЗ</TabsTrigger>
-          <TabsTrigger value="config" className="flex items-center gap-1">
-            <Settings className="h-3.5 w-3.5" />
-            Настройка
+          <TabsTrigger value="catalog" className="flex items-center gap-1">
+            <Boxes className="h-3.5 w-3.5" />
+            Хосты и шаблоны
           </TabsTrigger>
         </TabsList>
 
@@ -237,20 +236,7 @@ export default function Monitoring() {
           <TZCoverage />
         </TabsContent>
 
-        <TabsContent value="config" className="space-y-6">
-          <Card>
-            <CardContent className="py-8 text-center space-y-3">
-              <Plug className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Настройки подключения к Zabbix управляются в разделе Администрирование
-              </p>
-              <Link to="/connections?tab=zabbix">
-                <Button variant="outline" size="sm">
-                  Перейти к настройкам подключений →
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        <TabsContent value="catalog" className="space-y-6">
           <HostManagement />
           <TemplateLibrary />
         </TabsContent>
