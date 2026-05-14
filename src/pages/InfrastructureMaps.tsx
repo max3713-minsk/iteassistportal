@@ -79,11 +79,39 @@ export default function InfrastructureMaps() {
         .eq("id", openId);
       if (error) throw error;
       await logAudit({ action: `Обновлена схема инфраструктуры`, module: "infrastructure_maps", entityId: openId });
+      // Snapshot version (best-effort, не блокирует основной save)
+      try {
+        const { data: last } = await supabase
+          .from("infrastructure_map_versions" as any)
+          .select("version_number")
+          .eq("map_id", openId)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const next = ((last as any)?.version_number ?? 0) + 1;
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", user?.id ?? "")
+          .maybeSingle();
+        await supabase.from("infrastructure_map_versions" as any).insert({
+          map_id: openId,
+          version_number: next,
+          data: doc as any,
+          created_by: user?.id,
+          created_by_name: prof?.full_name ?? user?.email ?? null,
+          node_count: doc.nodes?.length ?? 0,
+          edge_count: doc.edges?.length ?? 0,
+        });
+      } catch {
+        /* версии не критичны */
+      }
     },
     onSuccess: () => {
       toast({ title: "Сохранено" });
       qc.invalidateQueries({ queryKey: ["infra-maps"] });
       qc.invalidateQueries({ queryKey: ["infra-map", openId] });
+      qc.invalidateQueries({ queryKey: ["map-versions", openId] });
     },
     onError: (e: any) => toast({ title: "Ошибка сохранения", description: e.message, variant: "destructive" }),
   });
@@ -119,6 +147,8 @@ export default function InfrastructureMaps() {
           readOnly={!isStaff}
           onSave={saveMutation.mutateAsync}
           saving={saveMutation.isPending}
+          mapId={openId}
+          mapName={current.name}
         />
       </div>
     );
