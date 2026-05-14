@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,8 +84,8 @@ export default function ProblemsHeatmap({ problems, events = [] }: Props) {
                 </div>
               ))}
               {DAYS.map((d, di) => (
-                <>
-                  <div key={`l${di}`} className="text-[11px] text-muted-foreground pr-2 flex items-center">{d}</div>
+                <Fragment key={d}>
+                  <div className="text-[11px] text-muted-foreground pr-2 flex items-center">{d}</div>
                   {HOURS.map((h) => {
                     const v = grid[di][h];
                     const intensity = max > 0 ? v / max : 0;
@@ -104,7 +104,7 @@ export default function ProblemsHeatmap({ problems, events = [] }: Props) {
                       />
                     );
                   })}
-                </>
+                </Fragment>
               ))}
             </div>
             <div className="flex items-center gap-2 mt-4 text-[11px] text-muted-foreground">
