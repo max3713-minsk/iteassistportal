@@ -487,6 +487,45 @@ export type Database = {
         }
         Relationships: []
       }
+      infrastructure_map_versions: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          data: Json
+          edge_count: number
+          id: string
+          map_id: string
+          node_count: number
+          version_number: number
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          data?: Json
+          edge_count?: number
+          id?: string
+          map_id: string
+          node_count?: number
+          version_number: number
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          data?: Json
+          edge_count?: number
+          id?: string
+          map_id?: string
+          node_count?: number
+          version_number?: number
+        }
+        Relationships: []
+      }
       infrastructure_maps: {
         Row: {
           created_at: string
