@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router, Link2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Server, Monitor, HardDrive, Network, Shield, Zap, Router, Link2, Power, PowerOff, X } from "lucide-react";
 import { HostFormDialog } from "./HostFormDialog";
 import { HostWizardDialog } from "./HostWizardDialog";
 import CMDBSyncDialog from "./CMDBSyncDialog";
+import { toastWithUndo } from "@/lib/toast-undo";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -58,6 +60,8 @@ export default function HostManagement() {
   const [cmdbSyncOpen, setCmdbSyncOpen] = useState(false);
   const [editingHost, setEditingHost] = useState<MonitoredHost | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const { data: hosts, isLoading } = useQuery({
     queryKey: ["monitored-hosts"],
@@ -85,6 +89,63 @@ export default function HostManagement() {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
     },
   });
+
+  const bulkToggle = async (enabled: boolean) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    const { error } = await supabase.from("monitored_hosts").update({ enabled }).in("id", ids);
+    if (error) {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["monitored-hosts"] });
+    toast({ title: enabled ? `Включено: ${ids.length}` : `Отключено: ${ids.length}` });
+    setSelected(new Set());
+  };
+
+  const bulkDelete = () => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    const snapshot = (hosts ?? []).filter((h) => ids.includes(h.id));
+    setSelected(new Set());
+    setBulkDeleteOpen(false);
+    // Optimistic remove
+    queryClient.setQueryData<MonitoredHost[]>(["monitored-hosts"], (old) =>
+      (old ?? []).filter((h) => !ids.includes(h.id)),
+    );
+    toastWithUndo({
+      message: `Удалено хостов: ${ids.length}`,
+      onCommit: async () => {
+        const { error } = await supabase.from("monitored_hosts").delete().in("id", ids);
+        if (error) {
+          toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
+          queryClient.setQueryData<MonitoredHost[]>(["monitored-hosts"], (old) => [...(old ?? []), ...snapshot]);
+        }
+        queryClient.invalidateQueries({ queryKey: ["monitored-hosts"] });
+      },
+      onUndo: () => {
+        queryClient.setQueryData<MonitoredHost[]>(["monitored-hosts"], (old) => {
+          const cur = old ?? [];
+          const merged = [...cur, ...snapshot.filter((s) => !cur.some((c) => c.id === s.id))];
+          return merged.sort((a, b) => a.name.localeCompare(b.name));
+        });
+      },
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    if (!hosts) return;
+    setSelected(checked ? new Set(hosts.map((h) => h.id)) : new Set());
+  };
+
+  const toggleOne = (id: string) => {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleEdit = (host: MonitoredHost) => {
     setEditingHost(host);
@@ -121,6 +182,25 @@ export default function HostManagement() {
         )}
       </CardHeader>
       <CardContent>
+        {isStaff && selected.size > 0 && (
+          <div className="mb-3 flex items-center gap-2 rounded-md border bg-accent/30 px-3 py-2">
+            <span className="text-sm font-medium">Выбрано: {selected.size}</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => bulkToggle(true)}>
+                <Power className="h-3.5 w-3.5 mr-1" /> Включить
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkToggle(false)}>
+                <PowerOff className="h-3.5 w-3.5 mr-1" /> Отключить
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Удалить
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -133,6 +213,15 @@ export default function HostManagement() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isStaff && (
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={hosts.length > 0 && selected.size === hosts.length}
+                      onCheckedChange={(v) => toggleAll(!!v)}
+                      aria-label="Выбрать все"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Имя</TableHead>
                 <TableHead>IP</TableHead>
                 <TableHead>Тип</TableHead>
@@ -146,7 +235,16 @@ export default function HostManagement() {
                 const cfg = getDeviceTypeConfig(host.device_type);
                 const Icon = cfg.icon;
                 return (
-                  <TableRow key={host.id}>
+                  <TableRow key={host.id} data-state={selected.has(host.id) ? "selected" : undefined}>
+                    {isStaff && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(host.id)}
+                          onCheckedChange={() => toggleOne(host.id)}
+                          aria-label={`Выбрать ${host.name}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium flex items-center gap-2">
                       <Icon className={`h-4 w-4 ${cfg.color}`} />
                       {host.name}
@@ -211,6 +309,26 @@ export default function HostManagement() {
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные хосты?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Будет удалено: {selected.size}. У вас будет 5 секунд, чтобы отменить действие.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={bulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Удалить

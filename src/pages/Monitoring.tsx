@@ -19,6 +19,7 @@ import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
+import ProblemsHeatmap from "@/components/monitoring/ProblemsHeatmap";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -183,6 +184,7 @@ export default function Monitoring() {
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="hosts">Хосты</TabsTrigger>
           <TabsTrigger value="problems">Проблемы и Алерты</TabsTrigger>
+          <TabsTrigger value="heatmap">Тепловая карта</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
           <TabsTrigger value="tz">Покрытие ТЗ</TabsTrigger>
@@ -214,6 +216,10 @@ export default function Monitoring() {
             onAcknowledge={acknowledgeEvent}
             initialPriorityFilter={problemPriorityFilter}
           />
+        </TabsContent>
+
+        <TabsContent value="heatmap">
+          <ProblemsHeatmap problems={[...(problems as any[]), ...(alerts as any[])]} />
         </TabsContent>
 
         <TabsContent value="graphs">
