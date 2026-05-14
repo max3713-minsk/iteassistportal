@@ -23,8 +23,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Save, Trash2, Magnet, AlignStartHorizontal, AlignEndHorizontal, AlignCenterHorizontal,
   AlignStartVertical, AlignEndVertical, AlignCenterVertical, ArrowUpToLine, ArrowDownToLine,
-  Activity, Link2, Zap,
+  Activity, Link2, Zap, Download, History, FileImage, FileCode, FileText,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportMapAsPng, exportMapAsSvg, exportMapAsPdf } from "@/lib/map-export";
+import MapVersionsDialog from "./MapVersionsDialog";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const nodeTypes = { device: DeviceNode };
@@ -36,6 +40,8 @@ interface Props {
   readOnly?: boolean;
   onSave?: (doc: MapDoc) => Promise<void> | void;
   saving?: boolean;
+  mapId?: string | null;
+  mapName?: string;
 }
 
 let nid = 0;
@@ -155,12 +161,14 @@ function useLiveStatuses(nodes: Node[]) {
   }, [zbxData, links]);
 }
 
-function EditorInner({ initial, readOnly, onSave, saving }: Props) {
+function EditorInner({ initial, readOnly, onSave, saving, mapId, mapName }: Props) {
+  const { toast } = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
   const [selected, setSelected] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [snap, setSnap] = useState(true);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [rfi, setRfi] = useState<ReactFlowInstance | null>(null);
 
@@ -320,6 +328,25 @@ function EditorInner({ initial, readOnly, onSave, saving }: Props) {
     await onSave?.({ nodes, edges });
   };
 
+  const doExport = async (kind: "png" | "svg" | "pdf") => {
+    if (!wrapperRef.current) return;
+    try {
+      const filename = mapName || "map";
+      if (kind === "png") await exportMapAsPng(wrapperRef.current, filename);
+      else if (kind === "svg") await exportMapAsSvg(wrapperRef.current, filename);
+      else await exportMapAsPdf(wrapperRef.current, filename);
+      toast({ title: `Экспорт в ${kind.toUpperCase()} выполнен` });
+    } catch (e: any) {
+      toast({ title: "Ошибка экспорта", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const restoreVersion = async (doc: MapDoc) => {
+    setNodes(doc.nodes);
+    setEdges(doc.edges);
+    await onSave?.(doc);
+  };
+
   /* Multi-selection alignment / z-order */
   const selectedNodes = nodes.filter((n) => n.selected);
   const selCount = selectedNodes.length;
@@ -455,9 +482,49 @@ function EditorInner({ initial, readOnly, onSave, saving }: Props) {
             <Button size="icon" variant="ghost" className="h-8 w-8" disabled={!selected && selCount === 0} onClick={() => setZ("front")} title="На передний план"><ArrowUpToLine className="h-3.5 w-3.5" /></Button>
             <Button size="icon" variant="ghost" className="h-8 w-8" disabled={!selected && selCount === 0} onClick={() => setZ("back")} title="На задний план"><ArrowDownToLine className="h-3.5 w-3.5" /></Button>
             <Separator orientation="vertical" className="h-6" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8" title="Экспорт">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => doExport("png")}>
+                  <FileImage className="h-4 w-4 mr-2" /> PNG (растр)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => doExport("svg")}>
+                  <FileCode className="h-4 w-4 mr-2" /> SVG (вектор)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => doExport("pdf")}>
+                  <FileText className="h-4 w-4 mr-2" /> PDF (A4)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {mapId && (
+              <Button size="icon" variant="ghost" className="h-8 w-8" title="История версий" onClick={() => setVersionsOpen(true)}>
+                <History className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Separator orientation="vertical" className="h-6" />
             <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2 h-8">
               <Save className="h-3.5 w-3.5" /> {saving ? "..." : "Сохранить"}
             </Button>
+          </div>
+        )}
+        {readOnly && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-card/95 backdrop-blur border rounded-lg px-2 py-1.5 shadow-lg">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5 h-8">
+                  <Download className="h-3.5 w-3.5" /> Экспорт
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => doExport("png")}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => doExport("svg")}><FileCode className="h-4 w-4 mr-2" /> SVG</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => doExport("pdf")}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
@@ -635,6 +702,13 @@ function EditorInner({ initial, readOnly, onSave, saving }: Props) {
           )}
         </SheetContent>
       </Sheet>
+      <MapVersionsDialog
+        mapId={mapId ?? null}
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        onRestore={restoreVersion}
+        currentDoc={{ nodes, edges }}
+      />
     </div>
   );
 }
