@@ -251,7 +251,7 @@ export default function TZCoverage() {
       }
 
       await logAudit({
-        action: "Авто-сопоставление ТЗ ↔ Zabbix",
+        action: "Авто-сопоставление регламента ↔ Zabbix",
         module: "monitoring",
         details: `Обработано auto-пунктов: ${updates.length}`,
       });

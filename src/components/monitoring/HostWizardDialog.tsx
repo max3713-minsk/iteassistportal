@@ -301,7 +301,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
             {step === 1 && "Базовая информация о хосте"}
             {step === 2 && "Выбор протоколов сбора данных"}
             {step === 3 && "Шаблоны мониторинга Zabbix"}
-            {step === 4 && "Соответствие пунктам ТЗ"}
+            {step === 4 && "Соответствие пунктам регламента"}
             {step === 5 && "Проверка и добавление"}
           </DialogDescription>
         </DialogHeader>
@@ -644,7 +644,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
             {tzHints.length === 0 ? (
               <Card>
                 <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                  Не удалось определить пункты ТЗ автоматически.
+                  Не удалось определить пункты регламента автоматически.
                   Свяжите вручную через вкладку «Покрытие ТЗ».
                 </CardContent>
               </Card>

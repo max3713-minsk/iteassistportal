@@ -779,7 +779,7 @@ const TZCoverageWidget: WidgetMeta["Component"] = ({ chartType }) => {
     },
   });
   return (
-    <WidgetShell title="Покрытие ТЗ мониторингом" icon={ShieldCheck}>
+    <WidgetShell title="Покрытие регламента мониторингом" icon={ShieldCheck}>
       <CategoricalChart data={data ?? []}
         colors={["hsl(152 82% 30%)", "hsl(38 92% 50%)", "hsl(220 9% 46%)"]}
         chartType={chartType ?? "donut"} />
@@ -962,7 +962,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     Component: RecentEventsWidget,
   },
   "tz-coverage": {
-    type: "tz-coverage", title: "Покрытие ТЗ", description: "Сколько требований ТЗ покрыто мониторингом.",
+    type: "tz-coverage", title: "Покрытие регламента", description: "Сколько требований ТЗ покрыто мониторингом.",
     category: "Мониторинг", icon: ShieldCheck, defaultW: 4, defaultH: 7, minW: 3, minH: 4,
     supportedCharts: ["donut", "pie", "bar", "radial", "list"], defaultChart: "donut",
     Component: TZCoverageWidget,
