@@ -169,7 +169,7 @@ export default function UserManual() {
             а также мониторинг инфраструктуры через интеграцию с Zabbix и Ansible.
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />Авто-сопоставление ТЗ</Badge>
+            <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />Авто-сопоставление регламента</Badge>
             <Badge variant="outline" className="gap-1"><Wrench className="h-3 w-3" />Конфигурация инструментов покрытия</Badge>
             <Badge variant="outline" className="gap-1"><Activity className="h-3 w-3" />Единицы измерения метрик</Badge>
           </div>

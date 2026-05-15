@@ -645,7 +645,7 @@ export function HostWizardDialog({ open, onOpenChange }: Props) {
               <Card>
                 <CardContent className="py-6 text-center text-sm text-muted-foreground">
                   Не удалось определить пункты регламента автоматически.
-                  Свяжите вручную через вкладку «Покрытие ТЗ».
+                  Свяжите вручную через вкладку «Покрытие регламента».
                 </CardContent>
               </Card>
             ) : (
