@@ -42,7 +42,7 @@ function makeCell(text: string, opts?: { bold?: boolean; shading?: string; width
   });
 }
 
-export async function exportProtocolDocx(data: ProtocolData) {
+export async function buildProtocolDocxBlob(data: ProtocolData): Promise<Blob> {
   const freq = frequencyLabels[data.frequency] ?? data.frequency;
   const period = `${format(new Date(data.periodStart), "dd.MM.yyyy")} — ${format(new Date(data.periodEnd), "dd.MM.yyyy")}`;
 
@@ -189,6 +189,10 @@ export async function exportProtocolDocx(data: ProtocolData) {
     }],
   });
 
-  const buffer = await Packer.toBlob(doc);
-  saveAs(buffer, `protocol_${data.siteName}_${data.frequency}_${data.periodStart}.docx`);
+  return await Packer.toBlob(doc);
+}
+
+export async function exportProtocolDocx(data: ProtocolData) {
+  const blob = await buildProtocolDocxBlob(data);
+  saveAs(blob, `protocol_${data.siteName}_${data.frequency}_${data.periodStart}.docx`);
 }

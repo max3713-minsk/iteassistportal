@@ -9,12 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { useState } from "react";
 import ProtocolGraphs from "@/components/monitoring/ProtocolGraphs";
+import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
+import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -97,6 +99,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const totalCount = items.length;
 
   const [protocolNotes, setProtocolNotes] = useState("");
+  const [seafileUploading, setSeafileUploading] = useState(false);
 
   const isOnRequest = protocol?.frequency === "on_request";
 
@@ -191,6 +194,73 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const allCompleted = totalCount > 0 && completedCount === totalCount;
   const isCompleted = protocol.status === "completed";
 
+  const sendToSeafile = async () => {
+    setSeafileUploading(true);
+    try {
+      // Build DOCX in browser using same data shape
+      const mappedItems = items.map((it) => ({
+        equipmentName: it.equipment
+          ? `${it.equipment.name}${it.equipment.model ? ` (${it.equipment.model})` : ""}`
+          : "—",
+        taskTitle: it.maintenance_tasks?.title ?? "Задача",
+        status: it.status ?? "pending",
+        notes: it.notes,
+        completedAt: it.completed_at,
+      }));
+      let graphs: { name: string; pngBase64: string; widthPx: number; heightPx: number }[] = [];
+      try { graphs = await snapshotProtocolGraphs(); } catch { /* ignore */ }
+
+      const docxBlob = await buildProtocolDocxBlob({
+        siteName: (protocol as any).sites?.name ?? "—",
+        frequency: protocol.frequency,
+        periodStart: protocol.period_start,
+        periodEnd: protocol.period_end,
+        status: protocol.status,
+        notes: protocol.notes,
+        items: mappedItems,
+        graphs,
+      });
+
+      // Convert blob → base64
+      const docxBase64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve((r.result as string).split(",")[1] || "");
+        r.onerror = reject;
+        r.readAsDataURL(docxBlob);
+      });
+
+      const { data, error } = await supabase.functions.invoke("protocol-export-seafile", {
+        body: {
+          protocol_id: protocolId,
+          docx_base64: docxBase64,
+          graphs: graphs.map((g) => ({ name: g.name, pngBase64: g.pngBase64 })),
+        },
+      });
+      if (error) throw error;
+      const res = data as { folder?: string; uploaded?: string[]; viewUrl?: string; error?: string };
+      if (res?.error) throw new Error(res.error);
+
+      await logAudit({
+        action: "Экспорт протокола в Seafile",
+        module: "protocols",
+        entityId: protocolId,
+        details: `${res.folder} • файлов: ${res.uploaded?.length ?? 0}`,
+      });
+      toast({
+        title: "Загружено в Seafile",
+        description: `${res.folder} • файлов: ${res.uploaded?.length ?? 0}`,
+      });
+    } catch (e) {
+      toast({
+        title: "Ошибка отправки в Seafile",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSeafileUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -243,6 +313,12 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           <Button variant="outline" onClick={() => onExportDocx(protocolId)}>
             <FileText className="h-4 w-4 mr-2" />
             Скачать DOC
+          </Button>
+        )}
+        {isStaff && (
+          <Button variant="outline" onClick={sendToSeafile} disabled={seafileUploading}>
+            <CloudUpload className="h-4 w-4 mr-2" />
+            {seafileUploading ? "Отправка..." : "Отправить в Seafile"}
           </Button>
         )}
       </div>
