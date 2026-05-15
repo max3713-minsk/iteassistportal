@@ -3,7 +3,7 @@ import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { supabase } from "@/integrations/supabase/client";
 import { Cpu, MemoryStick, HardDrive, Loader2, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatItemValue, toPercent, percentColor } from "./formatMetric";
+import { formatItemValue, toPercent, percentColor, isStale, ageLabel } from "./formatMetric";
 
 interface Props {
   zabbixHostId: string;
@@ -76,13 +76,16 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
   return (
     <div className="flex items-center gap-2.5 text-xs">
       {metrics.map(({ icon: Icon, label, item }) => {
-        const pct = toPercent(item ? { ...item, units: "%" } : null);
+        const stale = isStale(item);
+        const pct = stale ? null : toPercent(item ? { ...item, units: "%" } : null);
+        const colorCls = stale ? "text-muted-foreground/60" : percentColor(pct);
+        const display = stale ? "N/A" : (pct == null ? "—" : `${pct.toFixed(0)}%`);
         return (
         <Tooltip key={label}>
           <TooltipTrigger asChild>
-            <span className={`inline-flex items-center gap-1 ${percentColor(pct)} cursor-help`}>
+            <span className={`inline-flex items-center gap-1 ${colorCls} cursor-help`}>
               <Icon className="h-3 w-3" />
-              <span className="font-mono font-medium">{pct == null ? "—" : `${pct.toFixed(0)}%`}</span>
+              <span className="font-mono font-medium">{display}</span>
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -90,7 +93,13 @@ export default function EquipmentMonitoringMetrics({ zabbixHostId }: Props) {
               <div className="text-xs">
                 <div className="font-medium">{item.name}</div>
                 <div className="font-mono text-muted-foreground">{item.key_}</div>
-                <div className="mt-1">Текущее: <span className="font-mono">{formatItemValue(item)}</span></div>
+                <div className="mt-1">
+                  {stale ? (
+                    <span className="text-amber-500">Нет связи с хостом — последнее значение устарело ({ageLabel(item)})</span>
+                  ) : (
+                    <>Текущее: <span className="font-mono">{formatItemValue(item)}</span></>
+                  )}
+                </div>
                 {item.lastclock && (
                   <div className="text-muted-foreground mt-1">
                     {new Date(parseInt(item.lastclock) * 1000).toLocaleString("ru-RU")}
