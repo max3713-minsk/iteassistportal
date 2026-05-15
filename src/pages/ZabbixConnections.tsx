@@ -451,8 +451,11 @@ export default function ZabbixConnections() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["zabbix-connections"] });
       qc.invalidateQueries({ queryKey: ["zabbix-connections-active"] });
-      toast({ title: "Подключение удалено" });
+      qc.invalidateQueries({ queryKey: ["monitored-hosts"] });
+      qc.invalidateQueries({ queryKey: ["host-management"] });
+      toast({ title: "Подключение удалено", description: "Связанные хосты переведены в архив." });
     },
+    onError: (e: any) => toast({ title: "Не удалось удалить", description: e.message, variant: "destructive" }),
   });
 
   const onSaved = () => {
@@ -512,8 +515,16 @@ export default function ZabbixConnections() {
                   key={c.id}
                   conn={c}
                   onEdit={() => openEdit(c)}
-                  onDelete={() => {
-                    if (confirm(`Удалить подключение "${c.name}"?`)) remove.mutate(c.id);
+                  onDelete={async () => {
+                    // Сколько хостов завязано на это подключение?
+                    const { count } = await supabase
+                      .from("monitored_hosts")
+                      .select("id", { count: "exact", head: true })
+                      .eq("zabbix_connection_id", c.id);
+                    const msg = count && count > 0
+                      ? `Удалить подключение "${c.name}"?\n\nСвязанных хостов в каталоге: ${count}.\nОни будут отключены и перенесены в группу «archived» (можно удалить вручную позже).`
+                      : `Удалить подключение "${c.name}"?`;
+                    if (confirm(msg)) remove.mutate(c.id);
                   }}
                 />
               ))}

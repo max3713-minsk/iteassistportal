@@ -108,6 +108,30 @@ export interface ZabbixLikeItem {
   units?: string | null;
   key_?: string | null;
   name?: string | null;
+  /** Unix-time строки от Zabbix (последнее обновление). */
+  lastclock?: string | number | null;
+}
+
+/** Порог «свежести» метрики в секундах. Старее — считаем N/A. */
+export const METRIC_STALE_SECONDS = 5 * 60;
+
+/** Метрика считается «несвежей», если lastclock старше METRIC_STALE_SECONDS. */
+export function isStale(item?: ZabbixLikeItem | null, maxAgeSec: number = METRIC_STALE_SECONDS): boolean {
+  if (!item) return true;
+  const ts = item.lastclock != null ? parseInt(String(item.lastclock)) : NaN;
+  if (!Number.isFinite(ts) || ts <= 0) return true;
+  return Date.now() / 1000 - ts > maxAgeSec;
+}
+
+/** Возвращает человекочитаемый возраст последнего значения, например «3 ч 12 м назад». */
+export function ageLabel(item?: ZabbixLikeItem | null): string {
+  const ts = item?.lastclock != null ? parseInt(String(item.lastclock)) : NaN;
+  if (!Number.isFinite(ts) || ts <= 0) return "никогда";
+  const diff = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (diff < 60) return `${diff} с назад`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+  return `${Math.floor(diff / 86400)} дн назад`;
 }
 
 /**

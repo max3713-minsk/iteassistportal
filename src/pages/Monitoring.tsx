@@ -187,7 +187,7 @@ export default function Monitoring() {
           <TabsTrigger value="heatmap">Тепловая карта</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
-          <TabsTrigger value="tz">Покрытие ТЗ</TabsTrigger>
+          <TabsTrigger value="tz">Покрытие регламента</TabsTrigger>
           <TabsTrigger value="catalog" className="flex items-center gap-1">
             <Boxes className="h-3.5 w-3.5" />
             Хосты и шаблоны

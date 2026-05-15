@@ -76,7 +76,7 @@ export default function SavedGraphsLibrary() {
           <TabsList>
             <TabsTrigger value="mine">Мои ({graphs.filter((g) => g.user_id === user?.id && !g.is_template).length})</TabsTrigger>
             <TabsTrigger value="shared"><Users className="h-3 w-3 mr-1" /> Общие ({graphs.filter((g) => g.is_shared && !g.is_template).length})</TabsTrigger>
-            <TabsTrigger value="templates"><FileText className="h-3 w-3 mr-1" /> Шаблоны ТЗ ({graphs.filter((g) => g.is_template).length})</TabsTrigger>
+            <TabsTrigger value="templates"><FileText className="h-3 w-3 mr-1" /> Шаблоны регламента ({graphs.filter((g) => g.is_template).length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value={view} className="mt-4">

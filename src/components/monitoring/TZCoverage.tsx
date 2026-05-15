@@ -251,7 +251,7 @@ export default function TZCoverage() {
       }
 
       await logAudit({
-        action: "Авто-сопоставление ТЗ ↔ Zabbix",
+        action: "Авто-сопоставление регламента ↔ Zabbix",
         module: "monitoring",
         details: `Обработано auto-пунктов: ${updates.length}`,
       });
@@ -272,7 +272,7 @@ export default function TZCoverage() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
-              Покрытие пунктов ТЗ: {stats.percent}%
+              Покрытие регламентных работ: {stats.percent}%
             </CardTitle>
             {isStaff && (
               <Button

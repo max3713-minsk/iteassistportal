@@ -135,7 +135,7 @@ export default function MonitoringDashboard({
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("tz")}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Покрытие ТЗ</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Покрытие регламента</CardTitle>
             <FileText className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>

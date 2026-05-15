@@ -18,7 +18,7 @@ import {
   hostGroupType, groupTypeConfig, availabilityBadge,
   priorityColor, priorityLabel, duration,
 } from "./monitoringUtils";
-import { formatItemValue } from "./formatMetric";
+import { formatItemValue, isStale, ageLabel } from "./formatMetric";
 
 interface Props {
   hosts: any[];
@@ -330,10 +330,22 @@ function HostDetailView({
   const upItem = findItem([/system\.uptime/i, /uptime/i, /агент.*время.*работы/i]);
   const pingItem = findItem([/icmpping/i, /agent\.ping/i]);
 
-  // Используем единый форматтер. Для CPU/RAM/Disk принудительно проценты,
-  // для uptime — длительность, для ping — текст ниже.
-  const fmtPercent = (it: any | null) =>
-    formatItemValue(it ? { ...it, units: "%" } : null);
+  // Хост недоступен по данным Zabbix?
+  const hostOffline = host.available === "2";
+
+  // Если хост offline ИЛИ конкретная метрика «протухла» — показываем N/A.
+  const fmtPercent = (it: any | null) => {
+    if (!it || hostOffline || isStale(it)) return "N/A";
+    return formatItemValue({ ...it, units: "%" });
+  };
+  const fmtUptime = (it: any | null) => {
+    if (!it || hostOffline || isStale(it)) return "N/A";
+    return formatItemValue({ ...it, units: "uptime" });
+  };
+  const fmtPing = (it: any | null) => {
+    if (!it || hostOffline || isStale(it)) return "N/A";
+    return parseFloat(it.lastvalue) > 0 ? "🟢 OK" : "🔴 нет";
+  };
 
   return (
     <div className="space-y-4">
@@ -388,14 +400,16 @@ function HostDetailView({
                   <CardContent className="py-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">{label}</p>
                     <p className="text-2xl font-heading font-bold">
-                      {isUptime ? formatItemValue(item ? { ...item, units: "uptime" } : null)
-                        : isPing
-                          ? (item ? (parseFloat(item.lastvalue) > 0 ? "🟢 OK" : "🔴 нет") : "—")
-                          : fmtPercent(item)}
+                      {isUptime ? fmtUptime(item) : isPing ? fmtPing(item) : fmtPercent(item)}
                     </p>
-                    {item && (
+                    {item && !hostOffline && !isStale(item) && (
                       <p className="text-[10px] text-muted-foreground mt-1 truncate" title={item.name}>
                         {item.name}
+                      </p>
+                    )}
+                    {item && (hostOffline || isStale(item)) && (
+                      <p className="text-[10px] text-amber-500 mt-1 truncate" title={`Последнее значение ${ageLabel(item)}`}>
+                        {hostOffline ? "Хост недоступен" : `Устарело (${ageLabel(item)})`}
                       </p>
                     )}
                   </CardContent>

@@ -209,7 +209,7 @@ export default function ProtocolGraphs({ protocolId, readonly = false }: Props) 
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium flex items-center gap-2">
                           {g.name}
-                          {g.is_template && <Badge className="text-[10px]">Шаблон ТЗ</Badge>}
+                          {g.is_template && <Badge className="text-[10px]">Шаблон регламента</Badge>}
                           {g.is_shared && <Badge variant="outline" className="text-[10px]">Общий</Badge>}
                           {isAlready && <Badge variant="secondary" className="text-[10px]">Уже прикреплён</Badge>}
                         </p>
