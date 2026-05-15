@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.archive_monitored_hosts_on_conn_delete() FROM PUBLIC, anon, authenticated;
