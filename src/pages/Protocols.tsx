@@ -17,6 +17,7 @@ import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
 import BatchCreateProtocolDialog from "@/components/protocols/BatchCreateProtocolDialog";
 import QuickReportButton from "@/components/protocols/QuickReportButton";
 import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
+import ProtocolSignersDialog from "@/components/protocols/ProtocolSignersDialog";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
 import { exportProtocolDocx } from "@/lib/export-protocol-docx";
@@ -44,6 +45,7 @@ export default function Protocols() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [signersFor, setSignersFor] = useState<string | null>(null);
 
   // Auto-create protocols for today
   useAutoProtocols();
@@ -169,6 +171,18 @@ export default function Protocols() {
   async function bulkSendSeafile() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
+    const missing = ids.filter((id) => {
+      const p: any = protocols.find((x) => x.id === id);
+      return !(p?.executor_user_id || p?.executor_signature_user_id) || !(p?.responsible_user_id || p?.responsible_signature_user_id);
+    });
+    if (missing.length > 0) {
+      toast({
+        title: "Не заполнены подписанты",
+        description: `Протоколов без «Выполнил/Ответственный»: ${missing.length}. Откройте протокол и заполните поля.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setBulkBusy(true);
     try {
       const { data: setting } = await supabase
@@ -500,9 +514,15 @@ export default function Protocols() {
         selectedIds={isStaff ? selectedIds : undefined}
         onToggleSelect={isStaff ? toggleSelect : undefined}
         onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
+        onAssignSigners={isStaff ? (id) => setSignersFor(id) : undefined}
       />
       </>
       )}
+      <ProtocolSignersDialog
+        protocolId={signersFor}
+        open={!!signersFor}
+        onOpenChange={(v) => { if (!v) setSignersFor(null); }}
+      />
     </div>
   );
 }

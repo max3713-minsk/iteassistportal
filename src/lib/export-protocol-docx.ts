@@ -220,7 +220,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
         lineRuns.push(new ImageRun({
           data: bin,
           type: "png",
-          transformation: { width: 140, height: 55 },
+          transformation: { width: 95, height: 38 },
           floating: {
             horizontalPosition: {
               relative: HorizontalPositionRelativeFrom.MARGIN,
@@ -228,7 +228,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
             },
             verticalPosition: {
               relative: VerticalPositionRelativeFrom.PARAGRAPH,
-              offset: -250000,
+              offset: -180000,
             },
             behindDocument: true,
             wrap: { type: TextWrappingType.NONE },
