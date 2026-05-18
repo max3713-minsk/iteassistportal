@@ -1341,6 +1341,7 @@ export type Database = {
           is_active: boolean
           organization: string | null
           phone: string | null
+          position: string | null
           signature_path: string | null
           updated_at: string
           user_id: string
@@ -1352,6 +1353,7 @@ export type Database = {
           is_active?: boolean
           organization?: string | null
           phone?: string | null
+          position?: string | null
           signature_path?: string | null
           updated_at?: string
           user_id: string
@@ -1363,6 +1365,7 @@ export type Database = {
           is_active?: boolean
           organization?: string | null
           phone?: string | null
+          position?: string | null
           signature_path?: string | null
           updated_at?: string
           user_id?: string
