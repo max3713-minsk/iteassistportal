@@ -45,11 +45,25 @@ function b64ToBlob(b64: string, type: string): Uint8Array {
   return bytes;
 }
 
+async function dirExists(baseUrl: string, token: string, repoId: string, path: string): Promise<boolean> {
+  const url = `${baseUrl}/api2/repos/${repoId}/dir/?p=${encodeURIComponent(path)}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Token ${token}` } });
+    return res.ok; // 200 — exists
+  } catch {
+    return false;
+  }
+}
+
 async function mkdirRecursive(baseUrl: string, token: string, repoId: string, fullPath: string) {
+  // Walk each segment top-down. Skip mkdir for any segment that already exists,
+  // because Seafile auto-renames duplicates to "name (1)", "name (2)" — which was
+  // creating empty sibling folders on every export.
   const parts = fullPath.split("/").filter(Boolean);
   let cur = "";
   for (const part of parts) {
     cur += "/" + part;
+    if (await dirExists(baseUrl, token, repoId, cur)) continue;
     const url = `${baseUrl}/api2/repos/${repoId}/dir/?p=${encodeURIComponent(cur)}`;
     const form = new FormData();
     form.append("operation", "mkdir");
@@ -171,21 +185,6 @@ Deno.serve(async (req) => {
 
     const bytes = b64ToBlob(body.blob_base64, body.mime || "application/octet-stream");
     await upload(baseUrl, token, repoId, folderPath, finalName, bytes, body.mime || "application/octet-stream");
-
-    // Sidecar meta
-    const sidecar = {
-      kind: body.kind,
-      original_filename: body.filename,
-      stored_filename: finalName,
-      folder: folderPath,
-      exported_at: now.toISOString(),
-      exported_by_id: user.id,
-      exported_by_login: userLogin,
-      exported_by_name: userName,
-      meta: meta,
-    };
-    const sidecarBytes = new TextEncoder().encode(JSON.stringify(sidecar, null, 2));
-    await upload(baseUrl, token, repoId, folderPath, finalName + ".meta.json", sidecarBytes, "application/json");
 
     // Audit (best-effort)
     try {
