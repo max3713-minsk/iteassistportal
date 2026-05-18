@@ -92,7 +92,7 @@ function table(rows: string[][], headerBold = true): Table {
   });
 }
 
-export async function generateClientReport(data: ReportData) {
+export async function generateClientReport(data: ReportData, opts?: { returnBlob?: boolean }): Promise<Blob | void> {
   const { options: o, tickets, protocols, equipment } = data;
   const sla = calcSLA(tickets);
   const incidents = tickets.filter((t) => t.request_type === "incident");
@@ -211,5 +211,6 @@ export async function generateClientReport(data: ReportData) {
 
   const blob = await Packer.toBlob(doc);
   const fname = `Отчёт_${o.organizationName.replace(/[^\wа-яА-ЯёЁ]+/gu, "_")}_${o.startDate}_${o.endDate}.docx`;
+  if (opts?.returnBlob) return blob;
   saveAs(blob, fname);
 }
