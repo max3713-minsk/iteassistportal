@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon, FileText, ListChecks } from "lucide-react";
+import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon, FileText, ListChecks, Trash2, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -22,6 +22,9 @@ import { useAutoProtocols } from "@/hooks/useAutoProtocols";
 import { exportProtocolDocx } from "@/lib/export-protocol-docx";
 import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
+import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
+import { sendToSeafile } from "@/lib/seafile";
+import { frequencyLabels as FREQ_LBL } from "@/lib/schedule-utils";
 
 export default function Protocols() {
   const { isStaff, user, hasRole } = useAuth();
@@ -40,6 +43,7 @@ export default function Protocols() {
   const [periodTo, setPeriodTo] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Auto-create protocols for today
   useAutoProtocols();
@@ -139,6 +143,82 @@ export default function Protocols() {
     toast({ title: `Завершено: ${ids.length}` });
     setSelectedIds(new Set());
     qc.invalidateQueries({ queryKey: ["protocols"] });
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!window.confirm(`Удалить ${ids.length} протокол(ов) безвозвратно? Связанные пункты также будут удалены.`)) return;
+    setBulkBusy(true);
+    try {
+      const { error: e1 } = await supabase.from("protocol_items").delete().in("protocol_id", ids);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from("maintenance_protocols").delete().in("id", ids);
+      if (e2) throw e2;
+      await logAudit({ action: `Массовое удаление протоколов (${ids.length})`, module: "protocols", details: ids.join(", ") });
+      toast({ title: `Удалено: ${ids.length}` });
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: ["protocols"] });
+    } catch (e: any) {
+      toast({ title: "Ошибка удаления", description: e.message, variant: "destructive" });
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkSendSeafile() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    setBulkBusy(true);
+    try {
+      const { data: setting } = await supabase
+        .from("integration_settings")
+        .select("enabled, config")
+        .eq("key", "seafile")
+        .maybeSingle();
+      if (!setting?.enabled) {
+        toast({ title: "Seafile не настроен", description: "Включите интеграцию в разделе «Интеграции».", variant: "destructive" });
+        return;
+      }
+
+      let okCount = 0;
+      let errCount = 0;
+      for (const id of ids) {
+        try {
+          const proto = protocols.find((p) => p.id === id);
+          const data = await fetchProtocolDocxData(id);
+          const blob = await buildProtocolDocxBlob(data);
+          const freqLabel = FREQ_LBL[proto?.frequency ?? ""] ?? proto?.frequency ?? "protocol";
+          const siteName = proto?.sites?.name ?? "site";
+          const dateStr = proto?.period_end ?? format(new Date(), "yyyy-MM-dd");
+          const filename = `Протокол_${freqLabel}_${siteName}_${dateStr}.docx`.replace(/[/\\:*?"<>|]/g, "_");
+          await sendToSeafile({
+            kind: "protocol",
+            blob,
+            filename,
+            meta: {
+              protocol_id: id,
+              site: siteName,
+              frequency: proto?.frequency,
+              period_start: proto?.period_start,
+              period_end: proto?.period_end,
+            },
+          });
+          okCount++;
+        } catch (err: any) {
+          errCount++;
+          console.error("Seafile upload failed for", id, err);
+        }
+      }
+      await logAudit({ action: `Массовая отправка протоколов в облако (${okCount}/${ids.length})`, module: "protocols", details: ids.join(", ") });
+      toast({
+        title: errCount === 0 ? `Отправлено в облако: ${okCount}` : `Отправлено: ${okCount}, ошибок: ${errCount}`,
+        variant: errCount > 0 ? "destructive" : "default",
+      });
+      if (errCount === 0) setSelectedIds(new Set());
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   function bulkExportCsv() {
@@ -389,11 +469,17 @@ export default function Protocols() {
             <Button size="sm" variant="outline" onClick={bulkExportCsv}>
               <FileDown className="h-3.5 w-3.5 mr-1" /> Экспорт CSV
             </Button>
+            <Button size="sm" variant="outline" onClick={bulkSendSeafile} disabled={bulkBusy}>
+              <Cloud className="h-3.5 w-3.5 mr-1" /> В облако
+            </Button>
             {activeTab !== "completed" && (
               <Button size="sm" onClick={bulkComplete}>
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Завершить
               </Button>
             )}
+            <Button size="sm" variant="destructive" onClick={bulkDelete} disabled={bulkBusy}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Удалить
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
               <X className="h-3.5 w-3.5" />
             </Button>
