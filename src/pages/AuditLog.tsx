@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollText, Search, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SeafileSendButton } from "@/components/SeafileSendButton";
 
 const moduleLabels: Record<string, string> = {
   tickets: "Заявки",
@@ -20,6 +21,8 @@ const moduleLabels: Record<string, string> = {
   documents: "Документы",
   schedules: "Календарь ТО",
   auth: "Авторизация",
+  seafile: "Seafile",
+  reports: "Отчёты",
 };
 
 export default function AuditLog() {
@@ -78,7 +81,7 @@ const [moduleFilter, setModuleFilter] = useState("all");
       )
     : logs;
 
-  const exportCSV = () => {
+  const buildCsvBlob = () => {
     const header = ["Дата и время", "Пользователь", "Организация", "Модуль", "Действие", "Подробности"];
     const rows = filtered.map((l: any) => [
       format(new Date(l.created_at), "dd.MM.yyyy HH:mm:ss", { locale: ru }),
@@ -90,7 +93,11 @@ const [moduleFilter, setModuleFilter] = useState("all");
     ]);
     const bom = "\uFEFF";
     const csv = bom + [header, ...rows].map((r) => r.map((c: string) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    return new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  };
+
+  const exportCSV = () => {
+    const blob = buildCsvBlob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -103,10 +110,23 @@ const [moduleFilter, setModuleFilter] = useState("all");
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-2xl font-bold">Журнал событий</h1>
-        <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Экспорт CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Экспорт CSV
+          </Button>
+          <SeafileSendButton
+            variant="outline"
+            size="sm"
+            kind="audit"
+            disabled={filtered.length === 0}
+            getPayload={() => ({
+              blob: buildCsvBlob(),
+              filename: `audit_log_${format(new Date(), "yyyy-MM-dd")}.csv`,
+              meta: { name: "audit_log", org: orgFilter !== "all" ? orgFilter : "" },
+            })}
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">

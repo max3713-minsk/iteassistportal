@@ -8,6 +8,7 @@ import { useRef } from "react";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { formatRaw } from "./formatMetric";
+import { SeafileSendButton } from "@/components/SeafileSendButton";
 
 interface Series {
   hostid: string;
@@ -149,6 +150,13 @@ export default function GraphChart({
     }
   };
 
+  const getPngBlob = async (): Promise<Blob> => {
+    if (!exportRef.current) throw new Error("Нет данных для экспорта");
+    const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: "#ffffff", cacheBust: true });
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  };
+
   const exportPDF = async () => {
     if (!exportRef.current) return;
     try {
@@ -254,6 +262,21 @@ export default function GraphChart({
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={exportPDF}>
             <FileType2 className="h-3 w-3 mr-1" /> PDF
           </Button>
+          <SeafileSendButton
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            kind="graph"
+            label="Seafile"
+            getPayload={async () => ({
+              blob: await getPngBlob(),
+              filename: `${graphName.replace(/[^a-zа-я0-9_-]+/gi, "_")}.png`,
+              meta: {
+                org: series[0]?.hostGroup || "",
+                name: graphName,
+              },
+            })}
+          />
         </div>
       )}
       <div ref={exportRef} className="bg-card rounded p-3">

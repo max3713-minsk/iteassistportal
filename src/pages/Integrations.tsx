@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink } from "lucide-react";
+import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink, Wand2 } from "lucide-react";
+import { previewSeafilePath } from "@/lib/seafile";
 
 type IntegrationKey = "gitlab" | "seafile";
 
@@ -128,8 +129,54 @@ function SeafilePanel() {
   const { row, setRow, loading } = useSetting("seafile");
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<string>("");
   const cfg = row.config || {};
   const updateCfg = (patch: Record<string, any>) => setRow({ ...row, config: { ...cfg, ...patch } });
+
+  const DEFAULT_FOLDERS: Record<string, string> = {
+    protocol: "Протоколы/{org}/{year}/{frequency_ru}/{period}",
+    graph: "Графики/{org}/{year}-{month}",
+    report: "Отчёты/{org}/{year}-{month}",
+    document: "Документы/{org}/{category}",
+    map: "Схемы/{org}",
+    audit: "Аудит/{year}-{month}",
+    ticket: "Обращения/{org}/{year}-{month}",
+  };
+  const KIND_LABELS: Record<string, string> = {
+    protocol: "Протоколы ТО",
+    graph: "Графики мониторинга",
+    report: "Отчёты по клиентам",
+    document: "Документация",
+    map: "Схемы инфраструктуры",
+    audit: "Журнал аудита",
+    ticket: "Обращения",
+  };
+  const folders = { ...DEFAULT_FOLDERS, ...(cfg.folders || {}) };
+  const filenamePattern: string = cfg.filename_pattern || "{date}_{name}_{user}";
+
+  const updateFolder = (k: string, v: string) =>
+    updateCfg({ folders: { ...(cfg.folders || {}), [k]: v } });
+
+  const testPath = async (kind: string) => {
+    setPreviewing(kind);
+    setPreviewResult("");
+    try {
+      const res = await previewSeafilePath(kind as any, {
+        org: "ОАО_Тест",
+        category: "technical",
+        frequency: "monthly",
+        period: "2026-05",
+        name: "пример",
+      }, "preview.bin");
+      setPreviewResult(`${kind}: ${res.folder}/${res.filename}`);
+      toast({ title: "Превью пути", description: `${res.folder}/${res.filename}` });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setPreviewing(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -173,6 +220,59 @@ function SeafilePanel() {
             <Input placeholder="/ITEAssist" value={cfg.default_subdir || "/"}
               onChange={(e) => updateCfg({ default_subdir: e.target.value })} />
           </div>
+          <div>
+            <Label>Корневая папка портала</Label>
+            <Input placeholder="/Портал" value={cfg.root || "/"}
+              onChange={(e) => updateCfg({ root: e.target.value })} />
+            <p className="text-xs text-muted-foreground mt-1">Используется как префикс для всех типов контента.</p>
+          </div>
+        </div>
+
+        <div className="border rounded-md p-3 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold mb-1">Шаблоны папок по типу контента</h3>
+            <p className="text-xs text-muted-foreground">
+              Доступные плейсхолдеры: <code>{"{org}"}</code> <code>{"{year}"}</code> <code>{"{month}"}</code> <code>{"{date}"}</code> <code>{"{frequency_ru}"}</code> <code>{"{period}"}</code> <code>{"{category}"}</code> <code>{"{name}"}</code> <code>{"{user}"}</code>
+            </p>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(KIND_LABELS).map(([k, label]) => (
+              <div key={k} className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-3 text-sm">{label}</div>
+                <Input
+                  className="col-span-7 font-mono text-xs"
+                  value={folders[k]}
+                  placeholder={DEFAULT_FOLDERS[k]}
+                  onChange={(e) => updateFolder(k, e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="col-span-2"
+                  onClick={() => testPath(k)}
+                  disabled={previewing === k || !row.enabled}
+                >
+                  {previewing === k ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
+                  Тест пути
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div>
+            <Label>Шаблон имени файла</Label>
+            <Input
+              className="font-mono text-xs"
+              value={filenamePattern}
+              placeholder="{date}_{name}_{user}"
+              onChange={(e) => updateCfg({ filename_pattern: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Например <code>{"{date}_{name}_{user}"}</code> → <code>2026-05-18_1430_протокол_ivanov.docx</code>. Расширение добавляется автоматически.
+            </p>
+          </div>
+          {previewResult && (
+            <div className="text-xs font-mono p-2 bg-muted/50 rounded">{previewResult}</div>
+          )}
         </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}

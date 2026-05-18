@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileDown, Eye, Loader2, FileText } from "lucide-react";
 import { fetchReportData, generateClientReport, type ReportOptions } from "@/lib/generate-client-report";
 import { logAudit } from "@/lib/audit";
+import { SeafileSendButton } from "@/components/SeafileSendButton";
 
 export function ClientReportWizard() {
   const { toast } = useToast();
@@ -155,6 +156,23 @@ export function ClientReportWizard() {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             Скачать DOCX
           </Button>
+          <SeafileSendButton
+            variant="outline"
+            kind="report"
+            label="Отправить в Seafile"
+            disabled={busy || !orgId}
+            getPayload={async () => {
+              const opts = await buildOpts();
+              if (!opts) throw new Error("Выберите организацию");
+              const data = await fetchReportData(opts);
+              const blob = (await generateClientReport(data, { returnBlob: true })) as Blob;
+              return {
+                blob,
+                filename: `report_${orgName}_${start}_${end}.docx`,
+                meta: { org: orgName, date: end, period: `${start}..${end}`, name: `Отчёт_${reportType}` },
+              };
+            }}
+          />
         </div>
       </CardContent>
 

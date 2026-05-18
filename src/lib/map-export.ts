@@ -68,3 +68,19 @@ export async function exportMapAsPdf(root: HTMLElement, name: string) {
   pdf.addImage(dataUrl, "PNG", (pageW - w) / 2, (pageH - h) / 2, w, h);
   pdf.save(`${sanitize(name)}.pdf`);
 }
+
+async function dataUrlToBlob(dataUrl: string, mime: string): Promise<Blob> {
+  const res = await fetch(dataUrl);
+  return await res.blob();
+}
+
+export async function buildMapPngBlob(root: HTMLElement): Promise<Blob> {
+  const target = findCanvas(root);
+  const dataUrl = await toPng(target, {
+    pixelRatio: 2,
+    backgroundColor: getComputedStyle(document.body).backgroundColor || "#0a0a0a",
+    filter: filter as any,
+    cacheBust: true,
+  });
+  return await dataUrlToBlob(dataUrl, "image/png");
+}
