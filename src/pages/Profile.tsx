@@ -15,6 +15,7 @@ export default function Profile() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [organization, setOrganization] = useState("");
+  const [position, setPosition] = useState("");
   const [saving, setSaving] = useState(false);
 
   const userId = session?.user?.id;
@@ -24,13 +25,14 @@ export default function Profile() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, phone, organization")
+        .select("full_name, phone, organization, position")
         .eq("user_id", userId)
         .maybeSingle();
       if (data) {
         setFullName(data.full_name ?? "");
         setPhone(data.phone ?? "");
         setOrganization(data.organization ?? "");
+        setPosition((data as any).position ?? "");
       }
     })();
   }, [userId]);
@@ -41,7 +43,7 @@ export default function Profile() {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName || null, phone: phone || null, organization: organization || null })
+      .update({ full_name: fullName || null, phone: phone || null, organization: organization || null, position: position || null })
       .eq("user_id", userId);
     setSaving(false);
     if (error) {
@@ -76,6 +78,11 @@ export default function Profile() {
               <Label>Организация</Label>
               <Input value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Должность</Label>
+            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="например, Инженер сервисной поддержки" />
+            <p className="text-xs text-muted-foreground">Если указана — отображается в протоколах рядом с ФИО.</p>
           </div>
           <Button onClick={save} disabled={saving}>{saving ? "Сохранение…" : "Сохранить"}</Button>
         </CardContent>
