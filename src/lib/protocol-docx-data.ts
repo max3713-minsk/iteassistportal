@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export interface SignatureInfo {
   name: string;          // ФИО
+  position?: string | null; // должность (если указана в профиле)
   pngBase64?: string;    // факсимиле
   signedAt?: string | null;
 }
@@ -206,11 +207,11 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
   const execUserId = (protocol as any).executor_signature_user_id || (protocol as any).executor_user_id || (protocol as any).completed_by;
   const respUserId = (protocol as any).responsible_signature_user_id || (protocol as any).responsible_user_id;
   if (execUserId) {
-    const { data } = await supabase.from("profiles").select("full_name, signature_path").eq("user_id", execUserId).maybeSingle();
+    const { data } = await supabase.from("profiles").select("full_name, signature_path, position").eq("user_id", execUserId).maybeSingle();
     execProfile = data;
   }
   if (respUserId) {
-    const { data } = await supabase.from("profiles").select("full_name, signature_path").eq("user_id", respUserId).maybeSingle();
+    const { data } = await supabase.from("profiles").select("full_name, signature_path, position").eq("user_id", respUserId).maybeSingle();
     respProfile = data;
   }
 
@@ -255,11 +256,13 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
     signatures: {
       executor: {
         name: (protocol as any).executor_name || execProfile?.full_name || "—",
+        position: execProfile?.position ?? null,
         pngBase64: execSig,
         signedAt: (protocol as any).signed_executor_at,
       },
       responsible: {
         name: (protocol as any).responsible_name || respProfile?.full_name || "—",
+        position: respProfile?.position ?? null,
         pngBase64: respSig,
         signedAt: (protocol as any).signed_responsible_at,
       },
