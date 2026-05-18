@@ -39,6 +39,7 @@ export interface UserProfile {
   full_name: string | null;
   organization: string | null;
   phone: string | null;
+  position: string | null;
   created_at: string;
   roles: AppRole[];
   email: string;
@@ -74,7 +75,7 @@ export default function UsersAdmin() {
     queryKey: ["admin-users"],
     queryFn: async () => {
       const [profilesRes, rolesRes, emailsRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, full_name, organization, phone, created_at, is_active").order("created_at", { ascending: true }),
+        supabase.from("profiles").select("user_id, full_name, organization, phone, position, created_at, is_active").order("created_at", { ascending: true }),
         supabase.from("user_roles").select("user_id, role"),
         supabase.functions.invoke("manage-user", { body: { action: "list" } }),
       ]);
