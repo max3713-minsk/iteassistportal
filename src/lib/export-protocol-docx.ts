@@ -19,7 +19,7 @@ function makeCell(text: string, opts?: { bold?: boolean; shading?: string; width
     shading: opts?.shading ? { fill: opts.shading, type: ShadingType.CLEAR } : undefined,
     children: [
       new Paragraph({
-        children: [new TextRun({ text, bold: opts?.bold, size: 20, font: "Arial" })],
+        children: [new TextRun({ text, bold: opts?.bold, size: 24, font: "Times New Roman" })],
       }),
     ],
   });
@@ -42,7 +42,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: h.title, bold: true, size: 28, font: "Arial" })],
+      children: [new TextRun({ text: h.title, bold: true, size: 28, font: "Times New Roman" })],
     }),
     new Paragraph({ spacing: { after: 200 }, children: [] }),
   ];
@@ -53,7 +53,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     { k: "Заказчик", v: h.customerName },
     { k: "Исполнитель", v: h.executorName },
     { k: "Объект (ЦОД)", v: h.objectName },
-    { k: "Тип работ", v: h.frequencyLabel },
+    { k: "Регламент (тип работ)", v: h.frequencyLabel },
     { k: "Период работ", v: period },
     { k: "Дата отчёта", v: h.reportDate },
   ];
@@ -81,7 +81,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 300, after: 100 },
-        children: [new TextRun({ text: group.categoryName, bold: true, size: 24, font: "Arial" })],
+        children: [new TextRun({ text: group.categoryName, bold: true, size: 26, font: "Times New Roman" })],
       })
     );
     for (const unit of group.units) {
@@ -93,13 +93,13 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       children.push(
         new Paragraph({
           spacing: { before: 200, after: 60 },
-          children: [new TextRun({ text: unit.name, bold: true, size: 22, font: "Arial" })],
+          children: [new TextRun({ text: unit.name, bold: true, size: 24, font: "Times New Roman" })],
         }),
       );
       if (meta) {
         children.push(new Paragraph({
           spacing: { after: 80 },
-          children: [new TextRun({ text: meta, size: 18, font: "Arial", color: "666666" })],
+          children: [new TextRun({ text: meta, size: 22, font: "Times New Roman", color: "666666" })],
         }));
       }
       const headerRow = new TableRow({
@@ -138,7 +138,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 400, after: 100 },
-        children: [new TextRun({ text: `Заявки заказчика за ${data.ticketsMonthLabel}`, bold: true, size: 24, font: "Arial" })],
+        children: [new TextRun({ text: `Заявки заказчика за ${data.ticketsMonthLabel}`, bold: true, size: 26, font: "Times New Roman" })],
       })
     );
     const tCols = [900, 4200, 1500, 1260, 1500];
@@ -173,7 +173,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 400, after: 100 },
-        children: [new TextRun({ text: "Графики мониторинга", bold: true, size: 24, font: "Arial" })],
+        children: [new TextRun({ text: "Графики мониторинга", bold: true, size: 26, font: "Times New Roman" })],
       })
     );
     for (const g of data.graphs) {
@@ -186,7 +186,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
         children.push(
           new Paragraph({
             spacing: { before: 200 },
-            children: [new TextRun({ text: g.name, bold: true, size: 22, font: "Arial" })],
+            children: [new TextRun({ text: g.name, bold: true, size: 24, font: "Times New Roman" })],
           }),
           new Paragraph({
             children: [new ImageRun({ data: bin, transformation: { width: w, height: h }, type: "png" } as any)],
@@ -198,19 +198,19 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     }
   }
 
-  // Signatures with facsimile
+  // Signatures with facsimile (internal document — only executor side)
   children.push(new Paragraph({
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 600, after: 100 },
-    children: [new TextRun({ text: "Подписи сторон", bold: true, size: 24, font: "Arial" })],
+    children: [new TextRun({ text: "Подписи", bold: true, size: 26, font: "Times New Roman" })],
   }));
   for (const [label, sig] of [
-    ["Исполнитель", data.signatures.executor],
-    ["Ответственный (Заказчик)", data.signatures.responsible],
+    ["Выполнил (инженер)", data.signatures.executor],
+    ["Ответственный (проверяющий, исполнитель)", data.signatures.responsible],
   ] as const) {
     children.push(new Paragraph({
       spacing: { before: 300 },
-      children: [new TextRun({ text: `${label}: ${sig.name}`, size: 22, font: "Arial", bold: true })],
+      children: [new TextRun({ text: `${label}: ${sig.name}`, size: 24, font: "Times New Roman", bold: true })],
     }));
     if (sig.pngBase64) {
       const bin = pngFromBase64(sig.pngBase64);
@@ -221,19 +221,19 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       }
     } else {
       children.push(new Paragraph({
-        children: [new TextRun({ text: "_______________________________", size: 22, font: "Arial" })],
+        children: [new TextRun({ text: "_______________________________", size: 24, font: "Times New Roman" })],
       }));
     }
     if (sig.signedAt) {
       children.push(new Paragraph({
-        children: [new TextRun({ text: `Подписано: ${format(new Date(sig.signedAt), "dd.MM.yyyy HH:mm")}`, size: 18, font: "Arial", color: "666666" })],
+        children: [new TextRun({ text: `Подписано: ${format(new Date(sig.signedAt), "dd.MM.yyyy HH:mm")}`, size: 22, font: "Times New Roman", color: "666666" })],
       }));
     }
   }
 
   const doc = new Document({
     styles: {
-      default: { document: { run: { font: "Arial", size: 22 } } },
+      default: { document: { run: { font: "Times New Roman", size: 24 } } },
     },
     sections: [{
       properties: {
@@ -246,7 +246,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
         default: new Header({
           children: [new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: h.title, size: 16, font: "Arial", color: "999999" })],
+            children: [new TextRun({ text: `${h.title} — ${h.frequencyLabel}`, size: 18, font: "Times New Roman", color: "999999" })],
           })],
         }),
       },
@@ -256,15 +256,15 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
-                new TextRun({ text: "Страница ", size: 16, font: "Arial", color: "999999" }),
-                new TextRun({ children: [PageNumber.CURRENT], size: 16, font: "Arial", color: "999999" }),
+                new TextRun({ text: "Страница ", size: 18, font: "Times New Roman", color: "999999" }),
+                new TextRun({ children: [PageNumber.CURRENT], size: 18, font: "Times New Roman", color: "999999" }),
               ],
             }),
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [new TextRun({
                 text: `Сформировано: ${format(new Date(data.exportMeta.exportedAt), "dd.MM.yyyy HH:mm")} • ${data.exportMeta.exportedByName} (${data.exportMeta.exportedByLogin})`,
-                size: 14, font: "Arial", color: "999999",
+                size: 18, font: "Times New Roman", color: "999999",
               })],
             }),
           ],
@@ -277,8 +277,32 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
   return await Packer.toBlob(doc);
 }
 
+const freqSlug: Record<string, string> = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+  quarterly: "quarterly",
+  semi_annual: "semiannual",
+  annual: "annual",
+  on_request: "onrequest",
+};
+
 export async function exportProtocolDocx(data: ProtocolDocxData) {
   const blob = await buildProtocolDocxBlob(data);
   const safe = (s: string) => s.replace(/[\/\\:*?"<>|]/g, "_").slice(0, 60);
-  saveAs(blob, `Протокол_${safe(data.header.objectName)}_${data.header.periodStart}.docx`);
+  // Try to infer frequency slug from the human label (russian) by matching back
+  const labelToSlug: Record<string, string> = {
+    "Ежедневные работы": "daily",
+    "Еженедельные работы": "weekly",
+    "Ежемесячные работы": "monthly",
+    "Квартальные работы": "quarterly",
+    "Полугодовые работы": "semiannual",
+    "Годовые работы": "annual",
+    "Работы по заявке": "onrequest",
+  };
+  const slug = labelToSlug[data.header.frequencyLabel] ?? "protocol";
+  saveAs(
+    blob,
+    `Протокол_${slug}_${safe(data.header.objectName)}_${data.header.periodStart}.docx`,
+  );
 }
