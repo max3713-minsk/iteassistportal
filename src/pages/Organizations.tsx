@@ -120,7 +120,10 @@ function SupportTab() {
 function OrganizationsTab({ toast, qc }: any) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({ name: "", short_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "" });
+  const [form, setForm] = useState({
+    name: "", short_name: "", legal_full_name: "", inn: "",
+    contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "",
+  });
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ["organizations"],
@@ -146,7 +149,7 @@ function OrganizationsTab({ toast, qc }: any) {
       qc.invalidateQueries({ queryKey: ["organizations"] });
       setOpen(false);
       setEditing(null);
-      setForm({ name: "", short_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "" });
+      setForm({ name: "", short_name: "", legal_full_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "" });
       toast({ title: editing ? "Организация обновлена" : "Организация создана" });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
@@ -157,11 +160,13 @@ function OrganizationsTab({ toast, qc }: any) {
     setForm({
       name: org.name || "",
       short_name: org.short_name || "",
+      legal_full_name: org.legal_full_name || "",
       inn: org.inn || "",
       contact_email: org.contact_email || "",
       contact_phone: org.contact_phone || "",
       address: org.address || "",
       notes: org.notes || "",
+      executor_default: org.executor_default || "",
     });
     setOpen(true);
   };
@@ -173,7 +178,7 @@ function OrganizationsTab({ toast, qc }: any) {
           <CardTitle>Организации</CardTitle>
           <CardDescription>Заказчики, под каждого ведётся отдельный календарь и протоколы</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm({ name: "", short_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "" }); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm({ name: "", short_name: "", legal_full_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "" }); } }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />Добавить организацию</Button>
           </DialogTrigger>
@@ -183,6 +188,7 @@ function OrganizationsTab({ toast, qc }: any) {
             </DialogHeader>
             <div className="space-y-3">
               <div><Label>Название *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="РУП «Брестэнерго»" /></div>
+              <div><Label>Полное юридическое наименование</Label><Input value={form.legal_full_name} onChange={(e) => setForm({ ...form, legal_full_name: e.target.value })} placeholder="Республиканское унитарное предприятие «Брестэнерго»" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Краткое название</Label><Input value={form.short_name} onChange={(e) => setForm({ ...form, short_name: e.target.value })} /></div>
                 <div><Label>УНП / ИНН</Label><Input value={form.inn} onChange={(e) => setForm({ ...form, inn: e.target.value })} /></div>
@@ -192,6 +198,11 @@ function OrganizationsTab({ toast, qc }: any) {
                 <div><Label>Телефон</Label><Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} /></div>
               </div>
               <div><Label>Адрес</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+              <div>
+                <Label>Исполнитель по умолчанию (для шапки протокола)</Label>
+                <Input value={form.executor_default} onChange={(e) => setForm({ ...form, executor_default: e.target.value })} placeholder="ООО «ИТ-Ассист»" />
+                <p className="text-[11px] text-muted-foreground mt-1">Используется в протоколах как «Исполнитель», если в договоре не указано иное.</p>
+              </div>
               <div><Label>Примечания</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
             </div>
             <DialogFooter>
