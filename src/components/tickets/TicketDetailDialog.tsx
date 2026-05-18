@@ -140,18 +140,28 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const handleSeafileUpload = async (file: File) => {
     setSeafileBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("subdir", `/tickets/${ticket.id}`);
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seafile-upload`;
-      const { data: { session } } = await supabase.auth.getSession();
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-        body: fd,
+      const buf = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const blob_base64 = btoa(binary);
+      const { data, error } = await supabase.functions.invoke("seafile-upload-typed", {
+        body: {
+          kind: "ticket",
+          blob_base64,
+          filename: file.name,
+          mime: file.type || "application/octet-stream",
+          meta: {
+            org: (ticket as any).organization || "Без_организации",
+            name: ticket.id,
+          },
+        },
       });
-      const result = await r.json();
-      if (!r.ok || result.error) throw new Error(result.error || `HTTP ${r.status}`);
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
       toast({ title: "Файл загружен в Seafile", description: file.name });
     } catch (e: any) {
       toast({ title: "Ошибка Seafile", description: e.message, variant: "destructive" });
