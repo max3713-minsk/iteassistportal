@@ -13,19 +13,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/users/ConfirmDialog";
-import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow } from "lucide-react";
+import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow, MapPin } from "lucide-react";
 import { logAudit } from "@/lib/audit";
 import SupportSchemeView from "@/components/organizations/SupportSchemeView";
 import { ClientReportWizard } from "@/components/organizations/ClientReportWizard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSearchParams } from "react-router-dom";
+import OrganizationSitesPanel from "@/components/organizations/OrganizationSitesPanel";
 
 export default function Organizations() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const { toast } = useToast();
   const qc = useQueryClient();
-
-  const [tab, setTab] = useState("orgs");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs = ["orgs", "contracts", "sites", "support", "reports"];
+  const tab = validTabs.includes(tabParam ?? "") ? (tabParam as string) : "orgs";
+  const setTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "orgs") next.delete("tab"); else next.set("tab", v);
+    setSearchParams(next, { replace: true });
+  };
 
   if (!isAdmin) {
     return (
@@ -50,6 +59,7 @@ export default function Organizations() {
         <TabsList>
           <TabsTrigger value="orgs">Организации</TabsTrigger>
           <TabsTrigger value="contracts">Договоры</TabsTrigger>
+          <TabsTrigger value="sites"><MapPin className="h-3.5 w-3.5 mr-1.5" />ЦОД</TabsTrigger>
           <TabsTrigger value="support"><Workflow className="h-3.5 w-3.5 mr-1.5" />Схема поддержки</TabsTrigger>
           <TabsTrigger value="reports"><FileText className="h-3.5 w-3.5 mr-1.5" />Отчёты</TabsTrigger>
         </TabsList>
@@ -58,6 +68,9 @@ export default function Organizations() {
         </TabsContent>
         <TabsContent value="contracts">
           <ContractsTab toast={toast} qc={qc} />
+        </TabsContent>
+        <TabsContent value="sites">
+          <OrganizationSitesPanel />
         </TabsContent>
         <TabsContent value="support">
           <SupportTab />
