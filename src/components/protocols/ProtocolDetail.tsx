@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { useState } from "react";
 import ProtocolGraphs from "@/components/monitoring/ProtocolGraphs";
+import ProtocolSignersDialog from "@/components/protocols/ProtocolSignersDialog";
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
@@ -101,6 +102,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
   const [protocolNotes, setProtocolNotes] = useState("");
   const [seafileUploading, setSeafileUploading] = useState(false);
+  const [signersOpen, setSignersOpen] = useState(false);
 
   const isOnRequest = protocol?.frequency === "on_request";
 
@@ -196,6 +198,16 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const isCompleted = protocol.status === "completed";
 
   const sendToSeafile = async () => {
+    if (!(protocol as any)?.executor_user_id && !(protocol as any)?.executor_signature_user_id) {
+      toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед отправкой.", variant: "destructive" });
+      setSignersOpen(true);
+      return;
+    }
+    if (!(protocol as any)?.responsible_user_id && !(protocol as any)?.responsible_signature_user_id) {
+      toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед отправкой.", variant: "destructive" });
+      setSignersOpen(true);
+      return;
+    }
     setSeafileUploading(true);
     try {
       const docxData = await fetchProtocolDocxData(protocolId);
@@ -283,9 +295,23 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
         {isStaff && !isCompleted && (allCompleted || isOnRequest) && (
-          <Button onClick={() => completeProtocol.mutate()} disabled={completeProtocol.isPending}>
+          <Button onClick={() => {
+            const p: any = protocol;
+            if (!(p?.executor_user_id || p?.executor_signature_user_id) || !(p?.responsible_user_id || p?.responsible_signature_user_id)) {
+              toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед завершением.", variant: "destructive" });
+              setSignersOpen(true);
+              return;
+            }
+            completeProtocol.mutate();
+          }} disabled={completeProtocol.isPending}>
             <Check className="h-4 w-4 mr-2" />
             Завершить протокол
+          </Button>
+        )}
+        {isStaff && (
+          <Button variant="outline" onClick={() => setSignersOpen(true)}>
+            <UserCheck className="h-4 w-4 mr-2" />
+            Подписанты
           </Button>
         )}
         <Button variant="outline" onClick={() => onExportPdf(protocolId)}>
@@ -413,6 +439,11 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
           ))}
         </div>
       </ScrollArea>
+      <ProtocolSignersDialog
+        protocolId={protocolId}
+        open={signersOpen}
+        onOpenChange={setSignersOpen}
+      />
     </div>
   );
 }
