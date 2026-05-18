@@ -9,8 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink, Wand2, Zap } from "lucide-react";
-import { previewSeafilePath } from "@/lib/seafile";
+import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink, Wand2, Zap, Send } from "lucide-react";
+import { previewSeafilePath, sendSeafileTestFile } from "@/lib/seafile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -133,6 +133,7 @@ function SeafilePanel() {
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<string>("");
+  const [testing, setTesting] = useState<string | null>(null);
   const cfg = row.config || {};
   const updateCfg = (patch: Record<string, any>) => setRow({ ...row, config: { ...cfg, ...patch } });
 
@@ -177,6 +178,22 @@ function SeafilePanel() {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     } finally {
       setPreviewing(null);
+    }
+  };
+
+  const sendTest = async (kind: string) => {
+    setTesting(kind);
+    try {
+      const res = await sendSeafileTestFile(kind as any);
+      setPreviewResult(`✓ Загружен: ${res.folder}/${res.filename}`);
+      toast({
+        title: "Тестовый файл загружен",
+        description: `${res.folder}/${res.filename}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Ошибка теста", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(null);
     }
   };
 
@@ -242,7 +259,7 @@ function SeafilePanel() {
               <div key={k} className="grid grid-cols-12 gap-2 items-center">
                 <div className="col-span-3 text-sm">{label}</div>
                 <Input
-                  className="col-span-7 font-mono text-xs"
+                  className="col-span-5 font-mono text-xs"
                   value={folders[k]}
                   placeholder={DEFAULT_FOLDERS[k]}
                   onChange={(e) => updateFolder(k, e.target.value)}
@@ -253,9 +270,21 @@ function SeafilePanel() {
                   className="col-span-2"
                   onClick={() => testPath(k)}
                   disabled={previewing === k || !row.enabled}
+                  title="Показать рассчитанный путь без загрузки"
                 >
                   {previewing === k ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
-                  Тест пути
+                  Путь
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="col-span-2"
+                  onClick={() => sendTest(k)}
+                  disabled={testing === k || !row.enabled}
+                  title="Загрузить тестовый .txt файл в этот каталог"
+                >
+                  {testing === k ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                  Тест
                 </Button>
               </div>
             ))}
