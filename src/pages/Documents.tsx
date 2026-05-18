@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, FileArchive, Trash2, Eye, Download, Filter, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SeafileSendButton } from "@/components/SeafileSendButton";
 
 export default function Documents() {
   const { isStaff, session } = useAuth();
@@ -318,6 +319,29 @@ export default function Documents() {
                       <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Скачать">
                         <Download className="h-4 w-4" />
                       </Button>
+                      {isStaff && (
+                        <SeafileSendButton
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 p-0"
+                          kind="document"
+                          label=""
+                          title="Отправить в Seafile"
+                          getPayload={async () => {
+                            const { data, error } = await supabase.storage.from("documents").download(doc.file_path);
+                            if (error) throw error;
+                            return {
+                              blob: data,
+                              filename: doc.name + (doc.file_path.includes(".") ? "." + doc.file_path.split(".").pop() : ""),
+                              meta: {
+                                org: doc.organization,
+                                category: doc.doc_category || "technical",
+                                name: doc.name,
+                              },
+                            };
+                          }}
+                        />
+                      )}
                       {isStaff && (
                         <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(doc)} title="Удалить">
                           <Trash2 className="h-4 w-4 text-destructive" />
