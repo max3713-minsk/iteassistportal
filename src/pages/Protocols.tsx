@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon, FileText, ListChecks, Trash2, Cloud } from "lucide-react";
+import { Filter, X, FileDown, CheckCircle2, Calendar as CalIcon, FileText, ListChecks, Trash2, Cloud, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -46,6 +46,7 @@ export default function Protocols() {
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [signersFor, setSignersFor] = useState<string | null>(null);
+  const [bulkSignersOpen, setBulkSignersOpen] = useState(false);
 
   // Auto-create protocols for today
   useAutoProtocols();
@@ -486,6 +487,9 @@ export default function Protocols() {
             <Button size="sm" variant="outline" onClick={bulkSendSeafile} disabled={bulkBusy}>
               <Cloud className="h-3.5 w-3.5 mr-1" /> В облако
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkSignersOpen(true)}>
+              <UserCheck className="h-3.5 w-3.5 mr-1" /> Подписанты
+            </Button>
             {activeTab !== "completed" && (
               <Button size="sm" onClick={bulkComplete}>
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Завершить
@@ -522,6 +526,11 @@ export default function Protocols() {
         protocolId={signersFor}
         open={!!signersFor}
         onOpenChange={(v) => { if (!v) setSignersFor(null); }}
+      />
+      <ProtocolSignersDialog
+        protocolIds={Array.from(selectedIds)}
+        open={bulkSignersOpen}
+        onOpenChange={setBulkSignersOpen}
       />
     </div>
   );
