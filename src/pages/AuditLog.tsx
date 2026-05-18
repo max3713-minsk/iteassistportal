@@ -21,6 +21,8 @@ const moduleLabels: Record<string, string> = {
   documents: "Документы",
   schedules: "Календарь ТО",
   auth: "Авторизация",
+  seafile: "Seafile",
+  reports: "Отчёты",
 };
 
 export default function AuditLog() {
