@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import {
   Building2, Server, Ticket, ClipboardList, CheckCircle2, Clock, ExternalLink,
-  Star, Activity, AlertTriangle, ShieldCheck, LineChart as LineChartIcon, type LucideIcon,
+  Star, Activity, AlertTriangle, ShieldCheck, LineChart as LineChartIcon, Zap, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
 import GraphChart from "@/components/monitoring/GraphChart";
+import QuickReportWidget from "@/components/dashboard/widgets/QuickReportWidget";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
