@@ -41,7 +41,6 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     id: "objects",
     title: "Объекты",
     items: [
-      { to: "/sites", icon: Building2, label: "ЦОД", roles: [], moduleKey: "sites" },
       { to: "/equipment", icon: Server, label: "Оборудование", roles: [], moduleKey: "equipment" },
     ],
   },
