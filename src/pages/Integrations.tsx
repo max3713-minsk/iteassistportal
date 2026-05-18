@@ -9,8 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink, Wand2 } from "lucide-react";
+import { Plug, GitBranch, FolderArchive, Loader2, ExternalLink, Wand2, Zap } from "lucide-react";
 import { previewSeafilePath } from "@/lib/seafile";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type IntegrationKey = "gitlab" | "seafile";
 
