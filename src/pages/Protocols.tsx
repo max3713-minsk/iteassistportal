@@ -15,6 +15,7 @@ import ProtocolList from "@/components/protocols/ProtocolList";
 import ProtocolDetail from "@/components/protocols/ProtocolDetail";
 import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
 import BatchCreateProtocolDialog from "@/components/protocols/BatchCreateProtocolDialog";
+import QuickReportButton from "@/components/protocols/QuickReportButton";
 import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
@@ -310,6 +311,7 @@ export default function Protocols() {
         <h1 className="font-heading text-2xl font-bold">Протоколы обслуживания</h1>
         {isStaff && (
           <div className="flex gap-2">
+            <QuickReportButton />
             <BatchCreateProtocolDialog />
             <CreateProtocolDialog defaultDate={dateParam} />
           </div>
