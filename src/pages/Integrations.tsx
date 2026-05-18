@@ -308,10 +308,133 @@ export default function Integrations() {
         <TabsList>
           <TabsTrigger value="gitlab"><GitBranch className="h-3.5 w-3.5 mr-1" /> GitLab</TabsTrigger>
           <TabsTrigger value="seafile"><FolderArchive className="h-3.5 w-3.5 mr-1" /> Seafile</TabsTrigger>
+          <TabsTrigger value="quick-report"><Zap className="h-3.5 w-3.5 mr-1" /> Быстрый отчёт</TabsTrigger>
         </TabsList>
         <TabsContent value="gitlab" className="mt-4"><GitLabPanel /></TabsContent>
         <TabsContent value="seafile" className="mt-4"><SeafilePanel /></TabsContent>
+        <TabsContent value="quick-report" className="mt-4"><QuickReportDefaultsPanel /></TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+const QR_STORAGE_KEY = "quick_report_defaults";
+
+interface QRDefaults {
+  saveLocal: boolean;
+  sendSeafile: boolean;
+  executorUserId: string;
+  responsibleUserId: string;
+  note: string;
+  siteIds: string[];
+}
+
+const QR_DEFAULTS: QRDefaults = {
+  saveLocal: true,
+  sendSeafile: false,
+  executorUserId: "",
+  responsibleUserId: "",
+  note: "",
+  siteIds: [],
+};
+
+function QuickReportDefaultsPanel() {
+  const { toast } = useToast();
+  const [defaults, setDefaults] = useState<QRDefaults>(QR_DEFAULTS);
+  const [profiles, setProfiles] = useState<Array<{ user_id: string; full_name: string | null }>>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(QR_STORAGE_KEY);
+      if (raw) setDefaults({ ...QR_DEFAULTS, ...JSON.parse(raw) });
+    } catch {}
+    supabase.from("profiles").select("user_id, full_name").order("full_name").then(({ data }) => {
+      setProfiles(data ?? []);
+    });
+  }, []);
+
+  const save = () => {
+    try {
+      localStorage.setItem(QR_STORAGE_KEY, JSON.stringify(defaults));
+      toast({ title: "Настройки сохранены" });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Zap className="h-4 w-4" /> Быстрый отчёт — настройки по умолчанию
+        </CardTitle>
+        <CardDescription>
+          Эти значения подставляются автоматически при каждом запуске. Хранятся локально в браузере.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>Исполнитель по умолчанию</Label>
+            <Select
+              value={defaults.executorUserId || "_none"}
+              onValueChange={(v) => setDefaults({ ...defaults, executorUserId: v === "_none" ? "" : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— не указан —</SelectItem>
+                {profiles.map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name || p.user_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Ответственный по умолчанию</Label>
+            <Select
+              value={defaults.responsibleUserId || "_none"}
+              onValueChange={(v) => setDefaults({ ...defaults, responsibleUserId: v === "_none" ? "" : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— не указан —</SelectItem>
+                {profiles.map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name || p.user_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label>Примечание по умолчанию</Label>
+          <Input
+            value={defaults.note}
+            onChange={(e) => setDefaults({ ...defaults, note: e.target.value })}
+            placeholder="Инфраструктура работает штатно"
+          />
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={defaults.saveLocal}
+              onCheckedChange={(v) => setDefaults({ ...defaults, saveLocal: !!v })}
+            />
+            Скачивать DOCX локально
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={defaults.sendSeafile}
+              onCheckedChange={(v) => setDefaults({ ...defaults, sendSeafile: !!v })}
+            />
+            Отправлять в Seafile
+          </label>
+        </div>
+        <Button size="sm" onClick={save}>Сохранить настройки</Button>
+      </CardContent>
+    </Card>
   );
 }
