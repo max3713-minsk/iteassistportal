@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
+  LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut, UserCircle,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
   Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks,
 } from "lucide-react";
@@ -41,7 +41,6 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     id: "objects",
     title: "Объекты",
     items: [
-      { to: "/sites", icon: Building2, label: "ЦОД", roles: [], moduleKey: "sites" },
       { to: "/equipment", icon: Server, label: "Оборудование", roles: [], moduleKey: "equipment" },
     ],
   },
@@ -271,15 +270,26 @@ export default function AppSidebar() {
           </Button>
         )}
         <div className="px-3 py-2 mb-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+          <NavLink to="/profile" className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity" title="Мой профиль">
             <AvatarHash name={profile?.full_name ?? user?.email} email={user?.email} size="md" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? user?.email ?? "—"}</p>
               <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
             </div>
-          </div>
+          </NavLink>
           <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 mb-1"
+          asChild
+        >
+          <NavLink to="/profile">
+            <UserCircle className="h-4 w-4" />
+            Мой профиль
+          </NavLink>
+        </Button>
         <Button
           variant="ghost"
           size="sm"

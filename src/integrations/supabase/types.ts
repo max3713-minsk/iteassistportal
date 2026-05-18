@@ -154,6 +154,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           end_date: string | null
+          executor_org_name: string | null
           id: string
           is_active: boolean
           notes: string | null
@@ -169,6 +170,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           end_date?: string | null
+          executor_org_name?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           end_date?: string | null
+          executor_org_name?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null
@@ -640,14 +643,20 @@ export type Database = {
           contract_id: string | null
           created_at: string
           created_by: string | null
+          customer_org_id: string | null
           executor_name: string | null
+          executor_org_id: string | null
+          executor_signature_user_id: string | null
           executor_user_id: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          header_snapshot: Json | null
           id: string
           notes: string | null
           period_end: string
           period_start: string
+          report_date: string | null
           responsible_name: string | null
+          responsible_signature_user_id: string | null
           responsible_user_id: string | null
           signed_executor_at: string | null
           signed_responsible_at: string | null
@@ -663,14 +672,20 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_org_id?: string | null
           executor_name?: string | null
+          executor_org_id?: string | null
+          executor_signature_user_id?: string | null
           executor_user_id?: string | null
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
+          header_snapshot?: Json | null
           id?: string
           notes?: string | null
           period_end: string
           period_start: string
+          report_date?: string | null
           responsible_name?: string | null
+          responsible_signature_user_id?: string | null
           responsible_user_id?: string | null
           signed_executor_at?: string | null
           signed_responsible_at?: string | null
@@ -686,14 +701,20 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_org_id?: string | null
           executor_name?: string | null
+          executor_org_id?: string | null
+          executor_signature_user_id?: string | null
           executor_user_id?: string | null
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
+          header_snapshot?: Json | null
           id?: string
           notes?: string | null
           period_end?: string
           period_start?: string
+          report_date?: string | null
           responsible_name?: string | null
+          responsible_signature_user_id?: string | null
           responsible_user_id?: string | null
           signed_executor_at?: string | null
           signed_responsible_at?: string | null
@@ -1270,9 +1291,11 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          executor_default: string | null
           id: string
           inn: string | null
           is_active: boolean
+          legal_full_name: string | null
           name: string
           notes: string | null
           short_name: string | null
@@ -1283,9 +1306,11 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          executor_default?: string | null
           id?: string
           inn?: string | null
           is_active?: boolean
+          legal_full_name?: string | null
           name: string
           notes?: string | null
           short_name?: string | null
@@ -1296,9 +1321,11 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          executor_default?: string | null
           id?: string
           inn?: string | null
           is_active?: boolean
+          legal_full_name?: string | null
           name?: string
           notes?: string | null
           short_name?: string | null
@@ -1314,6 +1341,7 @@ export type Database = {
           is_active: boolean
           organization: string | null
           phone: string | null
+          signature_path: string | null
           updated_at: string
           user_id: string
         }
@@ -1324,6 +1352,7 @@ export type Database = {
           is_active?: boolean
           organization?: string | null
           phone?: string | null
+          signature_path?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1334,6 +1363,7 @@ export type Database = {
           is_active?: boolean
           organization?: string | null
           phone?: string | null
+          signature_path?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1345,6 +1375,7 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           equipment_id: string
+          equipment_snapshot: Json | null
           id: string
           notes: string | null
           protocol_id: string
@@ -1358,6 +1389,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           equipment_id: string
+          equipment_snapshot?: Json | null
           id?: string
           notes?: string | null
           protocol_id: string
@@ -1371,6 +1403,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           equipment_id?: string
+          equipment_snapshot?: Json | null
           id?: string
           notes?: string | null
           protocol_id?: string

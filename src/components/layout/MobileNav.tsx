@@ -13,7 +13,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Панель управления", moduleKey: "dashboard" },
-  { to: "/sites", icon: Building2, label: "ЦОД", moduleKey: "sites" },
+  { to: "/organizations?tab=sites", icon: Building2, label: "ЦОД", moduleKey: "organizations" },
   { to: "/equipment", icon: Server, label: "Оборудование", moduleKey: "equipment" },
   { to: "/schedules", icon: CalendarCheck, label: "Календарь ТО", moduleKey: "schedules" },
   { to: "/protocols", icon: ClipboardList, label: "Протоколы", moduleKey: "protocols" },

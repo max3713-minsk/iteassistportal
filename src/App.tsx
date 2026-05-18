@@ -8,7 +8,6 @@ import { ZabbixConnectionProvider } from "@/hooks/useZabbixConnection";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
-import Sites from "@/pages/Sites";
 import Equipment from "@/pages/Equipment";
 import Tickets from "@/pages/Tickets";
 import Schedules from "@/pages/Schedules";
@@ -24,6 +23,7 @@ import Connections from "@/pages/Connections";
 import WorkScope from "@/pages/WorkScope";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
 import SystemReset from "@/pages/SystemReset";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,7 +60,7 @@ const App = () => (
             <Route path="/auth" element={<AuthRoute />} />
             <Route element={<ProtectedRoutes />}>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/sites" element={<Sites />} />
+              <Route path="/sites" element={<Navigate to="/organizations?tab=sites" replace />} />
               <Route path="/equipment" element={<Equipment />} />
               <Route path="/tickets" element={<Tickets />} />
               <Route path="/schedules" element={<Schedules />} />
@@ -77,6 +77,7 @@ const App = () => (
               <Route path="/work-scope" element={<WorkScope />} />
               <Route path="/infrastructure-maps" element={<InfrastructureMaps />} />
               <Route path="/system-reset" element={<SystemReset />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>
             <Route path="*" element={<NotFound />} />
