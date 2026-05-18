@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, ClipboardList, Plus } from "lucide-react";
+import { Eye, ClipboardList, Plus, UserCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
@@ -51,9 +51,10 @@ interface Props {
   onToggleSelectAll?: (ids: string[]) => void;
   loading?: boolean;
   onCreate?: () => void;
+  onAssignSigners?: (id: string) => void;
 }
 
-export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate }: Props) {
+export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate, onAssignSigners }: Props) {
   if (loading) {
     return (
       <Card className="p-4 space-y-2">
@@ -99,7 +100,7 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
             <TableHead>Период</TableHead>
             <TableHead>Статус</TableHead>
             <TableHead className="hidden md:table-cell">Создан</TableHead>
-            <TableHead className="w-20">Действия</TableHead>
+            <TableHead className="w-28">Действия</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -132,6 +133,11 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
                 <Button variant="ghost" size="icon" onClick={() => onSelect(p.id)} title="Открыть">
                   <Eye className="h-4 w-4" />
                 </Button>
+                {onAssignSigners && (
+                  <Button variant="ghost" size="icon" onClick={() => onAssignSigners(p.id)} title="Подписанты">
+                    <UserCheck className="h-4 w-4" />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}
