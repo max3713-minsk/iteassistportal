@@ -19,6 +19,7 @@ import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
 import { exportProtocolDocx } from "@/lib/export-protocol-docx";
+import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 export default function Protocols() {
@@ -256,28 +257,13 @@ export default function Protocols() {
   };
 
   const handleExportDocx = async (protocolId: string) => {
-    const result = await fetchProtocolData(protocolId);
-    if (!result) return;
-    const { protocol, siteName, items: mappedItems } = result;
-
-    // Capture currently-rendered graphs (if user is viewing detail)
-    let graphs: { name: string; pngBase64: string; widthPx: number; heightPx: number }[] = [];
     try {
-      graphs = await snapshotProtocolGraphs();
-    } catch {
-      /* ignore — export without graphs */
+      const data = await fetchProtocolDocxData(protocolId);
+      try { data.graphs = await snapshotProtocolGraphs(); } catch { /* no graphs */ }
+      await exportProtocolDocx(data);
+    } catch (e) {
+      toast({ title: "Ошибка экспорта", description: (e as Error).message, variant: "destructive" });
     }
-
-    await exportProtocolDocx({
-      siteName,
-      frequency: protocol.frequency,
-      periodStart: protocol.period_start,
-      periodEnd: protocol.period_end,
-      status: protocol.status,
-      notes: protocol.notes,
-      items: mappedItems,
-      graphs,
-    });
   };
 
   if (selectedId) {
