@@ -16,6 +16,7 @@ import { logAudit } from "@/lib/audit";
 import { useState } from "react";
 import ProtocolGraphs from "@/components/monitoring/ProtocolGraphs";
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
+import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 
 const statusLabels: Record<string, string> = {
@@ -197,29 +198,11 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const sendToSeafile = async () => {
     setSeafileUploading(true);
     try {
-      // Build DOCX in browser using same data shape
-      const mappedItems = items.map((it) => ({
-        equipmentName: it.equipment
-          ? `${it.equipment.name}${it.equipment.model ? ` (${it.equipment.model})` : ""}`
-          : "—",
-        taskTitle: it.maintenance_tasks?.title ?? "Задача",
-        status: it.status ?? "pending",
-        notes: it.notes,
-        completedAt: it.completed_at,
-      }));
+      const docxData = await fetchProtocolDocxData(protocolId);
       let graphs: { name: string; pngBase64: string; widthPx: number; heightPx: number }[] = [];
       try { graphs = await snapshotProtocolGraphs(); } catch { /* ignore */ }
-
-      const docxBlob = await buildProtocolDocxBlob({
-        siteName: (protocol as any).sites?.name ?? "—",
-        frequency: protocol.frequency,
-        periodStart: protocol.period_start,
-        periodEnd: protocol.period_end,
-        status: protocol.status,
-        notes: protocol.notes,
-        items: mappedItems,
-        graphs,
-      });
+      docxData.graphs = graphs;
+      const docxBlob = await buildProtocolDocxBlob(docxData);
 
       // Convert blob → base64
       const docxBase64 = await new Promise<string>((resolve, reject) => {
