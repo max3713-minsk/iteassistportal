@@ -185,13 +185,13 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
   if (orgIdForTickets) {
     const { data: trows } = await supabase
       .from("tickets")
-      .select("ticket_number, title, status, priority, created_at, resolved_at")
+      .select("id, title, status, priority, created_at, resolved_at")
       .eq("organization_id", orgIdForTickets)
       .gte("created_at", monthStart)
       .lte("created_at", monthEnd)
       .order("created_at", { ascending: true });
     tickets = (trows ?? []).map((t: any) => ({
-      number: t.ticket_number || "—",
+      number: String(t.id).slice(0, 8),
       title: t.title,
       status: t.status,
       priority: t.priority,
