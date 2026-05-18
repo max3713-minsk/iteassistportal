@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Building2, Server, CalendarCheck, Ticket, Users, LogOut,
+  LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
   Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks,
 } from "lucide-react";
