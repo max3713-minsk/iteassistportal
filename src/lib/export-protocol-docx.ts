@@ -213,26 +213,15 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     const lineRuns: any[] = [
       new TextRun({ text: `${label}: ${sig.name}`, size: 24, font: "Times New Roman", bold: true }),
     ];
-    // Floating signature image overlapping the line (behind text)
+    // Inline signature image placed right after the name (compact, proper aspect ratio)
     if (sig.pngBase64) {
       const bin = pngFromBase64(sig.pngBase64);
       if (bin) {
+        lineRuns.push(new TextRun({ text: "    ", size: 24, font: "Times New Roman" }));
         lineRuns.push(new ImageRun({
           data: bin,
           type: "png",
-          transformation: { width: 95, height: 38 },
-          floating: {
-            horizontalPosition: {
-              relative: HorizontalPositionRelativeFrom.MARGIN,
-              align: HorizontalPositionAlign.RIGHT,
-            },
-            verticalPosition: {
-              relative: VerticalPositionRelativeFrom.PARAGRAPH,
-              offset: -180000,
-            },
-            behindDocument: true,
-            wrap: { type: TextWrappingType.NONE },
-          },
+          transformation: { width: 70, height: 55 },
         } as any));
       }
     }
