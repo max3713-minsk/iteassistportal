@@ -29,6 +29,14 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeout = ZAB
   const id = setTimeout(() => controller.abort(), timeout);
   try {
     return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof Error && (e.name === "AbortError" || /aborted/i.test(e.message))) {
+      throw new Error(`Zabbix-сервер недоступен (timeout ${timeout} мс): ${url}`);
+    }
+    if (e instanceof Error && /network|fetch failed|ECONNREFUSED|ENOTFOUND/i.test(e.message)) {
+      throw new Error(`Zabbix-сервер недоступен: ${e.message}`);
+    }
+    throw e;
   } finally {
     clearTimeout(id);
   }
@@ -811,6 +819,15 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("Zabbix proxy error:", err);
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return fail(msg);
+    // Return 200 with fallback flag so the frontend doesn't blank-screen on
+    // unreachable/timeout situations (Zabbix host behind VPN, internal IP, etc).
+    const isUnreachable = /недоступен|timeout|aborted|network|fetch failed|ECONN|ENOTFOUND/i.test(msg);
+    return new Response(
+      JSON.stringify({ error: msg, fallback: isUnreachable }),
+      {
+        status: isUnreachable ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });
