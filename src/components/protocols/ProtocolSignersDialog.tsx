@@ -8,17 +8,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
-  protocolId: string | null;
+  protocolId?: string | null;
+  protocolIds?: string[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }
 
-export default function ProtocolSignersDialog({ protocolId, open, onOpenChange }: Props) {
+export default function ProtocolSignersDialog({ protocolId, protocolIds, open, onOpenChange }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [executorId, setExecutorId] = useState<string>("");
   const [responsibleId, setResponsibleId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const isBulk = !protocolId && Array.isArray(protocolIds) && protocolIds.length > 0;
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-signers"],
@@ -34,7 +36,7 @@ export default function ProtocolSignersDialog({ protocolId, open, onOpenChange }
 
   const { data: protocol } = useQuery({
     queryKey: ["protocol-signers", protocolId],
-    enabled: !!protocolId && open,
+    enabled: !!protocolId && !isBulk && open,
     queryFn: async () => {
       const { data } = await supabase
         .from("maintenance_protocols")
@@ -46,14 +48,19 @@ export default function ProtocolSignersDialog({ protocolId, open, onOpenChange }
   });
 
   useEffect(() => {
+    if (isBulk) {
+      setExecutorId("");
+      setResponsibleId("");
+      return;
+    }
     if (protocol) {
       setExecutorId((protocol as any).executor_signature_user_id || (protocol as any).executor_user_id || "");
       setResponsibleId((protocol as any).responsible_signature_user_id || (protocol as any).responsible_user_id || "");
     }
-  }, [protocol]);
+  }, [protocol, isBulk]);
 
   const save = async () => {
-    if (!protocolId) return;
+    if (!protocolId && !isBulk) return;
     if (!executorId || !responsibleId) {
       toast({ title: "Выберите подписантов", variant: "destructive" });
       return;
@@ -62,22 +69,34 @@ export default function ProtocolSignersDialog({ protocolId, open, onOpenChange }
     try {
       const exec = profiles.find((p: any) => p.user_id === executorId);
       const resp = profiles.find((p: any) => p.user_id === responsibleId);
-      const { error } = await supabase
-        .from("maintenance_protocols")
-        .update({
-          executor_user_id: executorId,
-          executor_signature_user_id: executorId,
-          executor_name: exec?.full_name ?? null,
-          responsible_user_id: responsibleId,
-          responsible_signature_user_id: responsibleId,
-          responsible_name: resp?.full_name ?? null,
-        } as any)
-        .eq("id", protocolId);
-      if (error) throw error;
-      toast({ title: "Подписанты сохранены" });
+      const update = {
+        executor_user_id: executorId,
+        executor_signature_user_id: executorId,
+        executor_name: exec?.full_name ?? null,
+        responsible_user_id: responsibleId,
+        responsible_signature_user_id: responsibleId,
+        responsible_name: resp?.full_name ?? null,
+      } as any;
+      if (isBulk) {
+        const { error } = await supabase
+          .from("maintenance_protocols")
+          .update(update)
+          .in("id", protocolIds!);
+        if (error) throw error;
+        toast({ title: `Подписанты назначены: ${protocolIds!.length}` });
+      } else {
+        const { error } = await supabase
+          .from("maintenance_protocols")
+          .update(update)
+          .eq("id", protocolId!);
+        if (error) throw error;
+        toast({ title: "Подписанты сохранены" });
+      }
       qc.invalidateQueries({ queryKey: ["protocols"] });
-      qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
-      qc.invalidateQueries({ queryKey: ["protocol-signers", protocolId] });
+      if (protocolId) {
+        qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
+        qc.invalidateQueries({ queryKey: ["protocol-signers", protocolId] });
+      }
       onOpenChange(false);
     } catch (e: any) {
       toast({ title: "Ошибка сохранения", description: e.message, variant: "destructive" });
@@ -90,7 +109,9 @@ export default function ProtocolSignersDialog({ protocolId, open, onOpenChange }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Подписанты протокола</DialogTitle>
+          <DialogTitle>
+            {isBulk ? `Подписанты для ${protocolIds!.length} протокол(ов)` : "Подписанты протокола"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
