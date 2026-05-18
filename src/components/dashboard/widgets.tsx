@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import {
   Building2, Server, Ticket, ClipboardList, CheckCircle2, Clock, ExternalLink,
-  Star, Activity, AlertTriangle, ShieldCheck, LineChart as LineChartIcon, type LucideIcon,
+  Star, Activity, AlertTriangle, ShieldCheck, LineChart as LineChartIcon, Zap, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import FavoriteMetricsWidget from "@/components/monitoring/FavoriteMetricsWidget";
 import GraphChart from "@/components/monitoring/GraphChart";
+import QuickReportWidget from "@/components/dashboard/widgets/QuickReportWidget";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -983,6 +984,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     description: "Топ-5 устройств с наихудшим Health Score и главные риски.",
     category: "Оборудование", icon: Activity, defaultW: 4, defaultH: 5, minW: 3, minH: 4,
     Component: EquipmentHealthWidget,
+  },
+  "quick-report": {
+    type: "quick-report",
+    title: "Быстрый отчёт",
+    description: "Одним кликом создать все регламентные протоколы за сегодня со статусом «всё OK».",
+    category: "Протоколы",
+    icon: Zap,
+    defaultW: 3, defaultH: 4, minW: 3, minH: 3,
+    Component: QuickReportWidget,
   },
 };
 
