@@ -26,7 +26,8 @@ import {
   Activity, Link2, Zap, Download, History, FileImage, FileCode, FileText,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { exportMapAsPng, exportMapAsSvg, exportMapAsPdf } from "@/lib/map-export";
+import { exportMapAsPng, exportMapAsSvg, exportMapAsPdf, buildMapPngBlob } from "@/lib/map-export";
+import { sendToSeafile } from "@/lib/seafile";
 import MapVersionsDialog from "./MapVersionsDialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -338,6 +339,22 @@ function EditorInner({ initial, readOnly, onSave, saving, mapId, mapName }: Prop
       toast({ title: `Экспорт в ${kind.toUpperCase()} выполнен` });
     } catch (e: any) {
       toast({ title: "Ошибка экспорта", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const doSeafile = async () => {
+    if (!wrapperRef.current) return;
+    try {
+      const blob = await buildMapPngBlob(wrapperRef.current);
+      const res = await sendToSeafile({
+        kind: "map",
+        blob,
+        filename: `${mapName || "map"}.png`,
+        meta: { name: mapName || "map" },
+      });
+      toast({ title: "Схема отправлена в Seafile", description: `${res.folder}/${res.filename}` });
+    } catch (e: any) {
+      toast({ title: "Ошибка Seafile", description: e?.message, variant: "destructive" });
     }
   };
 
