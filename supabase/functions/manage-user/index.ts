@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     // ─── UPDATE USER PROFILE ───
     if (action === "update") {
-      const { user_id, full_name, organization, phone, roles: newRoles } = body;
+      const { user_id, full_name, organization, phone, position, roles: newRoles } = body;
       if (!user_id) return errorRes("user_id обязателен");
 
       // Update profile
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
         full_name: full_name ?? null,
         organization: organization ?? null,
         phone: phone ?? null,
+        position: position ?? null,
       }).eq("user_id", user_id);
 
       // Update user metadata for display name

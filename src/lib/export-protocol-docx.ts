@@ -2,6 +2,8 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
   Header, Footer, PageNumber, ImageRun,
+  HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom,
+  HorizontalPositionAlign, TextWrappingType,
 } from "docx";
 import { saveAs } from "file-saver";
 import { format } from "date-fns";
@@ -205,21 +207,42 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     children: [new TextRun({ text: "Подписи", bold: true, size: 26, font: "Times New Roman" })],
   }));
   for (const [label, sig] of [
-    ["Выполнил (инженер)", data.signatures.executor],
-    ["Ответственный (проверяющий, исполнитель)", data.signatures.responsible],
+    ["Выполнил", data.signatures.executor],
+    ["Ответственный", data.signatures.responsible],
   ] as const) {
-    children.push(new Paragraph({
-      spacing: { before: 300 },
-      children: [new TextRun({ text: `${label}: ${sig.name}`, size: 24, font: "Times New Roman", bold: true })],
-    }));
+    const lineRuns: any[] = [
+      new TextRun({ text: `${label}: ${sig.name}`, size: 24, font: "Times New Roman", bold: true }),
+    ];
+    // Floating signature image overlapping the line (behind text)
     if (sig.pngBase64) {
       const bin = pngFromBase64(sig.pngBase64);
       if (bin) {
-        children.push(new Paragraph({
-          children: [new ImageRun({ data: bin, transformation: { width: 180, height: 70 }, type: "png" } as any)],
-        }));
+        lineRuns.push(new ImageRun({
+          data: bin,
+          type: "png",
+          transformation: { width: 140, height: 55 },
+          floating: {
+            horizontalPosition: {
+              relative: HorizontalPositionRelativeFrom.MARGIN,
+              align: HorizontalPositionAlign.RIGHT,
+            },
+            verticalPosition: {
+              relative: VerticalPositionRelativeFrom.PARAGRAPH,
+              offset: -250000,
+            },
+            behindDocument: true,
+            wrap: { type: TextWrappingType.NONE },
+          },
+        } as any));
       }
-    } else {
+    }
+    children.push(new Paragraph({ spacing: { before: 300 }, children: lineRuns }));
+    if (sig.position) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: `Должность: ${sig.position}`, size: 22, font: "Times New Roman", color: "555555" })],
+      }));
+    }
+    if (!sig.pngBase64) {
       children.push(new Paragraph({
         children: [new TextRun({ text: "_______________________________", size: 24, font: "Times New Roman" })],
       }));

@@ -187,15 +187,17 @@ Deno.serve(async (req) => {
     const sidecarBytes = new TextEncoder().encode(JSON.stringify(sidecar, null, 2));
     await upload(baseUrl, token, repoId, folderPath, finalName + ".meta.json", sidecarBytes, "application/json");
 
-    // Audit
-    await admin.from("audit_logs").insert({
-      user_id: user.id,
-      user_name: userName,
-      organization: String(meta.org || "") || null,
-      module: "seafile",
-      action: `Выгружено в Seafile: ${body.kind}`,
-      details: `${folderPath}/${finalName}`,
-    }).catch(() => null);
+    // Audit (best-effort)
+    try {
+      await admin.from("audit_logs").insert({
+        user_id: user.id,
+        user_name: userName,
+        organization: String(meta.org || "") || null,
+        module: "seafile",
+        action: `Выгружено в Seafile: ${body.kind}`,
+        details: `${folderPath}/${finalName}`,
+      });
+    } catch { /* ignore audit failures */ }
 
     const viewUrl = `${baseUrl}/library/${repoId}/${encodeURIComponent(folderPath.replace(/^\//, ""))}`;
     return new Response(JSON.stringify({ ok: true, folder: folderPath, filename: finalName, viewUrl }), {

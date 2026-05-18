@@ -42,6 +42,7 @@ export function CreateUserDialog({ open, onOpenChange, organizations = [] }: Cre
   const [organization, setOrganization] = useState("");
   const [customOrg, setCustomOrg] = useState("");
   const [phone, setPhone] = useState("");
+  const [position, setPosition] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
 
   const createUser = useMutation({
@@ -57,6 +58,7 @@ export function CreateUserDialog({ open, onOpenChange, organizations = [] }: Cre
           full_name: fullName || undefined,
           organization: (organization === "__custom" ? customOrg : organization) || undefined,
           phone: phone || undefined,
+          position: position || undefined,
           role: selectedRoles[0] || undefined,
         },
       });
@@ -98,6 +100,7 @@ export function CreateUserDialog({ open, onOpenChange, organizations = [] }: Cre
     setOrganization("");
     setCustomOrg("");
     setPhone("");
+    setPosition("");
     setSelectedRoles([]);
     setShowPw(false);
   };
@@ -165,6 +168,10 @@ export function CreateUserDialog({ open, onOpenChange, organizations = [] }: Cre
           <div className="space-y-2">
             <Label>Телефон</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+375 (__) ___-__-__" />
+          </div>
+          <div className="space-y-2">
+            <Label>Должность</Label>
+            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="например, Инженер сервисной поддержки" />
           </div>
           <div className="space-y-2">
             <Label>Роли *</Label>

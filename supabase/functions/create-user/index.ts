@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name, organization, phone, role } = await req.json();
+    const { email, password, full_name, organization, phone, position, role } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Email и пароль обязательны" }), {
@@ -77,10 +77,11 @@ Deno.serve(async (req) => {
     const userId = newUser.user.id;
 
     // Update profile with extra fields
-    if (organization || phone) {
+    if (organization || phone || position) {
       await adminClient.from("profiles").update({
         organization: organization || null,
         phone: phone || null,
+        position: position || null,
       }).eq("user_id", userId);
     }
 

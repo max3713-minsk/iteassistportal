@@ -37,6 +37,7 @@ export function EditUserDialog({ userId, users, organizations, onClose }: EditUs
   const [fullName, setFullName] = useState(user?.full_name ?? "");
   const [organization, setOrganization] = useState(user?.organization ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
+  const [position, setPosition] = useState((user as any)?.position ?? "");
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>(user?.roles ?? []);
   const [editModules, setEditModules] = useState<string[]>([]);
 
@@ -58,6 +59,7 @@ export function EditUserDialog({ userId, users, organizations, onClose }: EditUs
           full_name: fullName || null,
           organization: organization || null,
           phone: phone || null,
+          position: position || null,
           roles: selectedRoles,
         },
       });
@@ -131,6 +133,10 @@ export function EditUserDialog({ userId, users, organizations, onClose }: EditUs
           <div className="space-y-2">
             <Label>Телефон</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+375 (__) ___-__-__" />
+          </div>
+          <div className="space-y-2">
+            <Label>Должность</Label>
+            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="например, Инженер сервисной поддержки" />
           </div>
 
           {/* Roles */}
