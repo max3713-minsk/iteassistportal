@@ -94,27 +94,45 @@ const frequencyRu: Record<string, string> = {
 export async function fetchProtocolDocxData(protocolId: string): Promise<ProtocolDocxData> {
   const { data: protocol, error: pErr } = await supabase
     .from("maintenance_protocols")
-    .select(
-      `*, sites(name, organization_id), 
-       customer_org:organizations!maintenance_protocols_customer_org_id_fkey(name, legal_full_name),
-       executor_org:organizations!maintenance_protocols_executor_org_id_fkey(name, legal_full_name, executor_default),
-       contract:contracts!maintenance_protocols_contract_id_fkey(contract_number, executor_org_name)`
-    )
+    .select(`*, sites(name, organization)`)
     .eq("id", protocolId)
     .single();
   if (pErr || !protocol) throw new Error(pErr?.message || "Протокол не найден");
 
-  // Fallback: customer org may come from sites.organization_id
-  let customerOrg: any = (protocol as any).customer_org;
-  if (!customerOrg && (protocol as any).sites?.organization_id) {
+  // Customer org: by customer_org_id (preferred) or by sites.organization (text name)
+  let customerOrg: any = null;
+  const customerOrgId = (protocol as any).customer_org_id;
+  if (customerOrgId) {
+    const { data } = await supabase
+      .from("organizations")
+      .select("id, name, legal_full_name, executor_default")
+      .eq("id", customerOrgId).maybeSingle();
+    customerOrg = data;
+  } else if ((protocol as any).sites?.organization) {
+    const { data } = await supabase
+      .from("organizations")
+      .select("id, name, legal_full_name, executor_default")
+      .eq("name", (protocol as any).sites.organization).maybeSingle();
+    customerOrg = data;
+  }
+
+  let executorOrg: any = null;
+  if ((protocol as any).executor_org_id) {
     const { data } = await supabase
       .from("organizations")
       .select("name, legal_full_name, executor_default")
-      .eq("id", (protocol as any).sites.organization_id)
-      .maybeSingle();
-    customerOrg = data;
+      .eq("id", (protocol as any).executor_org_id).maybeSingle();
+    executorOrg = data;
   }
-  const executorOrg: any = (protocol as any).executor_org;
+
+  let contract: any = null;
+  if ((protocol as any).contract_id) {
+    const { data } = await supabase
+      .from("contracts")
+      .select("contract_number, executor_org_name")
+      .eq("id", (protocol as any).contract_id).maybeSingle();
+    contract = data;
+  }
 
   const { data: itemsRaw } = await supabase
     .from("protocol_items")
@@ -162,14 +180,13 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
   const reportDate = reportDateStr ? new Date(reportDateStr) : new Date();
   const monthStart = startOfMonth(reportDate).toISOString();
   const monthEnd = endOfMonth(reportDate).toISOString();
-  const customerOrgId = (protocol as any).customer_org_id || (protocol as any).sites?.organization_id;
-
   let tickets: TicketSummary[] = [];
-  if (customerOrgId) {
+  const orgIdForTickets = customerOrg?.id || (protocol as any).customer_org_id;
+  if (orgIdForTickets) {
     const { data: trows } = await supabase
       .from("tickets")
       .select("ticket_number, title, status, priority, created_at, resolved_at")
-      .eq("organization_id", customerOrgId)
+      .eq("organization_id", orgIdForTickets)
       .gte("created_at", monthStart)
       .lte("created_at", monthEnd)
       .order("created_at", { ascending: true });
@@ -216,7 +233,7 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
   const executorName =
     executorOrg?.legal_full_name ||
     executorOrg?.name ||
-    (protocol as any).contract?.executor_org_name ||
+    contract?.executor_org_name ||
     customerOrg?.executor_default ||
     "—";
 
@@ -230,7 +247,7 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
       periodStart: (protocol as any).period_start,
       periodEnd: (protocol as any).period_end,
       reportDate: format(reportDate, "dd.MM.yyyy"),
-      contractNumber: (protocol as any).contract?.contract_number ?? null,
+      contractNumber: contract?.contract_number ?? null,
     },
     groups,
     tickets,
