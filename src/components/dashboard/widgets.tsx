@@ -985,6 +985,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetMeta> = {
     category: "Оборудование", icon: Activity, defaultW: 4, defaultH: 5, minW: 3, minH: 4,
     Component: EquipmentHealthWidget,
   },
+  "quick-report": {
+    type: "quick-report",
+    title: "Быстрый отчёт",
+    description: "Одним кликом создать все регламентные протоколы за сегодня со статусом «всё OK».",
+    category: "Протоколы",
+    icon: Zap,
+    defaultW: 3, defaultH: 4, minW: 3, minH: 3,
+    Component: QuickReportWidget,
+  },
 };
 
 export const CHART_TYPE_LABELS: Record<ChartType, string> = {
