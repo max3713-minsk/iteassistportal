@@ -120,6 +120,8 @@ function SupportTab() {
 function OrganizationsTab({ toast, qc }: any) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [deleteBlocker, setDeleteBlocker] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "", short_name: "", legal_full_name: "", inn: "",
     contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "",
@@ -151,6 +153,48 @@ function OrganizationsTab({ toast, qc }: any) {
       setEditing(null);
       setForm({ name: "", short_name: "", legal_full_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "" });
       toast({ title: editing ? "Организация обновлена" : "Организация создана" });
+    },
+    onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (org: any) => {
+      // Safety: refuse delete if any related records still reference the org
+      const checks = await Promise.all([
+        supabase.from("contracts").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
+        supabase.from("sites").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
+        supabase.from("equipment").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
+      ]);
+      const [c, s, e] = checks.map((r: any) => r.count ?? 0);
+      if (c + s + e > 0) {
+        throw new Error(`Невозможно удалить: связаны договоры (${c}), ЦОД (${s}), оборудование (${e}). Сначала удалите/перенесите эти записи или деактивируйте организацию.`);
+      }
+      const { error } = await supabase.from("organizations").delete().eq("id", org.id);
+      if (error) throw error;
+      logAudit({ action: "Удаление организации", module: "organizations", entityId: org.id, details: org.name });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["organizations"] });
+      setConfirmDelete(null);
+      setDeleteBlocker(null);
+      toast({ title: "Организация удалена" });
+    },
+    onError: (e: any) => {
+      setDeleteBlocker(e.message);
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: async (org: any) => {
+      const { error } = await supabase.from("organizations").update({ is_active: false }).eq("id", org.id);
+      if (error) throw error;
+      logAudit({ action: "Деактивация организации", module: "organizations", entityId: org.id, details: org.name });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["organizations"] });
+      setConfirmDelete(null);
+      setDeleteBlocker(null);
+      toast({ title: "Организация перенесена в архив" });
     },
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
@@ -235,13 +279,40 @@ function OrganizationsTab({ toast, qc }: any) {
                     {o.contact_email || "—"}<br/>{o.contact_phone || ""}
                   </TableCell>
                   <TableCell>{o.is_active ? <Badge>Активна</Badge> : <Badge variant="secondary">Архив</Badge>}</TableCell>
-                  <TableCell><Button size="sm" variant="ghost" onClick={() => openEdit(o)}>Изменить</Button></TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(o)}>Изменить</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => { setDeleteBlocker(null); setConfirmDelete(o); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onCancel={() => { setConfirmDelete(null); setDeleteBlocker(null); }}
+        title={`Удалить организацию «${confirmDelete?.name ?? ""}»?`}
+        description={
+          deleteBlocker
+            ? deleteBlocker + "\n\nВы можете перенести её в архив (деактивировать) — данные сохранятся."
+            : "Действие необратимо. Связанные договоры, ЦОД и оборудование должны быть удалены или перенесены заранее."
+        }
+        variant={deleteBlocker ? "default" : "destructive"}
+        loading={deleteMutation.isPending || deactivateMutation.isPending}
+        onConfirm={() => {
+          if (!confirmDelete) return;
+          if (deleteBlocker) deactivateMutation.mutate(confirmDelete);
+          else deleteMutation.mutate(confirmDelete);
+        }}
+      />
     </Card>
   );
 }

@@ -14,6 +14,7 @@ import { logAudit } from "@/lib/audit";
 import ProtocolList from "@/components/protocols/ProtocolList";
 import ProtocolDetail from "@/components/protocols/ProtocolDetail";
 import CreateProtocolDialog from "@/components/protocols/CreateProtocolDialog";
+import BatchCreateProtocolDialog from "@/components/protocols/BatchCreateProtocolDialog";
 import ProtocolTemplatesManager from "@/components/help/ProtocolTemplatesManager";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { useAutoProtocols } from "@/hooks/useAutoProtocols";
@@ -321,7 +322,12 @@ export default function Protocols() {
       <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-heading text-2xl font-bold">Протоколы обслуживания</h1>
-        {isStaff && <CreateProtocolDialog defaultDate={dateParam} />}
+        {isStaff && (
+          <div className="flex gap-2">
+            <BatchCreateProtocolDialog />
+            <CreateProtocolDialog defaultDate={dateParam} />
+          </div>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mb-4">
