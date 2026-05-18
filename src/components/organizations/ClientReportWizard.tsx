@@ -165,7 +165,7 @@ export function ClientReportWizard() {
               const opts = await buildOpts();
               if (!opts) throw new Error("Выберите организацию");
               const data = await fetchReportData(opts);
-              const blob = await generateClientReport(data, { returnBlob: true });
+              const blob = (await generateClientReport(data, { returnBlob: true })) as Blob;
               return {
                 blob,
                 filename: `report_${orgName}_${start}_${end}.docx`,
