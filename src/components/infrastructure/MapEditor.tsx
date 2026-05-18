@@ -515,6 +515,9 @@ function EditorInner({ initial, readOnly, onSave, saving, mapId, mapName }: Prop
                 <DropdownMenuItem onClick={() => doExport("pdf")}>
                   <FileText className="h-4 w-4 mr-2" /> PDF (A4)
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={doSeafile}>
+                  <Download className="h-4 w-4 mr-2" /> В Seafile
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {mapId && (
@@ -540,6 +543,7 @@ function EditorInner({ initial, readOnly, onSave, saving, mapId, mapName }: Prop
                 <DropdownMenuItem onClick={() => doExport("png")}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport("svg")}><FileCode className="h-4 w-4 mr-2" /> SVG</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport("pdf")}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={doSeafile}><Download className="h-4 w-4 mr-2" /> В Seafile</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
