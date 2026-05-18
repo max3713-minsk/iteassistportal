@@ -298,15 +298,15 @@ function OrganizationsTab({ toast, qc }: any) {
       </CardContent>
       <ConfirmDialog
         open={!!confirmDelete}
-        onOpenChange={(v) => { if (!v) { setConfirmDelete(null); setDeleteBlocker(null); } }}
+        onCancel={() => { setConfirmDelete(null); setDeleteBlocker(null); }}
         title={`Удалить организацию «${confirmDelete?.name ?? ""}»?`}
         description={
           deleteBlocker
             ? deleteBlocker + "\n\nВы можете перенести её в архив (деактивировать) — данные сохранятся."
             : "Действие необратимо. Связанные договоры, ЦОД и оборудование должны быть удалены или перенесены заранее."
         }
-        confirmLabel={deleteBlocker ? "Деактивировать" : "Удалить"}
         variant={deleteBlocker ? "default" : "destructive"}
+        loading={deleteMutation.isPending || deactivateMutation.isPending}
         onConfirm={() => {
           if (!confirmDelete) return;
           if (deleteBlocker) deactivateMutation.mutate(confirmDelete);
