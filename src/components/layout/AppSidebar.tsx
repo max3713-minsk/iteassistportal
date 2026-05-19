@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut, UserCircle,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
-  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks,
+  Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks, Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
       { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
       { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
       { to: "/system-reset", icon: ShieldAlert, label: "Сервисные операции", roles: ["admin"], moduleKey: "audit" },
+      { to: "/admin/migrations", icon: Database, label: "Миграции БД", roles: ["admin"], moduleKey: "audit" },
     ],
   },
 ];
