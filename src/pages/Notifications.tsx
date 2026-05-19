@@ -3,8 +3,26 @@ import { NotificationChannels } from "@/components/notifications/NotificationCha
 import { NotificationSubscriptions } from "@/components/notifications/NotificationSubscriptions";
 import { NotificationPreferences } from "@/components/notifications/NotificationPreferences";
 import { NotificationHistory } from "@/components/notifications/NotificationHistory";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Notifications() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("notification_log")
+      .update({ is_read: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["sidebar-unread-notifications", user.id] });
+      });
+  }, [user, qc]);
+
   return (
     <div className="p-6 space-y-6 max-w-6xl">
       <div>
