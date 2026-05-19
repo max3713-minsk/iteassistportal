@@ -23,6 +23,7 @@ import Connections from "@/pages/Connections";
 import WorkScope from "@/pages/WorkScope";
 import InfrastructureMaps from "@/pages/InfrastructureMaps";
 import SystemReset from "@/pages/SystemReset";
+import AdminMigrations from "@/pages/AdminMigrations";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/work-scope" element={<WorkScope />} />
               <Route path="/infrastructure-maps" element={<InfrastructureMaps />} />
               <Route path="/system-reset" element={<SystemReset />} />
+              <Route path="/admin/migrations" element={<AdminMigrations />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/help" element={<HelpReference />} />
             </Route>

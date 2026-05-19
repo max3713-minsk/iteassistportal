@@ -2368,6 +2368,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_tables_list: {
+        Args: never
+        Returns: {
+          columns_count: number
+          table_name: string
+          total_size: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
