@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+data/db/
+nginx/ssl/
+.env
+.env.production
+dist/
+node_modules/
