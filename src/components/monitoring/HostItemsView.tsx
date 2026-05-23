@@ -76,6 +76,7 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
   const { isStaff } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
   const [editingAlias, setEditingAlias] = useState<{ key: string; name: string; display: string; desc: string } | null>(null);
   const [graphMetric, setGraphMetric] = useState<any>(null);
   const { favoriteItemIds, toggle: toggleFav } = useFavoriteMetrics();
@@ -169,6 +170,8 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
 
         {Object.entries(grouped).map(([category, list]) => {
           const Icon = categoryIcons[category] || Activity;
+          const isExpanded = !!expandedCats[category];
+          const visibleList = isExpanded ? list : list.slice(0, 30);
           return (
             <Card key={category}>
               <CardHeader className="pb-2">
@@ -178,7 +181,7 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
-                {list.slice(0, 30).map((it) => {
+                {visibleList.map((it) => {
                   const alias = aliasMap.get(it.key_);
                   const display = isOriginal
                     ? it.name
@@ -271,9 +274,16 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                   );
                 })}
                 {list.length > 30 && (
-                  <p className="text-xs text-muted-foreground text-center pt-1">
-                    + ещё {list.length - 30} элементов
-                  </p>
+                  <div className="text-center pt-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => setExpandedCats((p) => ({ ...p, [category]: !p[category] }))}
+                    >
+                      {isExpanded ? "Свернуть" : `Показать все (+ ещё ${list.length - 30})`}
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
