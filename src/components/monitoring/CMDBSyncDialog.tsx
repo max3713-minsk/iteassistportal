@@ -195,7 +195,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 border rounded-md">
+        <div className="flex-1 border rounded-md overflow-auto" style={{ maxHeight: "calc(100vh - 280px)" }}>
           {zbxLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -282,7 +282,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
               </TableBody>
             </Table>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Отмена</Button>

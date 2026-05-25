@@ -49,16 +49,13 @@ async function dirExists(baseUrl: string, token: string, repoId: string, path: s
   const url = `${baseUrl}/api2/repos/${repoId}/dir/?p=${encodeURIComponent(path)}`;
   try {
     const res = await fetch(url, { headers: { Authorization: `Token ${token}` } });
-    return res.ok; // 200 — exists
+    return res.ok;
   } catch {
     return false;
   }
 }
 
 async function mkdirRecursive(baseUrl: string, token: string, repoId: string, fullPath: string) {
-  // Walk each segment top-down. Skip mkdir for any segment that already exists,
-  // because Seafile auto-renames duplicates to "name (1)", "name (2)" — which was
-  // creating empty sibling folders on every export.
   const parts = fullPath.split("/").filter(Boolean);
   let cur = "";
   for (const part of parts) {
@@ -98,7 +95,7 @@ async function upload(baseUrl: string, token: string, repoId: string, parentDir:
   await upRes.json().catch(() => null);
 }
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request) {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const authHeader = req.headers.get("Authorization");
@@ -142,7 +139,6 @@ Deno.serve(async (req) => {
     const folders = { ...DEFAULT_FOLDERS, ...(cfg.folders || {}) };
     const filenamePattern: string = cfg.filename_pattern || DEFAULT_FILENAME;
 
-    // Resolve user identity for {user}
     const { data: profile } = await admin.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle();
     const userLogin = (user.email || "").split("@")[0] || user.id.slice(0, 8);
     const userName = profile?.full_name || userLogin;
@@ -169,7 +165,6 @@ Deno.serve(async (req) => {
     const template = folders[body.kind] || DEFAULT_FOLDERS[body.kind] || "Прочее/{org}";
     const folderPath = "/" + sanitizePath(`${root.replace(/^\//, "")}/${substitute(template, vars)}`);
 
-    // Filename: {pattern}.{ext}
     const ext = body.filename.includes(".") ? body.filename.split(".").pop()! : "bin";
     const baseName = body.filename.replace(/\.[^.]+$/, "");
     const fnameVars = { ...vars, name: baseName, date: `${dateStr}_${timeStr}` };
@@ -186,7 +181,6 @@ Deno.serve(async (req) => {
     const bytes = b64ToBlob(body.blob_base64, body.mime || "application/octet-stream");
     await upload(baseUrl, token, repoId, folderPath, finalName, bytes, body.mime || "application/octet-stream");
 
-    // Audit (best-effort)
     try {
       await admin.from("audit_logs").insert({
         user_id: user.id,
@@ -206,4 +200,4 @@ Deno.serve(async (req) => {
     console.error("seafile-upload-typed error:", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
-});
+}

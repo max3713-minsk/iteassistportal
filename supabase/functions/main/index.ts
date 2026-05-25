@@ -32,6 +32,18 @@ async function handler(req: Request): Promise<Response> {
       const module = await import("/app/functions/holidays-sync/index.ts");
       return await module.default(req);
     }
+    if (path === "/seafile-upload-typed") {
+      const module = await import("/app/functions/seafile-upload-typed/index.ts");
+      return await module.default(req);
+    }
+    if (path === "/protocol-export-seafile") {
+      const module = await import("/app/functions/protocol-export-seafile/index.ts");
+      return await module.default(req);
+    }
+    if (path === "/notification-dispatch") {
+      const module = await import("/app/functions/notification-dispatch/index.ts");
+      return await module.default(req);
+    }
 
     return new Response(JSON.stringify({ error: "Function not found" }), {
       status: 404,

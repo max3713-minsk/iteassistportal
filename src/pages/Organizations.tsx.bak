@@ -383,11 +383,6 @@ function ContractsTab({ toast, qc }: any) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
-  qc.invalidateQueries({ queryKey: ["active-contracts"] });
-  qc.invalidateQueries({ queryKey: ["maintenance-tasks-full"] });
-      qc.invalidateQueries({ queryKey: ["active-contracts"] });
-      qc.invalidateQueries({ queryKey: ["maintenance-tasks-full"] });
-      window.location.reload();
       resetForm();
       toast({ title: editing ? "Договор обновлён" : "Договор добавлен. Календарь перестроен от даты старта." });
       logAudit({ action: editing ? "Изменение договора" : "Создание договора", module: "contracts", details: form.contract_number });
@@ -410,11 +405,6 @@ function ContractsTab({ toast, qc }: any) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contracts"] });
-  qc.invalidateQueries({ queryKey: ["active-contracts"] });
-  qc.invalidateQueries({ queryKey: ["maintenance-tasks-full"] });
-      qc.invalidateQueries({ queryKey: ["active-contracts"] });
-      qc.invalidateQueries({ queryKey: ["maintenance-tasks-full"] });
-      window.location.reload();
       qc.invalidateQueries({ queryKey: ["maintenance-protocols"] });
       qc.invalidateQueries({ queryKey: ["tickets"] });
       setConfirmReset(null);
