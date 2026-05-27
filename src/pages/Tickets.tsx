@@ -207,6 +207,46 @@ export default function Tickets() {
         )}
       </Card>
 
+      {/* Bulk actions bar (staff only, list view only) */}
+      {isStaff && view === "list" && selectedIds.size > 0 && (
+        <Card className="mb-3 p-2 sticky top-2 z-10 border-primary/40 bg-card/95 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium px-1">Выбрано: {selectedIds.size}</span>
+            <Select disabled={bulkBusy} onValueChange={(v) => bulkUpdate({ status: v }, "Статус изменён")}>
+              <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder="Сменить статус" /></SelectTrigger>
+              <SelectContent>
+                {(["open","assigned","in_progress","waiting","resolved","closed","cancelled"] as const).map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select disabled={bulkBusy} onValueChange={(v) => bulkUpdate({ priority: v }, "Приоритет изменён")}>
+              <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Сменить приоритет" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="P1">P1 — Критический</SelectItem>
+                <SelectItem value="P2">P2 — Высокий</SelectItem>
+                <SelectItem value="P3">P3 — Средний</SelectItem>
+                <SelectItem value="P4">P4 — Низкий</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdate({ assigned_to: user?.id, status: "assigned" }, "Назначено на вас")}>
+              <UserPlus className="h-3.5 w-3.5 mr-1" />Назначить на себя
+            </Button>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdate({ assigned_to: null }, "Снято назначение")}>
+              <UserX className="h-3.5 w-3.5 mr-1" />Снять назначение
+            </Button>
+            {hasRole("admin") && (
+              <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={bulkDelete}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" />Удалить
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto">
+              <X className="h-3.5 w-3.5 mr-1" />Сбросить
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {isLoading ? (
         <Card>
           <div className="p-4 space-y-2">
