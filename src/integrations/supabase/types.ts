@@ -73,6 +73,33 @@ export type Database = {
           },
         ]
       }
+      applied_migrations: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          checksum: string | null
+          duration_ms: number | null
+          filename: string
+          note: string | null
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          checksum?: string | null
+          duration_ms?: number | null
+          filename: string
+          note?: string | null
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          checksum?: string | null
+          duration_ms?: number | null
+          filename?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2467,6 +2494,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      force_delete_organization: { Args: { _org_id: string }; Returns: Json }
       get_tables_list: {
         Args: never
         Returns: {
@@ -2482,6 +2510,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      preview_organization_cascade: { Args: { _org_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "engineer" | "customer"
