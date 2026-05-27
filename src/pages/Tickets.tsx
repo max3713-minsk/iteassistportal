@@ -130,7 +130,7 @@ export default function Tickets() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setBulkBusy(true);
-    const { error } = await supabase.from("tickets").update(patch).in("id", ids);
+    const { error } = await supabase.from("tickets").update(patch as any).in("id", ids);
     setBulkBusy(false);
     if (error) {
       toast({ title: "Не удалось", description: error.message, variant: "destructive" });
