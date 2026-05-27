@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import { ru } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -33,11 +34,13 @@ interface Props {
   onSelectDate: (date: Date) => void;
   serviceStartDate?: Date;
   holidays?: HolidayMap;
+  /** Set of "yyyy-MM-dd" past/today dates that have at least one task with no completed protocol covering it. */
+  incompleteDates?: Set<string>;
 }
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays }: Props) {
+export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays, incompleteDates }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const today = startOfDay(new Date());
   const startBoundary = serviceStartDate ? startOfDay(serviceStartDate) : null;
@@ -125,6 +128,7 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
           const holiday = holidays?.get(key);
           const isHoliday = holiday?.day_type === "holiday";
           const isWorkdayTransfer = holiday?.day_type === "workday";
+          const isIncomplete = (past || isToday) && incompleteDates?.has(key);
 
           return (
             <button
@@ -181,6 +185,15 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
                   ))}
                 </div>
               )}
+              {/* Incomplete-protocol indicator (past or today only) */}
+              {isIncomplete && inMonth && (
+                <span
+                  className="absolute top-0.5 right-0.5 text-amber-500"
+                  title="Есть незавершённые протоколы на эту дату"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                </span>
+              )}
             </button>
           );
         })}
@@ -201,6 +214,10 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-blue-500/30 border border-blue-500/50" />
           <span>Рабочий перенос</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3 text-amber-500" />
+          <span>Незавершённый протокол</span>
         </div>
       </div>
     </div>
