@@ -764,6 +764,41 @@ Deno.serve(async (req) => {
     }
 
 
+    /* ─── Update item (disable / enable / change key/name) ─── */
+    if (action === "disableItem" || action === "enableItem" || action === "updateItemKey") {
+      // staff-only
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", user.id);
+      const roles = (roleRows ?? []).map((r: any) => r.role);
+      if (!roles.includes("admin") && !roles.includes("engineer")) {
+        return fail("Forbidden", 403);
+      }
+
+      const { itemid, key_, name } = extraParams || {};
+      if (!itemid) return fail("itemid обязателен", 400);
+
+      const params: Record<string, unknown> = { itemid };
+      if (action === "disableItem") params.status = 1;
+      if (action === "enableItem") params.status = 0;
+      if (action === "updateItemKey") {
+        if (!key_) return fail("key_ обязателен", 400);
+        params.key_ = key_;
+        if (name) params.name = name;
+      }
+
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "item.update", params,
+          auth: authToken, id: 41,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`item.update error: ${data.error.data || data.error.message}`);
+      return ok({ result: data.result });
+    }
+
     const actionDef = getActionDef(action, extraParams);
     if (!actionDef) return fail("Unknown action", 400);
 
