@@ -36,24 +36,47 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
+    const action = String(body?.action ?? "run");
+
+    // List applied migrations
+    if (action === "list") {
+      const admin2 = createClient(supabaseUrl, serviceKey);
+      const { data, error } = await admin2
+        .from("applied_migrations")
+        .select("*")
+        .order("applied_at", { ascending: false });
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true, items: data ?? [] });
+    }
+
     const sql = String(body?.sql ?? "").trim();
     const ignoreExisting = body?.ignore_existing !== false; // default true
+    const migrationName: string | null = body?.migration_name ?? null;
+    const note: string | null = body?.note ?? null;
     if (!sql) return json({ error: "SQL пустой" }, 400);
     if (sql.length > 500_000) return json({ error: "SQL слишком большой (>500KB)" }, 400);
+
+    // Compute SHA-256 of the SQL for traceability
+    const encoder = new TextEncoder();
+    const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(sql));
+    const checksum = Array.from(new Uint8Array(hashBuf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     const sqlClient = postgres(dbUrl, { max: 1, prepare: false, idle_timeout: 5 });
     const started = Date.now();
     // Codes considered "already exists" — safe to skip when re-running migrations
     const SKIP_CODES = new Set(["42710", "42P07", "42701", "42P06", "42723", "42P16"]);
     try {
+      let outcome: any;
       try {
         const result = await sqlClient.unsafe(sql);
-        return json({
+        outcome = {
           ok: true,
           duration_ms: Date.now() - started,
           rows_affected: Array.isArray(result) ? result.length : 0,
           preview: Array.isArray(result) ? result.slice(0, 20) : null,
-        });
+        };
       } catch (e: any) {
         if (!ignoreExisting || !SKIP_CODES.has(e?.code)) throw e;
         // Retry statement-by-statement, skipping "already exists" errors
@@ -74,15 +97,35 @@ Deno.serve(async (req) => {
             }
           }
         }
-        return json({
+        outcome = {
           ok: true,
           duration_ms: Date.now() - started,
           executed,
           skipped_count: skipped.length,
           skipped,
           note: "Часть операторов пропущена (объекты уже существуют).",
-        });
+        };
       }
+
+      // Record into applied_migrations if a filename was provided
+      if (migrationName) {
+        try {
+          await sqlClient`
+            INSERT INTO public.applied_migrations (filename, checksum, applied_by, duration_ms, note)
+            VALUES (${migrationName}, ${checksum}, ${userData.user.id}, ${outcome.duration_ms}, ${note ?? outcome.note ?? null})
+            ON CONFLICT (filename) DO UPDATE
+              SET checksum = EXCLUDED.checksum,
+                  applied_at = now(),
+                  applied_by = EXCLUDED.applied_by,
+                  duration_ms = EXCLUDED.duration_ms,
+                  note = EXCLUDED.note
+          `;
+        } catch (logErr) {
+          console.warn("Failed to record applied_migrations:", logErr);
+        }
+      }
+
+      return json({ ...outcome, checksum, migration_name: migrationName });
     } finally {
       await sqlClient.end({ timeout: 1 });
     }
