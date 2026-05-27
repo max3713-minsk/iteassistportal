@@ -335,6 +335,11 @@ export default function Tickets() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isStaff && (
+                  <TableHead className="w-[36px]">
+                    <Checkbox checked={allOnPage} onCheckedChange={(v) => toggleAll(!!v)} aria-label="Выбрать все на странице" />
+                  </TableHead>
+                )}
                 <TableHead className="w-[60px]">П</TableHead>
                 <TableHead>Тема</TableHead>
                 <TableHead className="hidden lg:table-cell">Продукт</TableHead>
@@ -357,6 +362,15 @@ export default function Tickets() {
                     style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}
                     onClick={() => setSelectedTicket(t)}
                   >
+                    {isStaff && (
+                      <TableCell onClick={(e) => e.stopPropagation()} className="w-[36px]">
+                        <Checkbox
+                          checked={selectedIds.has(t.id)}
+                          onCheckedChange={(v) => toggleOne(t.id, !!v)}
+                          aria-label="Выбрать заявку"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge className={PRIORITY_COLORS[t.priority]}>{t.priority}</Badge>
                     </TableCell>
