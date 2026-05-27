@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Pencil, BarChart3, Thermometer, Fan, Zap, Network, Cpu, HardDrive, Activity } from "lucide-react";
+import { Pencil, BarChart3, Thermometer, Fan, Zap, Network, Cpu, HardDrive, Activity, EyeOff, Eye, MoreVertical, Search, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { formatItemValue } from "./formatMetric";
@@ -19,6 +19,20 @@ import { useFavoriteMetrics } from "@/hooks/useFavoriteMetrics";
 import { useMetricTranslations } from "@/hooks/useMetricTranslations";
 import MetricGraphDialog from "./MetricGraphDialog";
 import MetricLanguageToggle from "./MetricLanguageToggle";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+
+interface ItemOverride {
+  id: string;
+  zabbix_host_id: string;
+  item_key: string;
+  disabled: boolean;
+  custom_display_name: string | null;
+  custom_oid: string | null;
+  notes: string | null;
+}
 
 interface ItemAlias {
   id: string;
@@ -79,6 +93,8 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
   const [editingAlias, setEditingAlias] = useState<{ key: string; name: string; display: string; desc: string } | null>(null);
   const [graphMetric, setGraphMetric] = useState<any>(null);
+  const [showHidden, setShowHidden] = useState(false);
+  const [oidLookup, setOidLookup] = useState<{ oid: string; loading: boolean; result?: any } | null>(null);
   const { favoriteItemIds, toggle: toggleFav } = useFavoriteMetrics();
   const { translate, isOriginal } = useMetricTranslations(zabbixHostId);
 
@@ -94,6 +110,25 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
     enabled: !!hostId,
   });
 
+  const { data: overrides } = useQuery({
+    queryKey: ["item-overrides", zabbixHostId],
+    queryFn: async () => {
+      if (!zabbixHostId) return [];
+      const { data } = await supabase
+        .from("item_overrides")
+        .select("*")
+        .eq("zabbix_host_id", zabbixHostId);
+      return (data as ItemOverride[]) || [];
+    },
+    enabled: !!zabbixHostId,
+  });
+
+  const overrideMap = useMemo(() => {
+    const m = new Map<string, ItemOverride>();
+    (overrides || []).forEach((o) => m.set(o.item_key, o));
+    return m;
+  }, [overrides]);
+
   const aliasMap = useMemo(() => {
     const m = new Map<string, ItemAlias>();
     (aliases || []).forEach((a) => m.set(a.item_key, a));
@@ -107,15 +142,68 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
           i.key_.toLowerCase().includes(search.toLowerCase()))
       : items;
 
+    // Hide disabled items for non-staff, or for staff when "show hidden" off
+    const respectingHidden = filtered.filter((i) => {
+      const o = overrideMap.get(i.key_);
+      if (!o?.disabled) return true;
+      return isStaff && showHidden;
+    });
+
     const groups: Record<string, ZabbixItem[]> = {};
-    for (const it of filtered) {
+    for (const it of respectingHidden) {
       const alias = aliasMap.get(it.key_);
       const cat = alias?.category || categorizeItem(it.key_, it.name);
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(it);
     }
     return groups;
-  }, [items, search, aliasMap]);
+  }, [items, search, aliasMap, overrideMap, isStaff, showHidden]);
+
+  const hiddenCount = useMemo(
+    () => (overrides || []).filter((o) => o.disabled).length,
+    [overrides],
+  );
+
+  const toggleHidden = useMutation({
+    mutationFn: async ({ key, name, disable }: { key: string; name: string; disable: boolean }) => {
+      if (!zabbixHostId) throw new Error("Нет zabbix_host_id");
+      const existing = overrideMap.get(key);
+      if (existing) {
+        await supabase.from("item_overrides").update({ disabled: disable }).eq("id", existing.id);
+      } else {
+        await supabase.from("item_overrides").insert({
+          zabbix_host_id: zabbixHostId,
+          item_key: key,
+          disabled: disable,
+          notes: `Метрика "${name}"`,
+        });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["item-overrides", zabbixHostId] });
+      toast({ title: "Сохранено" });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const lookupOid = async (oidCandidate: string) => {
+    setOidLookup({ oid: oidCandidate, loading: true });
+    try {
+      const { data, error } = await supabase.functions.invoke("mib-oid-lookup", {
+        body: { oid: oidCandidate },
+      });
+      if (error) throw error;
+      setOidLookup({ oid: oidCandidate, loading: false, result: data?.results?.[0] });
+    } catch (e: any) {
+      setOidLookup({ oid: oidCandidate, loading: false, result: { error: e.message } });
+    }
+  };
+
+  // Extract OID-like substrings from a Zabbix key (e.g. "1.3.6.1.4.1...")
+  const extractOid = (key: string): string | null => {
+    const m = key.match(/(\d+(?:\.\d+){5,})/);
+    return m ? m[1] : null;
+  };
 
   const saveAlias = useMutation({
     mutationFn: async () => {
@@ -166,6 +254,14 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
             className="max-w-sm"
           />
           <MetricLanguageToggle />
+          {isStaff && hiddenCount > 0 && (
+            <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
+              <Switch checked={showHidden} onCheckedChange={setShowHidden} id="show-hidden" />
+              <label htmlFor="show-hidden" className="cursor-pointer">
+                Показать скрытые ({hiddenCount})
+              </label>
+            </div>
+          )}
         </div>
 
         {Object.entries(grouped).map(([category, list]) => {
@@ -183,19 +279,22 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
               <CardContent className="space-y-1">
                 {visibleList.map((it) => {
                   const alias = aliasMap.get(it.key_);
+                  const override = overrideMap.get(it.key_);
                   const display = isOriginal
                     ? it.name
                     : translate({ key_: it.key_, name: it.name });
                   const isFav = favoriteItemIds.has(it.itemid);
+                  const oidCandidate = extractOid(it.key_);
                   return (
                     <div
                       key={it.itemid}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-muted/40 group"
+                      className={`flex items-center gap-3 p-2 rounded hover:bg-muted/40 group ${override?.disabled ? "opacity-50" : ""}`}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">{display}</p>
+                          <p className="text-sm font-medium truncate">{override?.custom_display_name || display}</p>
                           {alias && !isOriginal && <Badge variant="secondary" className="text-[10px] h-4 px-1">алиас</Badge>}
+                          {override?.disabled && <Badge variant="outline" className="text-[10px] h-4 px-1">скрыто</Badge>}
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -209,6 +308,7 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                               <p className="text-xs mt-1 opacity-70">Оригинал: {it.name}</p>
                             )}
                             {alias?.description && <p className="text-xs mt-1">{alias.description}</p>}
+                            {override?.notes && <p className="text-xs mt-1 italic">{override.notes}</p>}
                           </TooltipContent>
                         </Tooltip>
                       </div>
@@ -269,6 +369,34 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
                         >
                           <BarChart3 className="h-3.5 w-3.5" />
                         </Button>
+                        {isStaff && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" title="Действия">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => toggleHidden.mutate({ key: it.key_, name: it.name, disable: !override?.disabled })}
+                              >
+                                {override?.disabled ? (
+                                  <><Eye className="h-3.5 w-3.5 mr-2" />Вернуть на портал</>
+                                ) : (
+                                  <><EyeOff className="h-3.5 w-3.5 mr-2" />Скрыть на портале</>
+                                )}
+                              </DropdownMenuItem>
+                              {oidCandidate && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => lookupOid(oidCandidate)}>
+                                    <Search className="h-3.5 w-3.5 mr-2" />Описание OID ({oidCandidate.slice(0, 24)}…)
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   );
@@ -329,6 +457,47 @@ export default function HostItemsView({ hostId, zabbixHostId, items }: Props) {
           onClose={() => setGraphMetric(null)}
           metric={graphMetric}
         />
+
+        <Dialog open={!!oidLookup} onOpenChange={(o) => !o && setOidLookup(null)}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Описание OID</DialogTitle>
+            </DialogHeader>
+            {oidLookup && (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <Label className="text-xs">OID</Label>
+                  <p className="font-mono text-xs break-all">{oidLookup.oid}</p>
+                </div>
+                {oidLookup.loading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Поиск в открытых источниках…
+                  </div>
+                ) : oidLookup.result?.error ? (
+                  <p className="text-destructive">{oidLookup.result.error}</p>
+                ) : oidLookup.result?.source === "not_found" || !oidLookup.result?.name ? (
+                  <p className="text-muted-foreground">Описание не найдено. Можно добавить вручную позже.</p>
+                ) : (
+                  <>
+                    <div>
+                      <Label className="text-xs">Имя</Label>
+                      <p className="font-medium">{oidLookup.result.name}</p>
+                    </div>
+                    {oidLookup.result.description && (
+                      <div>
+                        <Label className="text-xs">Описание</Label>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{oidLookup.result.description}</p>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">
+                      Источник: {oidLookup.result.source}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
