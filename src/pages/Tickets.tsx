@@ -106,6 +106,57 @@ export default function Tickets() {
   const tickets = ticketsResult?.rows ?? [];
   const total = ticketsResult?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => { setSelectedIds(new Set()); }, [page, statusFilter, priorityFilter, productFilter, requestTypeFilter, orgFilter, search, view]);
+
+  const toggleOne = (id: string, on: boolean) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (on) n.add(id); else n.delete(id);
+      return n;
+    });
+  };
+  const allOnPage = tickets.length > 0 && tickets.every((t: any) => selectedIds.has(t.id));
+  const toggleAll = (on: boolean) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (on) tickets.forEach((t: any) => n.add(t.id));
+      else tickets.forEach((t: any) => n.delete(t.id));
+      return n;
+    });
+  };
+
+  async function bulkUpdate(patch: Record<string, any>, label: string) {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("tickets").update(patch).in("id", ids);
+    setBulkBusy(false);
+    if (error) {
+      toast({ title: "Не удалось", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: label, description: `Обновлено заявок: ${ids.length}` });
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["tickets"] });
+  }
+
+  async function bulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Удалить ${ids.length} заявок безвозвратно?`)) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("tickets").delete().in("id", ids);
+    setBulkBusy(false);
+    if (error) {
+      toast({ title: "Не удалось удалить", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Удалено", description: `Заявок: ${ids.length}` });
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["tickets"] });
+  }
+
   const hasActiveFilters =
     statusFilter !== "all" || priorityFilter !== "all" || productFilter !== "all" ||
     requestTypeFilter !== "all" || orgFilter !== "all" || !!search.trim();
