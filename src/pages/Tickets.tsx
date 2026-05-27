@@ -5,13 +5,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X, Inbox } from "lucide-react";
+import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X, Inbox, Trash2, UserPlus, UserX } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,7 @@ const KANBAN_PAGE_SIZE = 200;
 export default function Tickets() {
   const { user, isStaff, hasRole } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -46,6 +49,8 @@ export default function Tickets() {
   const [view, setView] = useState<"list" | "kanban">("list");
   const [showHelp, setShowHelp] = useState(false);
   const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Reset page when any filter changes
   useEffect(() => { setPage(0); }, [statusFilter, priorityFilter, productFilter, requestTypeFilter, search, view]);
