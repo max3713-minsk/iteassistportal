@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { invokeZabbix } from "@/lib/zabbix-invoke";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2 } from "lucide-react";
+import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
@@ -32,18 +33,33 @@ export default function MonitoringProblems({
   isStaff, onCreateTicket, onAcknowledge, initialPriorityFilter,
 }: Props) {
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isAdmin = hasRole("admin");
   const qc = useQueryClient();
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter || "all");
   const [hostFilter, setHostFilter] = useState("");
   const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showDismissed, setShowDismissed] = useState(false);
 
   const problemsArr = Array.isArray(problems) ? problems : [];
   const alertsArr = Array.isArray(alerts) ? alerts : [];
 
+  const { data: dismissed = [] } = useQuery({
+    queryKey: ["dismissed-alerts", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from("dismissed_alerts").select("eventid").eq("user_id", user.id);
+      return (data || []).map((r: any) => r.eventid as string);
+    },
+    enabled: !!user?.id,
+  });
+  const dismissedSet = useMemo(() => new Set(dismissed), [dismissed]);
+
   const filteredProblems = useMemo(() => {
     let list = problemsArr;
+    if (!showDismissed) list = list.filter((p: any) => !dismissedSet.has(p.eventid));
     if (priorityFilter !== "all") {
       list = list.filter((p: any) => p.severity === priorityFilter);
     }
@@ -52,7 +68,7 @@ export default function MonitoringProblems({
       list = list.filter((p: any) => (p.name || "").toLowerCase().includes(q));
     }
     return list;
-  }, [problemsArr, priorityFilter, hostFilter]);
+  }, [problemsArr, priorityFilter, hostFilter, dismissedSet, showDismissed]);
 
   const filteredAlerts = useMemo(() => {
     let list = alertsArr;
@@ -90,6 +106,61 @@ export default function MonitoringProblems({
     onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
 
+  const toggleSel = (id: string) => setSelected((s) => {
+    const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const clearSel = () => setSelected(new Set());
+
+  const massAck = useMutation({
+    mutationFn: async (close: boolean) => {
+      const eventids = Array.from(selected);
+      if (!eventids.length) return;
+      const { data, error } = await invokeZabbix({
+        body: { action: "massAcknowledge", params: { eventids, close } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await logAudit({
+        action: close ? "Массовое закрытие алертов Zabbix" : "Массовое подтверждение алертов",
+        module: "monitoring",
+        details: `count=${eventids.length}`,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Готово", description: `Обработано: ${selected.size}` });
+      clearSel();
+      qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+      const rows = Array.from(selected).map((eventid) => ({ user_id: user.id, eventid }));
+      const { error } = await supabase.from("dismissed_alerts").upsert(rows, { onConflict: "user_id,eventid" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Скрыто из списка" });
+      clearSel();
+      qc.invalidateQueries({ queryKey: ["dismissed-alerts", user?.id] });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const undismissAll = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+      const { error } = await supabase.from("dismissed_alerts").delete().eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Скрытые возвращены" });
+      qc.invalidateQueries({ queryKey: ["dismissed-alerts", user?.id] });
+    },
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex gap-3 flex-wrap items-center">
@@ -120,7 +191,36 @@ export default function MonitoringProblems({
             className="pl-9"
           />
         </div>
+        {dismissed.length > 0 && viewMode === "active" && (
+          <Button size="sm" variant="ghost" onClick={() => setShowDismissed((v) => !v)}>
+            <Eye className="h-4 w-4 mr-1" />
+            {showDismissed ? "Скрыть удалённые" : `Показать скрытые (${dismissed.length})`}
+          </Button>
+        )}
+        {showDismissed && dismissed.length > 0 && (
+          <Button size="sm" variant="outline" onClick={() => undismissAll.mutate()}>
+            Вернуть все
+          </Button>
+        )}
       </div>
+
+      {isStaff && selected.size > 0 && viewMode === "active" && (
+        <div className="sticky top-2 z-10 flex items-center gap-2 rounded-md border bg-background/95 backdrop-blur p-2 shadow-sm">
+          <span className="text-sm font-medium px-2">Выбрано: {selected.size}</span>
+          <Button size="sm" variant="outline" onClick={() => massAck.mutate(false)} disabled={massAck.isPending}>
+            <Check className="h-4 w-4 mr-1" />Подтвердить
+          </Button>
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={() => massAck.mutate(true)} disabled={massAck.isPending}>
+              <X className="h-4 w-4 mr-1" />Закрыть в Zabbix
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => dismissMutation.mutate()} disabled={dismissMutation.isPending}>
+            <Trash2 className="h-4 w-4 mr-1" />Убрать из списка
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSel}>Снять выделение</Button>
+        </div>
+      )}
 
       {viewMode === "active" ? (
         <Card>
@@ -143,6 +243,17 @@ export default function MonitoringProblems({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isStaff && (
+                      <TableHead className="w-8">
+                        <Checkbox
+                          checked={filteredProblems.length > 0 && filteredProblems.every((p: any) => selected.has(p.eventid))}
+                          onCheckedChange={(c) => {
+                            if (c) setSelected(new Set(filteredProblems.map((p: any) => p.eventid)));
+                            else clearSel();
+                          }}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Категория</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Серьёзность</TableHead>
@@ -156,8 +267,17 @@ export default function MonitoringProblems({
                   {filteredProblems.map((p: any) => {
                     const incident = priorityToIncident(p.severity);
                     const isAcknowledged = p.acknowledged === "1" || (p.acknowledges && p.acknowledges.length > 0);
+                    const isDismissed = dismissedSet.has(p.eventid);
                     return (
-                      <TableRow key={p.eventid}>
+                      <TableRow key={p.eventid} className={isDismissed ? "opacity-50" : undefined}>
+                        {isStaff && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selected.has(p.eventid)}
+                              onCheckedChange={() => toggleSel(p.eventid)}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>
                           <span className={`text-xs font-medium ${incident.color}`}>{incident.label}</span>
                         </TableCell>
