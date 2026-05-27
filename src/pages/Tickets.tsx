@@ -5,13 +5,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X, Inbox } from "lucide-react";
+import { Plus, Ticket, HelpCircle, ChevronLeft, ChevronRight, LayoutGrid, List, Search, X, Inbox, Trash2, UserPlus, UserX } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,7 @@ const KANBAN_PAGE_SIZE = 200;
 export default function Tickets() {
   const { user, isStaff, hasRole } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -46,6 +49,8 @@ export default function Tickets() {
   const [view, setView] = useState<"list" | "kanban">("list");
   const [showHelp, setShowHelp] = useState(false);
   const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Reset page when any filter changes
   useEffect(() => { setPage(0); }, [statusFilter, priorityFilter, productFilter, requestTypeFilter, search, view]);
@@ -101,6 +106,57 @@ export default function Tickets() {
   const tickets = ticketsResult?.rows ?? [];
   const total = ticketsResult?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => { setSelectedIds(new Set()); }, [page, statusFilter, priorityFilter, productFilter, requestTypeFilter, orgFilter, search, view]);
+
+  const toggleOne = (id: string, on: boolean) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (on) n.add(id); else n.delete(id);
+      return n;
+    });
+  };
+  const allOnPage = tickets.length > 0 && tickets.every((t: any) => selectedIds.has(t.id));
+  const toggleAll = (on: boolean) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (on) tickets.forEach((t: any) => n.add(t.id));
+      else tickets.forEach((t: any) => n.delete(t.id));
+      return n;
+    });
+  };
+
+  async function bulkUpdate(patch: Record<string, any>, label: string) {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("tickets").update(patch as any).in("id", ids);
+    setBulkBusy(false);
+    if (error) {
+      toast({ title: "Не удалось", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: label, description: `Обновлено заявок: ${ids.length}` });
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["tickets"] });
+  }
+
+  async function bulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Удалить ${ids.length} заявок безвозвратно?`)) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("tickets").delete().in("id", ids);
+    setBulkBusy(false);
+    if (error) {
+      toast({ title: "Не удалось удалить", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Удалено", description: `Заявок: ${ids.length}` });
+    setSelectedIds(new Set());
+    qc.invalidateQueries({ queryKey: ["tickets"] });
+  }
+
   const hasActiveFilters =
     statusFilter !== "all" || priorityFilter !== "all" || productFilter !== "all" ||
     requestTypeFilter !== "all" || orgFilter !== "all" || !!search.trim();
@@ -207,6 +263,46 @@ export default function Tickets() {
         )}
       </Card>
 
+      {/* Bulk actions bar (staff only, list view only) */}
+      {isStaff && view === "list" && selectedIds.size > 0 && (
+        <Card className="mb-3 p-2 sticky top-2 z-10 border-primary/40 bg-card/95 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium px-1">Выбрано: {selectedIds.size}</span>
+            <Select disabled={bulkBusy} onValueChange={(v) => bulkUpdate({ status: v }, "Статус изменён")}>
+              <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder="Сменить статус" /></SelectTrigger>
+              <SelectContent>
+                {(["open","assigned","in_progress","waiting","resolved","closed","cancelled"] as const).map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select disabled={bulkBusy} onValueChange={(v) => bulkUpdate({ priority: v }, "Приоритет изменён")}>
+              <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Сменить приоритет" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="P1">P1 — Критический</SelectItem>
+                <SelectItem value="P2">P2 — Высокий</SelectItem>
+                <SelectItem value="P3">P3 — Средний</SelectItem>
+                <SelectItem value="P4">P4 — Низкий</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdate({ assigned_to: user?.id, status: "assigned" }, "Назначено на вас")}>
+              <UserPlus className="h-3.5 w-3.5 mr-1" />Назначить на себя
+            </Button>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkUpdate({ assigned_to: null }, "Снято назначение")}>
+              <UserX className="h-3.5 w-3.5 mr-1" />Снять назначение
+            </Button>
+            {hasRole("admin") && (
+              <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={bulkDelete}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" />Удалить
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto">
+              <X className="h-3.5 w-3.5 mr-1" />Сбросить
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {isLoading ? (
         <Card>
           <div className="p-4 space-y-2">
@@ -239,6 +335,11 @@ export default function Tickets() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isStaff && (
+                  <TableHead className="w-[36px]">
+                    <Checkbox checked={allOnPage} onCheckedChange={(v) => toggleAll(!!v)} aria-label="Выбрать все на странице" />
+                  </TableHead>
+                )}
                 <TableHead className="w-[60px]">П</TableHead>
                 <TableHead>Тема</TableHead>
                 <TableHead className="hidden lg:table-cell">Продукт</TableHead>
@@ -261,6 +362,15 @@ export default function Tickets() {
                     style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}
                     onClick={() => setSelectedTicket(t)}
                   >
+                    {isStaff && (
+                      <TableCell onClick={(e) => e.stopPropagation()} className="w-[36px]">
+                        <Checkbox
+                          checked={selectedIds.has(t.id)}
+                          onCheckedChange={(v) => toggleOne(t.id, !!v)}
+                          aria-label="Выбрать заявку"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge className={PRIORITY_COLORS[t.priority]}>{t.priority}</Badge>
                     </TableCell>

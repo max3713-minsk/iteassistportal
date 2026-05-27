@@ -15,9 +15,11 @@ import HolidaysPanel from "@/pages/Holidays";
 import {
   frequencyColors,
   frequencyLabels,
+  isTaskScheduledOnDate,
   type TaskWithCategory,
   type FrequencyType,
 } from "@/lib/schedule-utils";
+import { format, addDays, startOfDay } from "date-fns";
 
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -63,6 +65,52 @@ export default function Schedules() {
   // For now, completed tasks would come from protocol_items
   // Placeholder: no completed tasks until protocols are created
   const completedTaskIds = useMemo(() => new Set<string>(), []);
+
+  // Past protocols by period — used to flag overdue (incomplete) dates in the calendar.
+  const { data: protocols = [] } = useQuery({
+    queryKey: ["maintenance-protocols-coverage", activeContract?.organization_id],
+    queryFn: async () => {
+      if (!activeContract?.organization_id) return [];
+      const { data } = await supabase
+        .from("maintenance_protocols")
+        .select("period_start, period_end, frequency, status")
+        .eq("customer_org_id", activeContract.organization_id);
+      return data ?? [];
+    },
+    enabled: !!activeContract?.organization_id,
+  });
+
+  // For each freq, set of "yyyy-MM-dd" days covered by a completed protocol.
+  const completedDaysByFreq = useMemo(() => {
+    const map = new Map<FrequencyType, Set<string>>();
+    for (const p of protocols as any[]) {
+      if (p.status !== "completed") continue;
+      const set = map.get(p.frequency as FrequencyType) ?? new Set<string>();
+      let d = startOfDay(new Date(p.period_start));
+      const end = startOfDay(new Date(p.period_end));
+      while (d <= end) { set.add(format(d, "yyyy-MM-dd")); d = addDays(d, 1); }
+      map.set(p.frequency as FrequencyType, set);
+    }
+    return map;
+  }, [protocols]);
+
+  // Compute incomplete past dates: any past (or today) day where a task is scheduled
+  // and there is NO completed protocol of that frequency covering the day.
+  const incompleteDates = useMemo(() => {
+    const today = startOfDay(new Date());
+    const out = new Set<string>();
+    if (!contractStartDate) return out;
+    let d = startOfDay(contractStartDate);
+    while (d <= today) {
+      for (const t of tasks) {
+        if (!isTaskScheduledOnDate(t.frequency, d, contractStartDate, holidayMap)) continue;
+        const covered = completedDaysByFreq.get(t.frequency)?.has(format(d, "yyyy-MM-dd"));
+        if (!covered) { out.add(format(d, "yyyy-MM-dd")); break; }
+      }
+      d = addDays(d, 1);
+    }
+    return out;
+  }, [tasks, contractStartDate, holidayMap, completedDaysByFreq]);
 
   const legend: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
 
@@ -119,6 +167,7 @@ export default function Schedules() {
                 onSelectDate={setSelectedDate}
                 serviceStartDate={contractStartDate}
                 holidays={holidayMap}
+                incompleteDates={incompleteDates}
               />
             </Card>
             {selectedDate && (
