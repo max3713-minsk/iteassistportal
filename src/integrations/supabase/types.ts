@@ -114,6 +114,9 @@ export type Database = {
       }
       automation_logs: {
         Row: {
+          cancel_requested: boolean
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           host_id: string | null
           host_name: string | null
@@ -125,6 +128,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancel_requested?: boolean
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           host_id?: string | null
           host_name?: string | null
@@ -136,6 +142,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancel_requested?: boolean
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           host_id?: string | null
           host_name?: string | null
@@ -206,6 +215,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dismissed_alerts: {
+        Row: {
+          dismissed_at: string
+          eventid: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          eventid: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          eventid?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -636,6 +669,45 @@ export type Database = {
           },
         ]
       }
+      item_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custom_display_name: string | null
+          custom_oid: string | null
+          disabled: boolean
+          id: string
+          item_key: string
+          notes: string | null
+          updated_at: string
+          zabbix_host_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custom_display_name?: string | null
+          custom_oid?: string | null
+          disabled?: boolean
+          id?: string
+          item_key: string
+          notes?: string | null
+          updated_at?: string
+          zabbix_host_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custom_display_name?: string | null
+          custom_oid?: string | null
+          disabled?: boolean
+          id?: string
+          item_key?: string
+          notes?: string | null
+          updated_at?: string
+          zabbix_host_id?: string
+        }
+        Relationships: []
+      }
       maintenance_protocols: {
         Row: {
           completed_at: string | null
@@ -915,6 +987,33 @@ export type Database = {
           key_pattern?: string
           match_type?: string
           priority?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mib_oid_cache: {
+        Row: {
+          description: string | null
+          fetched_at: string
+          name: string | null
+          oid: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          description?: string | null
+          fetched_at?: string
+          name?: string | null
+          oid: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          description?: string | null
+          fetched_at?: string
+          name?: string | null
+          oid?: string
+          source?: string
           updated_at?: string
         }
         Relationships: []
