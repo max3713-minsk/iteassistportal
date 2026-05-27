@@ -1,132 +1,75 @@
+## Волна 2 — Мониторинг
 
-# План: Протоколы + Факсимиле + ЦОД-в-Организации + Seafile-везде
+Цель: дать админу/инженеру управлять метриками шаблонов без правки самого Zabbix, останавливать «зависшие» скрипты, полностью удалять алерты, и автоматически подтягивать описания OID из открытых источников.
 
-Большой объём — режу на 4 фазы. После каждой пауза для проверки.
+### 1. БД — новые таблицы (миграция)
 
----
+**`item_overrides`** — переопределения метрик (без правки самого Zabbix-шаблона):
+- `zabbix_host_id text`, `item_key text` (уникальная пара)
+- `disabled boolean` — скрыть из портала
+- `custom_display_name text` — переопределить имя
+- `custom_oid text` — для SNMP: альтернативный OID (информативно)
+- `notes text`, `created_by`, timestamps
+- RLS: SELECT всем authenticated, ALL admin/engineer
 
-## Фаза 1. Данные и структура
+**`mib_oid_cache`** — кэш ответов OIDs.online / Circitor:
+- `oid text PK`, `name text`, `description text`, `source text` (oid.online/circitor/manual), `fetched_at`
+- RLS: SELECT всем authenticated, INSERT/UPDATE admin/engineer
 
-### 1.1. Расширение организаций / договоров (шапка протокола)
-- В `organizations` добавить: `executor_name` (исполнитель по умолчанию), `legal_full_name` (для шапки).
-- В `contracts` добавить: `protocol_executor_org_id` (исполнитель по этому договору, опционально).
-- Профиль организации в UI: поля для шапки протокола (заказчик, исполнитель, юр. наименования).
+**`automation_logs`** — добавить колонки:
+- `cancel_requested boolean default false`
+- `cancelled_at timestamptz`
+- `cancelled_by uuid`
 
-### 1.2. Перенос ЦОД в «Организации и договоры»
-- ЦОД (`sites`) уже привязаны к `organization_id` — оставляем таблицу как есть.
-- В UI: убрать отдельный пункт меню «ЦОД», встроить как вкладку внутри карточки организации (`/organizations/:id` → табы: Профиль, Договоры, ЦОД, Схема поддержки).
-- Старый маршрут `/sites` → редирект на `/organizations`.
+### 2. Edge функции
 
-### 1.3. Факсимиле (подпись) в профиле пользователя
-- Bucket `signatures` (private), путь `{user_id}/signature.png`.
-- В `profiles` добавить `signature_path text`.
-- В разделе «Профиль» / «Управление пользователями» — загрузка PNG (≤500 КБ), предпросмотр, удаление.
-- RLS: пользователь видит/меняет своё; админ — всё.
+**`mib-oid-lookup`** (новая) — принимает `{ oid }` или `{ oids: [] }`. Сначала смотрит `mib_oid_cache`, затем по очереди пробует:
+1. `https://oid-rep.orange-labs.fr/get/{oid}` (open MIB browser, JSON-ish HTML — парсим)
+2. `https://www.circitor.fr/Mibs/Html/...` — fallback search
+3. При неудаче — кэшируем `not_found`
 
-### 1.4. Протокол: метаданные шапки
-В `maintenance_protocols` добавить:
-- `report_date date` (отчётная дата работ),
-- `customer_org_id`, `executor_org_id` (snapshot на момент создания),
-- `header_snapshot jsonb` (заморозка наименований/объекта).
+Возвращает `{ oid, name, description, source }`. Кэш TTL 30 дней.
 
----
+**`zabbix-proxy`** — добавить действия:
+- `disableItem` / `enableItem`: вызов `item.update` с `status=1/0`
+- `updateItemKey`: `item.update` `{key_, name?}` — для смены OID/ключа
 
-## Фаза 2. Формирование протоколов на дату/период
+Все действия требуют admin/engineer (валидируем по `user_roles`).
 
-### 2.1. Диалог «Сформировать протоколы»
-Расширяю `CreateProtocolDialog`:
-- Режимы: «На дату» / «За период».
-- Выбор ЦОД (мульти) или «все».
-- Кнопка «Подобрать по регламенту» — вычисляет, какие типы (`daily/weekly/monthly/quarterly/semi_annual`) приходятся на каждую дату диапазона с учётом `holidays` (используется уже существующий `isTaskScheduledOnDate`).
-- Превью: список «дата × тип × ЦОД» с чек-боксами (все/выборочно).
-- Чек-бокс «Сразу пометить все пункты выполнено» — при создании всем `protocol_items.status='completed'`, `completed_at=now()`.
+### 3. Frontend
 
-### 2.2. Несколько типов на одну дату
-Если в один день и `daily`, и `weekly` — создаются ДВА отдельных протокола (по типу), как и сейчас. UI это явно показывает в превью.
+**`HostItemsView.tsx`** — для admin/engineer на каждой метрике:
+- Меню «⋮»: «Скрыть на портале», «Переименовать», «Изменить ключ/OID», «Подсказка OID» (вызывает `mib-oid-lookup` и показывает описание)
+- Скрытые метрики (по `item_overrides.disabled=true`) не отображаются обычным пользователям; для admin/engineer показываются с серым бейджем «скрыто» и кнопкой «вернуть».
+- Кнопка «Показать скрытые» в шапке категории.
 
-### 2.3. Автозаполнение карточек оборудования в `protocol_items`
-При генерации `protocol_items` сохраняем snapshot `equipment_snapshot jsonb` (имя, модель, серийник, ЦОД, категория) — чтобы протокол не «плыл» при изменениях.
+**`MonitoringAutomation.tsx`** — журнал выполнения:
+- Для записей `status=running` — кнопка «Отменить»: ставит `cancel_requested=true`, `cancelled_at=now()`, статус → `cancelled`. Это «логическая» отмена (Zabbix API не умеет отменять `script.execute`), но убирает «вечно выполняется» из UI и записывает в audit.
+- Бейдж «Отменено» (вариант `outline`).
 
----
+**`MonitoringProblems.tsx`** — массовые действия по алертам:
+- Уже есть `massAcknowledge`. Добавить чекбоксы + sticky-панель: «Подтвердить», «Закрыть» (close=true), «Создать заявку из выбранных», «Удалить из списка» (= closeEvent + локальная пометка `dismissed` в новой таблице `dismissed_alerts(eventid, user_id)` чтобы не показывать снова даже если в Zabbix остался).
 
-## Фаза 3. Новая структура DOCX/PDF протокола
+### 4. Применение локально (bash)
 
-Переписываю `buildProtocolDocxBlob` под структуру:
+После merge:
+```bash
+git fetch origin && git diff origin/main -- \
+  supabase/migrations/ \
+  supabase/functions/mib-oid-lookup/index.ts \
+  supabase/functions/zabbix-proxy/index.ts \
+  src/components/monitoring/HostItemsView.tsx \
+  src/components/monitoring/MonitoringAutomation.tsx \
+  src/components/monitoring/MonitoringProblems.tsx | git apply -3
 
-1. **Шапка**: «Протокол выполнения регламентных работ» / Заказчик / Исполнитель / Объект (ЦОД) / Отчётная дата / Период.
-2. **Перечень работ — группировка по типу оборудования** → внутри по единице оборудования (с серийником, моделью, ЦОД). Таблица: № / Наименование работы / Статус / Примечание (метрика или комментарий).
-3. **Сводка по обращениям за месяц отчётной даты**: всего/закрыто/в работе/SLA-нарушения, топ-категории. Берём из `tickets` по `organization_id` и месяцу `report_date`.
-4. **Подписи**: Выполнил (инженер) + факсимиле PNG; Ответственный (пользователь) + факсимиле PNG. Селект пользователей в UI протокола перед экспортом.
-
-PDF (через `window.print`) обновляю под ту же структуру.
-
----
-
-## Фаза 4. Seafile — во всех модулях
-
-### 4.1. Унифицированная библиотека `src/lib/seafile.ts`
-Один клиентский хелпер `sendToSeafile({ kind, blob, filename, meta })` — вызывает универсальную edge-функцию `seafile-upload-typed`.
-
-### 4.2. Конфигурация маршрутизации папок
-В `integration_settings.key='seafile'` расширяю `config`:
-```jsonc
-{
-  "base_url": "...", "token": "...", "repo_id": "...",
-  "root": "/Портал",
-  "folders": {
-    "protocol":  "Протоколы/{org}/{year}/{frequency_ru}/{period}",
-    "graph":     "Графики/{org}/{year}-{month}",
-    "report":    "Отчёты/{org}/{year}-{month}",
-    "document":  "Документы/{org}/{category}",
-    "map":       "Схемы/{org}",
-    "audit":     "Аудит/{year}-{month}",
-    "ticket":    "Обращения/{org}/{year}-{month}"
-  },
-  "filename_pattern": "{date}_{name}_{user}"
-}
+supabase db push   # применит миграцию локально
+supabase functions deploy mib-oid-lookup zabbix-proxy
 ```
-Плейсхолдеры: `{org} {year} {month} {date} {frequency_ru} {period} {user} {name} {category}`.
 
-UI «Настройки → Seafile»: таблица «тип контента → шаблон папки», предпросмотр итогового пути, кнопка «Тест записи».
+### Объём и риски
+- ~1 миграция, 1 новая edge-функция, правки в zabbix-proxy, 3 React-компонента.
+- OIDs.online парсинг — HTML, иногда меняется разметка; на этот случай возвращаем `source: "not_found"` и даём ручной ввод.
+- Script cancel — «логическая» (это техническое ограничение Zabbix API), честно описано в подсказке UI.
 
-### 4.3. Edge-функция `seafile-upload-typed`
-- Принимает `kind`, `blob_base64`, `original_filename`, `meta`.
-- Подставляет плейсхолдеры из настроек.
-- Рекурсивно создаёт папки, кладёт файл, добавляет рядом `{file}.meta.json` (кто, когда, ID объекта портала).
-- Логирует в `audit_logs` (module=`seafile`).
-
-### 4.4. Точки интеграции (кнопка «В Seafile»)
-- **Протоколы**: уже есть — переключаю на новую функцию + meta.
-- **Графики мониторинга** (`GraphChart`, `SavedGraphsLibrary`): рядом с «Скачать PNG» — «В Seafile».
-- **Отчёты по клиентам** (`ClientReportWizard`).
-- **Документы** (`Documents.tsx`): «Опубликовать в Seafile».
-- **Схемы инфраструктуры** (`MapEditor` — рядом с экспортом PNG/JSON).
-- **Аудит-журнал**: CSV → «В Seafile».
-- **Обращения**: экспорт списка/детали тикета.
-
-Везде имя файла = `{YYYY-MM-DD_HHmm}_{короткое_имя}_{логин}.{ext}`, чтобы было видно кто и когда.
-
----
-
-## Технические детали
-
-### Миграции (3 шт.)
-1. `organizations`, `contracts`, `maintenance_protocols`, `protocol_items` — новые колонки + бэкап `header_snapshot`/`equipment_snapshot`.
-2. `profiles.signature_path` + bucket `signatures` + storage RLS.
-3. (Данных-миграция) не требуется.
-
-### Сохранение совместимости
-- Старые протоколы без `header_snapshot` — экспорт использует текущие данные организации (fallback).
-- Старый `protocol-export-seafile` остаётся, но внутри начинает вызывать общий пайплайн `seafile-upload-typed`.
-
-### Что НЕ делаем в этом плане
-- Юридически значимая ЭЦП (только факсимиле-картинка).
-- Версионирование протоколов в БД.
-- Двусторонняя синхронизация с Seafile (только выгрузка).
-
----
-
-## Порядок выполнения
-Фаза 1 → пауза → Фаза 2 → пауза → Фаза 3 → пауза → Фаза 4.
-
-Старт с **Фазы 1** (миграции + UI факсимиле + перенос ЦОД во вкладку организации).
+### Что НЕ входит в эту волну
+- Волна 3: организации «Архив», прямое удаление, дружелюбный UI миграций (по согласованию делаем отдельно).
