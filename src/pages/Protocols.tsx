@@ -544,6 +544,7 @@ export default function Protocols() {
         onToggleSelect={isStaff ? toggleSelect : undefined}
         onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
         onAssignSigners={isStaff ? (id) => setSignersFor(id) : undefined}
+        onCompleteAllWorks={isStaff ? completeAllWorks : undefined}
       />
       </>
       )}
