@@ -346,14 +346,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
         {isStaff && !isCompleted && !isOnRequest && !allCompleted && (
-          <Button
-            variant="outline"
-            onClick={() => bulkCompleteItems.mutate()}
-            disabled={bulkCompleteItems.isPending}
-          >
-            <ListChecks className="h-4 w-4 mr-2" />
-            Выполнить все работы
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => bulkCompleteItems.mutate(undefined)}
+              disabled={bulkCompleteItems.isPending}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Выполнить все работы
+            </Button>
+            {selectedItemIds.size > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => bulkCompleteItems.mutate(Array.from(selectedItemIds))}
+                disabled={bulkCompleteItems.isPending}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Выполнить выбранные ({selectedItemIds.size})
+              </Button>
+            )}
+          </>
         )}
         {isStaff && !isCompleted && (
           <Button onClick={() => {
