@@ -148,6 +148,31 @@ export default function Protocols() {
     qc.invalidateQueries({ queryKey: ["protocols"] });
   }
 
+  async function completeAllWorks(id: string) {
+    if (!window.confirm("Отметить все работы протокола выполненными?")) return;
+    try {
+      const nowIso = new Date().toISOString();
+      const { error: itemsErr } = await supabase
+        .from("protocol_items")
+        .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+        .eq("protocol_id", id)
+        .neq("status", "completed");
+      if (itemsErr) throw itemsErr;
+      const { error: pErr } = await supabase
+        .from("maintenance_protocols")
+        .update({ status: "in_progress" })
+        .eq("id", id)
+        .neq("status", "completed");
+      if (pErr) throw pErr;
+      await logAudit({ action: "Выполнение всех работ протокола", module: "protocols", entityId: id });
+      toast({ title: "Все работы отмечены выполненными" });
+      qc.invalidateQueries({ queryKey: ["protocols"] });
+      qc.invalidateQueries({ queryKey: ["protocol-items", id] });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    }
+  }
+
   async function bulkDelete() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
