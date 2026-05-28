@@ -799,6 +799,38 @@ Deno.serve(async (req) => {
       return ok({ result: data.result });
     }
 
+    /* ─── Disable / Enable trigger (admin/engineer) ─── */
+    if (action === "setTriggerStatus") {
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", user.id);
+      const roles = (roleRows ?? []).map((r: any) => r.role);
+      if (!roles.includes("admin") && !roles.includes("engineer")) {
+        return fail("Forbidden", 403);
+      }
+      const { triggerids, disabled } = extraParams || {};
+      const ids = Array.isArray(triggerids) ? triggerids : (triggerids ? [triggerids] : []);
+      if (ids.length === 0) return fail("triggerids обязателен", 400);
+      const status = disabled ? 1 : 0; // 0=enabled, 1=disabled in Zabbix
+      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+      const payload = ids.map((id: string) => ({ triggerid: id, status }));
+      const res = await fetchWithTimeout(apiUrl, {
+        method: "POST", headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0", method: "trigger.update", params: payload,
+          auth: authToken, id: 42,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) return fail(`trigger.update error: ${data.error.data || data.error.message}`);
+      // Invalidate problem/alert caches so UI refreshes
+      for (const k of Array.from(cache.keys())) {
+        if (k.includes(":getProblems:") || k.includes(":getAlerts:") || k.includes(":getRecentEvents:")) {
+          cache.delete(k);
+        }
+      }
+      return ok({ result: data.result, count: ids.length });
+    }
+
     const actionDef = getActionDef(action, extraParams);
     if (!actionDef) return fail("Unknown action", 400);
 
