@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks } from "lucide-react";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -156,6 +156,21 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
   const completeProtocol = useMutation({
     mutationFn: async () => {
+      // Auto-complete all pending items: завершение протокола = все работы выполнены
+      const pendingItems = items.filter((i) => i.status !== "completed");
+      if (pendingItems.length > 0) {
+        const nowIso = new Date().toISOString();
+        const { error: itemsErr } = await supabase
+          .from("protocol_items")
+          .update({
+            status: "completed",
+            completed_by: session?.user.id,
+            completed_at: nowIso,
+          })
+          .in("id", pendingItems.map((i) => i.id));
+        if (itemsErr) throw itemsErr;
+      }
+
       const { error } = await supabase
         .from("maintenance_protocols")
         .update({
@@ -183,9 +198,34 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
       qc.invalidateQueries({ queryKey: ["tickets"] });
       toast({ title: "Протокол завершён" });
+    },
+  });
+
+  const bulkCompleteItems = useMutation({
+    mutationFn: async () => {
+      const pendingItems = items.filter((i) => i.status !== "completed");
+      if (pendingItems.length === 0) return 0;
+      const { error } = await supabase
+        .from("protocol_items")
+        .update({
+          status: "completed",
+          completed_by: session?.user.id,
+          completed_at: new Date().toISOString(),
+        })
+        .in("id", pendingItems.map((i) => i.id));
+      if (error) throw error;
+      return pendingItems.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      toast({ title: "Работы отмечены выполненными", description: `Обновлено: ${count}` });
+    },
+    onError: (e: any) => {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     },
   });
 
@@ -198,6 +238,12 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const isCompleted = protocol.status === "completed";
 
   const sendToSeafile = async () => {
+    if (!allCompleted && !isOnRequest) {
+      const ok = window.confirm(
+        `Протокол не завершён: выполнено ${completedCount} из ${totalCount}. Отправить в Seafile несмотря на это?`
+      );
+      if (!ok) return;
+    }
     if (!(protocol as any)?.executor_user_id && !(protocol as any)?.executor_signature_user_id) {
       toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед отправкой.", variant: "destructive" });
       setSignersOpen(true);
@@ -294,13 +340,29 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
-        {isStaff && !isCompleted && (allCompleted || isOnRequest) && (
+        {isStaff && !isCompleted && !isOnRequest && !allCompleted && (
+          <Button
+            variant="outline"
+            onClick={() => bulkCompleteItems.mutate()}
+            disabled={bulkCompleteItems.isPending}
+          >
+            <ListChecks className="h-4 w-4 mr-2" />
+            Выполнить все работы
+          </Button>
+        )}
+        {isStaff && !isCompleted && (
           <Button onClick={() => {
             const p: any = protocol;
             if (!(p?.executor_user_id || p?.executor_signature_user_id) || !(p?.responsible_user_id || p?.responsible_signature_user_id)) {
               toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед завершением.", variant: "destructive" });
               setSignersOpen(true);
               return;
+            }
+            if (!isOnRequest && !allCompleted) {
+              const ok = window.confirm(
+                `Все работы будут автоматически отмечены выполненными (${totalCount - completedCount} осталось). Продолжить?`
+              );
+              if (!ok) return;
             }
             completeProtocol.mutate();
           }} disabled={completeProtocol.isPending}>
