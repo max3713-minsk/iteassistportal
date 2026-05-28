@@ -451,7 +451,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         <div className="space-y-4">
           {grouped.map((group) => (
             <Card key={group.equipmentName}>
-              <CardHeader className="py-3 px-4">
+              <CardHeader className="py-3 px-4 flex flex-row items-center gap-3 space-y-0">
+                {isStaff && !isCompleted && !isOnRequest && (
+                  <Checkbox
+                    checked={
+                      group.items.filter((i) => i.status !== "completed").length > 0 &&
+                      group.items
+                        .filter((i) => i.status !== "completed")
+                        .every((i) => selectedItemIds.has(i.id))
+                    }
+                    onCheckedChange={(v) => {
+                      setSelectedItemIds((prev) => {
+                        const next = new Set(prev);
+                        const pending = group.items.filter((i) => i.status !== "completed");
+                        if (v) pending.forEach((i) => next.add(i.id));
+                        else pending.forEach((i) => next.delete(i.id));
+                        return next;
+                      });
+                    }}
+                  />
+                )}
                 <CardTitle className="text-base">{group.equipmentName}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 pt-0 space-y-2">
@@ -465,6 +484,20 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
                         done && "bg-muted/50"
                       )}
                     >
+                      {isStaff && !isCompleted && !isOnRequest && !done && (
+                        <Checkbox
+                          className="mt-1 shrink-0"
+                          checked={selectedItemIds.has(item.id)}
+                          onCheckedChange={(v) => {
+                            setSelectedItemIds((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(item.id);
+                              else next.delete(item.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      )}
                       {isStaff && !isCompleted ? (
                         <button
                           onClick={() => toggleItem.mutate(item)}
