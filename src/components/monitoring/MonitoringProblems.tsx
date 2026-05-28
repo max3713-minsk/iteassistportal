@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye } from "lucide-react";
+import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye, BellOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -102,6 +102,28 @@ export default function MonitoringProblems({
         toast({ title: "Событие закрыто" });
       }
       qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const disableTriggerMutation = useMutation({
+    mutationFn: async (triggerid: string) => {
+      const { data, error } = await invokeZabbix({
+        body: { action: "setTriggerStatus", params: { triggerids: [triggerid], disabled: true } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: async (_data, triggerid) => {
+      await logAudit({
+        action: "Отключение триггера Zabbix",
+        module: "monitoring",
+        details: `triggerid=${triggerid}`,
+      });
+      toast({ title: "Триггер отключён в Zabbix" });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getAlerts"] });
     },
     onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
@@ -320,6 +342,22 @@ export default function MonitoringProblems({
                                 {closeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                               </Button>
                             )}
+                            {isAdmin && p.objectid && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Отключить триггер в Zabbix (admin)"
+                                onClick={() => {
+                                  if (window.confirm(`Отключить триггер «${p.name}» в Zabbix? Он перестанет генерировать события до повторного включения.`)) {
+                                    disableTriggerMutation.mutate(p.objectid);
+                                  }
+                                }}
+                                disabled={disableTriggerMutation.isPending}
+                                className="text-orange-500 hover:text-orange-500"
+                              >
+                                <BellOff className="h-4 w-4" />
+                              </Button>
+                            )}
                           </TableCell>
                         )}
                       </TableRow>
@@ -376,6 +414,22 @@ export default function MonitoringProblems({
                           <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(a)}>
                             <MessageSquarePlus className="h-4 w-4" />
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Отключить триггер в Zabbix (admin)"
+                              onClick={() => {
+                                if (window.confirm(`Отключить триггер «${a.description}» в Zabbix?`)) {
+                                  disableTriggerMutation.mutate(a.triggerid);
+                                }
+                              }}
+                              disabled={disableTriggerMutation.isPending}
+                              className="text-orange-500 hover:text-orange-500"
+                            >
+                              <BellOff className="h-4 w-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       )}
                     </TableRow>
