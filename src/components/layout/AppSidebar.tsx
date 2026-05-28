@@ -72,14 +72,14 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
   {
     id: "admin",
     title: "Администрирование",
-    adminOnly: true,
+    adminOnly: false,
     items: [
-      { to: "/organizations", icon: Briefcase, label: "Организации и Договоры", roles: ["admin"], moduleKey: "organizations" },
-      { to: "/connections", icon: Plug, label: "Подключения", roles: ["admin"], moduleKey: "integrations" },
-      { to: "/users", icon: Users, label: "Пользователи", roles: ["admin"], moduleKey: "users" },
-      { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: ["admin"], moduleKey: "audit" },
-      { to: "/system-reset", icon: ShieldAlert, label: "Сервисные операции", roles: ["admin"], moduleKey: "audit" },
-      { to: "/admin/migrations", icon: Database, label: "Миграции БД", roles: ["admin"], moduleKey: "audit" },
+      { to: "/organizations", icon: Briefcase, label: "Организации и Договоры", roles: [], moduleKey: "organizations" },
+      { to: "/connections", icon: Plug, label: "Подключения", roles: [], moduleKey: "integrations" },
+      { to: "/users", icon: Users, label: "Пользователи", roles: [], moduleKey: "users" },
+      { to: "/audit", icon: ScrollText, label: "Журнал событий", roles: [], moduleKey: "audit" },
+      { to: "/system-reset", icon: ShieldAlert, label: "Сервисные операции", roles: [], moduleKey: "audit" },
+      { to: "/admin/migrations", icon: Database, label: "Миграции БД", roles: [], moduleKey: "audit" },
     ],
   },
 ];
