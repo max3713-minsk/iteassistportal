@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -56,6 +57,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const { toast } = useToast();
   const qc = useQueryClient();
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const { data: protocol } = useQuery({
     queryKey: ["protocol", protocolId],
@@ -206,8 +208,10 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   });
 
   const bulkCompleteItems = useMutation({
-    mutationFn: async () => {
-      const pendingItems = items.filter((i) => i.status !== "completed");
+    mutationFn: async (ids?: string[]) => {
+      const pendingItems = ids && ids.length > 0
+        ? items.filter((i) => ids.includes(i.id) && i.status !== "completed")
+        : items.filter((i) => i.status !== "completed");
       if (pendingItems.length === 0) return 0;
       const { error } = await supabase
         .from("protocol_items")
@@ -222,6 +226,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
     },
     onSuccess: (count) => {
       qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      setSelectedItemIds(new Set());
       toast({ title: "Работы отмечены выполненными", description: `Обновлено: ${count}` });
     },
     onError: (e: any) => {
@@ -341,14 +346,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
         {isStaff && !isCompleted && !isOnRequest && !allCompleted && (
-          <Button
-            variant="outline"
-            onClick={() => bulkCompleteItems.mutate()}
-            disabled={bulkCompleteItems.isPending}
-          >
-            <ListChecks className="h-4 w-4 mr-2" />
-            Выполнить все работы
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => bulkCompleteItems.mutate(undefined)}
+              disabled={bulkCompleteItems.isPending}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Выполнить все работы
+            </Button>
+            {selectedItemIds.size > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => bulkCompleteItems.mutate(Array.from(selectedItemIds))}
+                disabled={bulkCompleteItems.isPending}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Выполнить выбранные ({selectedItemIds.size})
+              </Button>
+            )}
+          </>
         )}
         {isStaff && !isCompleted && (
           <Button onClick={() => {
@@ -434,7 +451,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         <div className="space-y-4">
           {grouped.map((group) => (
             <Card key={group.equipmentName}>
-              <CardHeader className="py-3 px-4">
+              <CardHeader className="py-3 px-4 flex flex-row items-center gap-3 space-y-0">
+                {isStaff && !isCompleted && !isOnRequest && (
+                  <Checkbox
+                    checked={
+                      group.items.filter((i) => i.status !== "completed").length > 0 &&
+                      group.items
+                        .filter((i) => i.status !== "completed")
+                        .every((i) => selectedItemIds.has(i.id))
+                    }
+                    onCheckedChange={(v) => {
+                      setSelectedItemIds((prev) => {
+                        const next = new Set(prev);
+                        const pending = group.items.filter((i) => i.status !== "completed");
+                        if (v) pending.forEach((i) => next.add(i.id));
+                        else pending.forEach((i) => next.delete(i.id));
+                        return next;
+                      });
+                    }}
+                  />
+                )}
                 <CardTitle className="text-base">{group.equipmentName}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 pt-0 space-y-2">
@@ -448,6 +484,20 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
                         done && "bg-muted/50"
                       )}
                     >
+                      {isStaff && !isCompleted && !isOnRequest && !done && (
+                        <Checkbox
+                          className="mt-1 shrink-0"
+                          checked={selectedItemIds.has(item.id)}
+                          onCheckedChange={(v) => {
+                            setSelectedItemIds((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(item.id);
+                              else next.delete(item.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      )}
                       {isStaff && !isCompleted ? (
                         <button
                           onClick={() => toggleItem.mutate(item)}

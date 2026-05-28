@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, ClipboardList, Plus, UserCheck } from "lucide-react";
+import { Eye, ClipboardList, Plus, UserCheck, ListChecks } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
@@ -52,9 +52,10 @@ interface Props {
   loading?: boolean;
   onCreate?: () => void;
   onAssignSigners?: (id: string) => void;
+  onCompleteAllWorks?: (id: string) => void;
 }
 
-export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate, onAssignSigners }: Props) {
+export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate, onAssignSigners, onCompleteAllWorks }: Props) {
   if (loading) {
     return (
       <Card className="p-4 space-y-2">
@@ -136,6 +137,16 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
                 {onAssignSigners && (
                   <Button variant="ghost" size="icon" onClick={() => onAssignSigners(p.id)} title="Подписанты">
                     <UserCheck className="h-4 w-4" />
+                  </Button>
+                )}
+                {onCompleteAllWorks && p.status !== "completed" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onCompleteAllWorks(p.id)}
+                    title="Выполнить все работы"
+                  >
+                    <ListChecks className="h-4 w-4 text-emerald-500" />
                   </Button>
                 )}
               </TableCell>
