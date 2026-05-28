@@ -69,6 +69,18 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): { 
     case "getHosts":
       return { method: "host.get", params: { output: ["hostid","host","name","status","available"], selectInterfaces: ["ip","dns","port","type"], selectGroups: ["groupid","name"], sortfield: "name", ...extraParams }, cacheTtl: 60000 };
     case "getProblems":
+    case "getActiveProblemsByHost":
+      // преобразуем hostid в hostids
+      if (extraParams && extraParams.hostid) {
+        extraParams.hostids = Array.isArray(extraParams.hostid) ? extraParams.hostid : [extraParams.hostid];
+        delete extraParams.hostid;
+      }
+    case "getActiveProblemsByHost":
+      // преобразуем hostid в hostids
+      if (extraParams && extraParams.hostid) {
+        extraParams.hostids = Array.isArray(extraParams.hostid) ? extraParams.hostid : [extraParams.hostid];
+        delete extraParams.hostid;
+      }
       return { method: "problem.get", params: { output: "extend", selectAcknowledges: "extend", selectTags: "extend", recent: true, sortfield: ["eventid"], sortorder: "DESC", limit: 100, ...extraParams }, cacheTtl: 30000 };
     case "getAlerts":
       return { method: "trigger.get", params: { output: ["triggerid","description","priority","value","lastchange","status"], selectHosts: ["hostid","name"], filter: { value: 1 }, sortfield: "priority", sortorder: "DESC", limit: 100, only_true: true, active: true, expandDescription: true, ...extraParams }, cacheTtl: 30000 };
@@ -80,6 +92,13 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): { 
       return { method: "graph.get", params: { output: ["graphid","name","width","height"], selectHosts: ["hostid","name"], sortfield: "name", ...extraParams }, cacheTtl: 60000 };
     case "getScripts":
       return { method: "script.get", params: { output: ["scriptid","name","command","description","type","scope"], selectGroups: ["groupid","name"], ...extraParams }, cacheTtl: 60000 };
+    case "getTemplateDetail":
+      if (extraParams && extraParams.templateid) {
+        extraParams.templateids = Array.isArray(extraParams.templateid) ? extraParams.templateid : [extraParams.templateid];
+        delete extraParams.templateid;
+      }
+      return { method: "template.get", params: { output: "extend", ...extraParams }, cacheTtl: 60000 };
+
     case "getHostGroups":
       return { method: "hostgroup.get", params: { output: ["groupid","name"], sortfield: "name", ...extraParams }, cacheTtl: 120000 };
     case "getEvents":
