@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -56,6 +57,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const { toast } = useToast();
   const qc = useQueryClient();
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const { data: protocol } = useQuery({
     queryKey: ["protocol", protocolId],
@@ -206,8 +208,10 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   });
 
   const bulkCompleteItems = useMutation({
-    mutationFn: async () => {
-      const pendingItems = items.filter((i) => i.status !== "completed");
+    mutationFn: async (ids?: string[]) => {
+      const pendingItems = ids && ids.length > 0
+        ? items.filter((i) => ids.includes(i.id) && i.status !== "completed")
+        : items.filter((i) => i.status !== "completed");
       if (pendingItems.length === 0) return 0;
       const { error } = await supabase
         .from("protocol_items")
@@ -222,6 +226,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
     },
     onSuccess: (count) => {
       qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      setSelectedItemIds(new Set());
       toast({ title: "Работы отмечены выполненными", description: `Обновлено: ${count}` });
     },
     onError: (e: any) => {
