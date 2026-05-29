@@ -60,6 +60,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     { k: "Дата отчёта", v: h.reportDate },
   ];
   if (h.contractNumber) infoRows.push({ k: "Договор", v: h.contractNumber });
+  if (h.statusLabel) infoRows.push({ k: "Статус протокола", v: h.statusLabel });
   children.push(
     new Table({
       width: { size: 9360, type: WidthType.DXA },
