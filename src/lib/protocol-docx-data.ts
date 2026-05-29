@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { getProblemHint, SEVERITY_RU } from "@/lib/problem-recommendations";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
 
 export interface SignatureInfo {
   name: string;          // ФИО
@@ -250,6 +252,58 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
     customerOrg?.executor_default ||
     "—";
 
+  // Active monitoring problems for the site, excluding dismissed (user-level mute)
+  const activeProblems: ActiveProblem[] = [];
+  try {
+    const siteId = (protocol as any).site_id;
+    if (siteId) {
+      const { data: hosts } = await supabase
+        .from("monitored_hosts")
+        .select("zabbix_host_id, visible_name, name")
+        .eq("site_id", siteId)
+        .not("zabbix_host_id", "is", null);
+      const hostIds = (hosts ?? []).map((h: any) => h.zabbix_host_id).filter(Boolean);
+      if (hostIds.length > 0) {
+        const nameByHostId = new Map<string, string>(
+          (hosts ?? []).map((h: any) => [h.zabbix_host_id, h.visible_name || h.name || h.zabbix_host_id]),
+        );
+        const { data: dismissed } = await supabase
+          .from("dismissed_alerts").select("eventid").eq("user_id", user?.id ?? "");
+        const dismissedSet = new Set((dismissed ?? []).map((d: any) => String(d.eventid)));
+        const resp: any = await invokeZabbix({
+          body: { action: "getProblems", params: { hostids: hostIds, recent: true } },
+        });
+        const list: any[] = resp?.data?.result ?? resp?.data ?? [];
+        const arr = Array.isArray(list) ? list : [];
+        for (const p of arr) {
+          if (dismissedSet.has(String(p.eventid))) continue;
+          const text = String(p.name || p.description || "");
+          const hint = getProblemHint(text);
+          const hostKey = (p.hosts?.[0]?.hostid) || (Array.isArray(p.hostids) ? p.hostids[0] : null);
+          activeProblems.push({
+            severityCode: String(p.severity ?? "0"),
+            severity: SEVERITY_RU[String(p.severity ?? "0")] || "—",
+            host: (hostKey && nameByHostId.get(String(hostKey))) || p.hosts?.[0]?.name || "—",
+            name: text || "—",
+            since: p.clock ? new Date(Number(p.clock) * 1000).toISOString() : null,
+            description: hint.description,
+            recommendation: hint.recommendation,
+          });
+        }
+        activeProblems.sort((a, b) => Number(b.severityCode) - Number(a.severityCode));
+      }
+    }
+  } catch (e) {
+    console.warn("activeProblems fetch failed", e);
+  }
+
+  const statusLabelMap: Record<string, string> = {
+    pending: "Ожидает",
+    in_progress: "В работе",
+    completed: "Выполнено",
+    overdue: "Просрочен",
+  };
+
   return {
     header: {
       title: "Протокол выполнения регламентных работ",
@@ -261,10 +315,12 @@ export async function fetchProtocolDocxData(protocolId: string): Promise<Protoco
       periodEnd: (protocol as any).period_end,
       reportDate: format(reportDate, "dd.MM.yyyy"),
       contractNumber: contract?.contract_number ?? null,
+      statusLabel: statusLabelMap[(protocol as any).status] || (protocol as any).status,
     },
     groups,
     tickets,
     ticketsMonthLabel: format(reportDate, "LL.yyyy"),
+    activeProblems,
     signatures: {
       executor: {
         name: (protocol as any).executor_name || execProfile?.full_name || "—",
