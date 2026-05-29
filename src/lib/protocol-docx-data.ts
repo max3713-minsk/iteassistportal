@@ -35,6 +35,16 @@ export interface EquipmentGroup {
   units: EquipmentUnit[];
 }
 
+export interface ActiveProblem {
+  severity: string;        // human label
+  severityCode: string;    // raw 0..5
+  host: string;
+  name: string;
+  since: string | null;    // ISO
+  description: string;     // brief
+  recommendation: string;  // hint
+}
+
 export interface ProtocolDocxData {
   header: {
     title: string;          // "Протокол выполнения регламентных работ"
@@ -46,10 +56,12 @@ export interface ProtocolDocxData {
     periodEnd: string;
     reportDate: string;     // dd.MM.yyyy
     contractNumber?: string | null;
+    statusLabel?: string;   // Выполнено / В работе / ...
   };
   groups: EquipmentGroup[];
   tickets: TicketSummary[];
   ticketsMonthLabel: string;
+  activeProblems: ActiveProblem[];
   signatures: {
     executor: SignatureInfo;
     responsible: SignatureInfo;
