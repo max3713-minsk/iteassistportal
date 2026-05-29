@@ -60,6 +60,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     { k: "Дата отчёта", v: h.reportDate },
   ];
   if (h.contractNumber) infoRows.push({ k: "Договор", v: h.contractNumber });
+  if (h.statusLabel) infoRows.push({ k: "Статус протокола", v: h.statusLabel });
   children.push(
     new Table({
       width: { size: 9360, type: WidthType.DXA },
@@ -166,6 +167,50 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       width: { size: tCols.reduce((a, b) => a + b, 0), type: WidthType.DXA },
       columnWidths: tCols,
       rows: [tHeader, ...tRows],
+    }));
+  }
+
+  // Active monitoring problems (snapshot on report date)
+  if (data.activeProblems && data.activeProblems.length > 0) {
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 400, after: 100 },
+        children: [new TextRun({ text: `Активные проблемы мониторинга на ${data.header.reportDate}`, bold: true, size: 26, font: "Times New Roman" })],
+      }),
+      new Paragraph({
+        spacing: { after: 120 },
+        children: [new TextRun({
+          text: "В перечень включены только нескрытые активные проблемы. Скрытые/подтверждённые ранее не отображаются.",
+          size: 20, font: "Times New Roman", color: "666666", italics: true,
+        })],
+      }),
+    );
+    const pCols = [1500, 1700, 2700, 3460];
+    const pHeader = new TableRow({
+      children: [
+        makeCell("Важность", { bold: true, shading: "FDE2E2", width: pCols[0] }),
+        makeCell("Объект", { bold: true, shading: "FDE2E2", width: pCols[1] }),
+        makeCell("Проблема / описание", { bold: true, shading: "FDE2E2", width: pCols[2] }),
+        makeCell("Рекомендации по устранению", { bold: true, shading: "FDE2E2", width: pCols[3] }),
+      ],
+    });
+    const pRows = data.activeProblems.map((p) => {
+      const since = p.since ? format(new Date(p.since), "dd.MM.yyyy HH:mm") : "";
+      const desc = `${p.name}${since ? ` (с ${since})` : ""}\n${p.description}`;
+      return new TableRow({
+        children: [
+          makeCell(p.severity, { width: pCols[0] }),
+          makeCell(p.host, { width: pCols[1] }),
+          makeCell(desc, { width: pCols[2] }),
+          makeCell(p.recommendation, { width: pCols[3] }),
+        ],
+      });
+    });
+    children.push(new Table({
+      width: { size: pCols.reduce((a, b) => a + b, 0), type: WidthType.DXA },
+      columnWidths: pCols,
+      rows: [pHeader, ...pRows],
     }));
   }
 
