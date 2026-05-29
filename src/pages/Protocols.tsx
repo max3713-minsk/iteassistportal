@@ -137,15 +137,48 @@ export default function Protocols() {
   async function bulkComplete() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
+    const nowIso = new Date().toISOString();
+    // Сначала отмечаем все работы выполненными — завершение протокола
+    // подразумевает 100% выполнение работ.
+    const { error: itemsErr } = await supabase
+      .from("protocol_items")
+      .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+      .in("protocol_id", ids)
+      .neq("status", "completed");
+    if (itemsErr) { toast({ title: "Ошибка", description: itemsErr.message, variant: "destructive" }); return; }
     const { error } = await supabase
       .from("maintenance_protocols")
-      .update({ status: "completed", completed_at: new Date().toISOString(), completed_by: user!.id } as any)
+      .update({ status: "completed", completed_at: nowIso, completed_by: user!.id } as any)
       .in("id", ids);
     if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
     await logAudit({ action: `Массовое завершение протоколов (${ids.length})`, module: "protocols", details: ids.join(", ") });
     toast({ title: `Завершено: ${ids.length}` });
     setSelectedIds(new Set());
     qc.invalidateQueries({ queryKey: ["protocols"] });
+    qc.invalidateQueries({ queryKey: ["protocol-items"] });
+  }
+
+  async function bulkCompleteWorks() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!window.confirm(`Отметить все работы в ${ids.length} протокол(ах) выполненными?`)) return;
+    const nowIso = new Date().toISOString();
+    const { error: itemsErr } = await supabase
+      .from("protocol_items")
+      .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+      .in("protocol_id", ids)
+      .neq("status", "completed");
+    if (itemsErr) { toast({ title: "Ошибка", description: itemsErr.message, variant: "destructive" }); return; }
+    // Переводим протоколы из pending в in_progress (если ещё не завершены)
+    await supabase
+      .from("maintenance_protocols")
+      .update({ status: "in_progress" } as any)
+      .in("id", ids)
+      .neq("status", "completed");
+    await logAudit({ action: `Массовое выполнение работ (${ids.length})`, module: "protocols", details: ids.join(", ") });
+    toast({ title: `Работы отмечены выполненными: ${ids.length}` });
+    qc.invalidateQueries({ queryKey: ["protocols"] });
+    qc.invalidateQueries({ queryKey: ["protocol-items"] });
   }
 
   async function completeAllWorks(id: string) {
