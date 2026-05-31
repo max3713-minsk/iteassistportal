@@ -10,12 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye, BellOff } from "lucide-react";
+import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye, BellOff, Bell } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import { priorityColor, priorityLabel, priorityToIncident, duration } from "./monitoringUtils";
+import { ProblemFlagBadge } from "./ProblemFlagBadge";
+import { invokeZabbix as invokeZbx } from "@/lib/zabbix-invoke";
 
 interface Props {
   problems: any[];
@@ -38,9 +40,40 @@ export default function MonitoringProblems({
   const qc = useQueryClient();
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter || "all");
   const [hostFilter, setHostFilter] = useState("");
-  const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [viewMode, setViewMode] = useState<"active" | "history" | "disabled">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showDismissed, setShowDismissed] = useState(false);
+
+  const { data: disabledTriggers = [], isLoading: disabledLoading, refetch: refetchDisabled } = useQuery({
+    queryKey: ["zabbix", "getDisabledTriggers"],
+    queryFn: async () => {
+      const { data } = await invokeZbx({ body: { action: "getDisabledTriggers" } });
+      const list = (data as any)?.result ?? (data as any)?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: viewMode === "disabled",
+    staleTime: 30000,
+  });
+
+  const enableTriggerMutation = useMutation({
+    mutationFn: async (triggerid: string) => {
+      const { data, error } = await invokeZabbix({
+        body: { action: "setTriggerStatus", params: { triggerids: [triggerid], disabled: false } },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: async (_d, triggerid) => {
+      await logAudit({ action: "Включение триггера Zabbix", module: "monitoring", details: `triggerid=${triggerid}` });
+      toast({ title: "Триггер снова включён" });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getDisabledTriggers"] });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getAlerts"] });
+      refetchDisabled();
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
 
   const problemsArr = Array.isArray(problems) ? problems : [];
   const alertsArr = Array.isArray(alerts) ? alerts : [];
@@ -190,6 +223,11 @@ export default function MonitoringProblems({
           <TabsList>
             <TabsTrigger value="active">Активные проблемы</TabsTrigger>
             <TabsTrigger value="history">Активные триггеры</TabsTrigger>
+            {isStaff && (
+              <TabsTrigger value="disabled">
+                <BellOff className="h-3.5 w-3.5 mr-1" /> Отключённые
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
