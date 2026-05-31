@@ -552,6 +552,17 @@ export default function Protocols() {
       {isStaff && selectedIds.size > 0 && (
         <div className="flex items-center gap-2 mb-3 p-2 bg-primary/5 border border-primary/20 rounded-lg">
           <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          {bulkProgress && (
+            <span className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="inline-block h-2 w-32 rounded bg-muted overflow-hidden">
+                <span
+                  className="block h-full bg-primary transition-all"
+                  style={{ width: `${Math.round((bulkProgress.done / Math.max(1, bulkProgress.total)) * 100)}%` }}
+                />
+              </span>
+              {bulkProgress.label}
+            </span>
+          )}
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="outline" onClick={bulkExportCsv}>
               <FileDown className="h-3.5 w-3.5 mr-1" /> Экспорт CSV
