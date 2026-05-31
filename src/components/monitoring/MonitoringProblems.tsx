@@ -439,6 +439,7 @@ export default function MonitoringProblems({
                     <TableHead>Хост</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Приоритет</TableHead>
+                    <TableHead>Метка</TableHead>
                     <TableHead>Время изменения</TableHead>
                     <TableHead>Длительность</TableHead>
                     {isStaff && <TableHead className="text-right">Действия</TableHead>}
@@ -451,6 +452,13 @@ export default function MonitoringProblems({
                       <TableCell className="max-w-[300px]">{a.description}</TableCell>
                       <TableCell>
                         <Badge variant={priorityColor(a.priority) as any}>{priorityLabel(a.priority)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <ProblemFlagBadge
+                          triggerid={a.triggerid}
+                          host={a.hosts?.[0]?.name || null}
+                          canEdit={isStaff}
+                        />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(parseInt(a.lastchange) * 1000).toLocaleString("ru-RU")}
