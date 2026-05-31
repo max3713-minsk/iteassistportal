@@ -282,7 +282,7 @@ export default function MonitoringProblems({
         </div>
       )}
 
-      {viewMode === "active" ? (
+      {viewMode === "active" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -415,7 +415,8 @@ export default function MonitoringProblems({
             )}
           </CardContent>
         </Card>
-      ) : (
+      )}
+      {viewMode === "history" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -483,6 +484,77 @@ export default function MonitoringProblems({
                               className="text-orange-500 hover:text-orange-500"
                             >
                               <BellOff className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      {viewMode === "disabled" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Отключённые триггеры ({disabledTriggers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {disabledLoading ? (
+              <div className="space-y-3 py-4">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+              </div>
+            ) : disabledTriggers.length === 0 ? (
+              <div className="text-center py-8">
+                <BellOff className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">Отключённых триггеров нет</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Хост</TableHead>
+                    <TableHead>Описание</TableHead>
+                    <TableHead>Приоритет</TableHead>
+                    <TableHead>Метка</TableHead>
+                    {isStaff && <TableHead className="text-right">Действия</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {disabledTriggers.map((t: any) => (
+                    <TableRow key={t.triggerid} className="opacity-80">
+                      <TableCell className="font-medium">{t.hosts?.[0]?.name || "—"}</TableCell>
+                      <TableCell className="max-w-[400px]">{t.description}</TableCell>
+                      <TableCell>
+                        <Badge variant={priorityColor(t.priority) as any}>{priorityLabel(t.priority)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <ProblemFlagBadge
+                          triggerid={t.triggerid}
+                          host={t.hosts?.[0]?.name || null}
+                          canEdit={isStaff}
+                        />
+                      </TableCell>
+                      {isStaff && (
+                        <TableCell className="text-right">
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Включить триггер в Zabbix"
+                              onClick={() => {
+                                if (window.confirm(`Включить триггер «${t.description}» обратно?`)) {
+                                  enableTriggerMutation.mutate(t.triggerid);
+                                }
+                              }}
+                              disabled={enableTriggerMutation.isPending}
+                              className="text-emerald-600 hover:text-emerald-600"
+                            >
+                              <Bell className="h-4 w-4" />
                             </Button>
                           )}
                         </TableCell>
