@@ -1459,6 +1459,45 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_flags: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          eventid: string | null
+          flag: Database["public"]["Enums"]["problem_flag_level"]
+          host: string | null
+          id: string
+          triggerid: string | null
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          eventid?: string | null
+          flag?: Database["public"]["Enums"]["problem_flag_level"]
+          host?: string | null
+          id?: string
+          triggerid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          eventid?: string | null
+          flag?: Database["public"]["Enums"]["problem_flag_level"]
+          host?: string | null
+          id?: string
+          triggerid?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -2531,6 +2570,7 @@ export type Database = {
         | "semi_annual"
         | "on_request"
       monitoring_protocol: "SNMP" | "IPMI" | "SSH" | "HTTP" | "HTTPS" | "Agent"
+      problem_flag_level: "important" | "attention" | "minor"
       protocol_status: "pending" | "in_progress" | "completed" | "overdue"
       ticket_link_kind:
         | "related"
@@ -2696,6 +2736,7 @@ export const Constants = {
         "on_request",
       ],
       monitoring_protocol: ["SNMP", "IPMI", "SSH", "HTTP", "HTTPS", "Agent"],
+      problem_flag_level: ["important", "attention", "minor"],
       protocol_status: ["pending", "in_progress", "completed", "overdue"],
       ticket_link_kind: [
         "related",

@@ -270,6 +270,20 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
         },
         cacheTtl: 30000,
       };
+    case "getDisabledTriggers":
+      return {
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "description", "priority", "status", "lastchange", "templateid"],
+          selectHosts: ["hostid", "name"],
+          filter: { status: 1 },
+          expandDescription: true,
+          sortfield: "description",
+          limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     default:
       return null;
   }

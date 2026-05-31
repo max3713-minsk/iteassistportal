@@ -139,12 +139,12 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
                     <UserCheck className="h-4 w-4" />
                   </Button>
                 )}
-                {onCompleteAllWorks && p.status !== "completed" && (
+                {onCompleteAllWorks && (
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => onCompleteAllWorks(p.id)}
-                    title="Выполнить все работы"
+                    title={p.status === "completed" ? "Перепроверить: отметить все работы выполненными" : "Выполнить все работы"}
                   >
                     <ListChecks className="h-4 w-4 text-emerald-500" />
                   </Button>

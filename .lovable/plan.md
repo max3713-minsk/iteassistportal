@@ -1,75 +1,52 @@
-## Волна 2 — Мониторинг
+## Объём работ
 
-Цель: дать админу/инженеру управлять метриками шаблонов без правки самого Zabbix, останавливать «зависшие» скрипты, полностью удалять алерты, и автоматически подтягивать описания OID из открытых источников.
+### 1. Протоколы — кнопка «Выполнить все работы» во вкладке «Завершённые»
+`src/components/protocols/ProtocolList.tsx` + `src/pages/Protocols.tsx`: показывать зелёную кнопку `ListChecks` для всех статусов, включая `completed`. Дополнительная проверка перед отправкой в облако.
 
-### 1. БД — новые таблицы (миграция)
+### 2. Заявки — фикс выпадающего меню «Назначить инженера»
+`src/components/tickets/TicketDetailDialog.tsx` (и/или Kanban): у `<Select>` добавить `SelectContent` с `position="popper"`, `className="z-[60] max-h-[300px] overflow-y-auto"`. Список выпадает за рамки диалога — нужен portal + ограничение высоты со скроллом.
 
-**`item_overrides`** — переопределения метрик (без правки самого Zabbix-шаблона):
-- `zabbix_host_id text`, `item_key text` (уникальная пара)
-- `disabled boolean` — скрыть из портала
-- `custom_display_name text` — переопределить имя
-- `custom_oid text` — для SNMP: альтернативный OID (информативно)
-- `notes text`, `created_by`, timestamps
-- RLS: SELECT всем authenticated, ALL admin/engineer
+### 3. Индикатор прогресса выгрузки в облако
+`src/components/SeafileSendButton.tsx` + `src/lib/seafile.ts`:
+- Глобальный toast с прогрессом `N из M протоколов` при пакетной отправке.
+- Спиннер + блокировка повторного клика.
+- Для одиночной отправки — `toast.loading` с этапами: «Формирование DOCX → Сбор графиков → Загрузка в Seafile».
+- Прогресс через callback `onProgress(step, total, label)`.
 
-**`mib_oid_cache`** — кэш ответов OIDs.online / Circitor:
-- `oid text PK`, `name text`, `description text`, `source text` (oid.online/circitor/manual), `fetched_at`
-- RLS: SELECT всем authenticated, INSERT/UPDATE admin/engineer
+### 4. Флаги/ярлыки на активные проблемы и алерты + комментарии
+**Миграция** `problem_flags`:
+- `id`, `event_id` (zabbix eventid, text), `trigger_id`, `host_id`, `flag` (enum: `important`/`attention`/`minor`), `comment` (text), `created_by`, `created_at`, `updated_at`.
+- RLS: чтение всем authenticated, запись — admin/engineer.
+- GRANT на authenticated/service_role.
 
-**`automation_logs`** — добавить колонки:
-- `cancel_requested boolean default false`
-- `cancelled_at timestamptz`
-- `cancelled_by uuid`
+UI в `MonitoringProblems.tsx`:
+- Колонка «Флаг» с цветным бейджем (красный/жёлтый/серый).
+- Popover для выбора флага и ввода комментария.
+- Иконка-индикатор если есть комментарий, тултип показывает автора и текст.
+- Флаг попадает в DOCX в колонку «Рекомендации/Заметки».
 
-### 2. Edge функции
+### 5. Отключённые триггеры — отдельная вкладка с возможностью включить
+`MonitoringProblems.tsx`: новая вкладка «Отключённые триггеры».
+- Загружает триггеры со `status=1` через zabbix-proxy (`trigger.get` фильтр `status=1`).
+- Кнопка «Включить» вызывает `setTriggerStatus` с `status=0` (уже реализовано).
+- Audit log записи.
 
-**`mib-oid-lookup`** (новая) — принимает `{ oid }` или `{ oids: [] }`. Сначала смотрит `mib_oid_cache`, затем по очереди пробует:
-1. `https://oid-rep.orange-labs.fr/get/{oid}` (open MIB browser, JSON-ish HTML — парсим)
-2. `https://www.circitor.fr/Mibs/Html/...` — fallback search
-3. При неудаче — кэшируем `not_found`
+### 6. Даты в DOCX — только отчётная
+`src/lib/export-protocol-docx.ts` + `src/lib/protocol-docx-data.ts`:
+- Убрать строки «Дата отчёта» из шапки → переименовать в «Отчётная дата» (единственная дата).
+- Убрать «Сформировано: {exportedAt}» из футера — оставить только `exportedByName`.
+- В таблице работ колонка «Дата»: вместо `it.completedAt` подставлять отчётную дату (`reportDate` / `period_end`).
 
-Возвращает `{ oid, name, description, source }`. Кэш TTL 30 дней.
+### 7. Seafile путь по отчётной дате
+`supabase/functions/protocol-export-seafile/index.ts`:
+- Новая структура: `/Протоколы/{year}/{month_ru}/{frequency_ru}/{отчётная_дата}/`
+- `year` и `month` берутся из `period_end` (отчётная дата), не из `created_at`.
+- `month_ru` — массив русских месяцев `["Январь", ...]`.
+- Удалить уровень с организацией? — **оставить опционально**: путь `/Протоколы/{org}/{year}/{month_ru}/{frequency_ru}/{отчётная_дата}/` для разделения по заказчикам. Уточнить если нужно убрать.
 
-**`zabbix-proxy`** — добавить действия:
-- `disableItem` / `enableItem`: вызов `item.update` с `status=1/0`
-- `updateItemKey`: `item.update` `{key_, name?}` — для смены OID/ключа
+## Технические замечания
+- Все изменения — обратно-совместимые, миграции только добавляют таблицу `problem_flags`.
+- Edge функция `protocol-export-seafile` будет передеплоена автоматически.
+- Тип `ProtocolDocxData` получит поле `reportDate` (отчётная дата) — уже есть `header.reportDate`, используем его как единственную дату.
 
-Все действия требуют admin/engineer (валидируем по `user_roles`).
-
-### 3. Frontend
-
-**`HostItemsView.tsx`** — для admin/engineer на каждой метрике:
-- Меню «⋮»: «Скрыть на портале», «Переименовать», «Изменить ключ/OID», «Подсказка OID» (вызывает `mib-oid-lookup` и показывает описание)
-- Скрытые метрики (по `item_overrides.disabled=true`) не отображаются обычным пользователям; для admin/engineer показываются с серым бейджем «скрыто» и кнопкой «вернуть».
-- Кнопка «Показать скрытые» в шапке категории.
-
-**`MonitoringAutomation.tsx`** — журнал выполнения:
-- Для записей `status=running` — кнопка «Отменить»: ставит `cancel_requested=true`, `cancelled_at=now()`, статус → `cancelled`. Это «логическая» отмена (Zabbix API не умеет отменять `script.execute`), но убирает «вечно выполняется» из UI и записывает в audit.
-- Бейдж «Отменено» (вариант `outline`).
-
-**`MonitoringProblems.tsx`** — массовые действия по алертам:
-- Уже есть `massAcknowledge`. Добавить чекбоксы + sticky-панель: «Подтвердить», «Закрыть» (close=true), «Создать заявку из выбранных», «Удалить из списка» (= closeEvent + локальная пометка `dismissed` в новой таблице `dismissed_alerts(eventid, user_id)` чтобы не показывать снова даже если в Zabbix остался).
-
-### 4. Применение локально (bash)
-
-После merge:
-```bash
-git fetch origin && git diff origin/main -- \
-  supabase/migrations/ \
-  supabase/functions/mib-oid-lookup/index.ts \
-  supabase/functions/zabbix-proxy/index.ts \
-  src/components/monitoring/HostItemsView.tsx \
-  src/components/monitoring/MonitoringAutomation.tsx \
-  src/components/monitoring/MonitoringProblems.tsx | git apply -3
-
-supabase db push   # применит миграцию локально
-supabase functions deploy mib-oid-lookup zabbix-proxy
-```
-
-### Объём и риски
-- ~1 миграция, 1 новая edge-функция, правки в zabbix-proxy, 3 React-компонента.
-- OIDs.online парсинг — HTML, иногда меняется разметка; на этот случай возвращаем `source: "not_found"` и даём ручной ввод.
-- Script cancel — «логическая» (это техническое ограничение Zabbix API), честно описано в подсказке UI.
-
-### Что НЕ входит в эту волну
-- Волна 3: организации «Архив», прямое удаление, дружелюбный UI миграций (по согласованию делаем отдельно).
+Подтверди план или скажи что поправить (особенно п.7 — оставлять ли организацию в пути).

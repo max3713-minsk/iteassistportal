@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Loader2, FolderArchive, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { sendToSeafile, type SeafileKind } from "@/lib/seafile";
 
 interface Props extends Omit<ButtonProps, "onClick" | "children"> {
@@ -16,9 +17,12 @@ export function SeafileSendButton({ kind, getPayload, label = "В Seafile", ...r
 
   const handle = async () => {
     setBusy(true);
+    const tid = sonnerToast.loading("Подготовка файла…", { description: "Формируем документ для отправки" });
     try {
       const payload = await getPayload();
+      sonnerToast.loading("Отправка в Seafile…", { id: tid, description: payload.filename });
       const res = await sendToSeafile({ kind, ...payload });
+      sonnerToast.success("Файл отправлен в Seafile", { id: tid, description: `${res.folder}/${res.filename}` });
       toast({
         title: "Файл отправлен в Seafile",
         description: (
@@ -33,6 +37,7 @@ export function SeafileSendButton({ kind, getPayload, label = "В Seafile", ...r
         ),
       });
     } catch (e: any) {
+      sonnerToast.error("Ошибка отправки в Seafile", { id: tid, description: e.message });
       toast({ title: "Ошибка отправки в Seafile", description: e.message, variant: "destructive" });
     } finally {
       setBusy(false);
