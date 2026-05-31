@@ -57,7 +57,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
     { k: "Объект (ЦОД)", v: h.objectName },
     { k: "Регламент (тип работ)", v: h.frequencyLabel },
     { k: "Период работ", v: period },
-    { k: "Дата отчёта", v: h.reportDate },
+    { k: "Отчётная дата", v: h.reportDate },
   ];
   if (h.contractNumber) infoRows.push({ k: "Договор", v: h.contractNumber });
   if (h.statusLabel) infoRows.push({ k: "Статус протокола", v: h.statusLabel });
@@ -116,7 +116,9 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
       });
       const rows = unit.items.map((it, idx) => {
         const statusText = it.status === "completed" ? "Выполнено" : "Не выполнено";
-        const dateText = it.completedAt ? format(new Date(it.completedAt), "dd.MM.yyyy") : "";
+        // По требованию: в графе «Дата» отображается отчётная дата протокола,
+        // а не дата создания протокола и не дата фактического выполнения работы.
+        const dateText = it.status === "completed" ? h.reportDate : "";
         return new TableRow({
           children: [
             makeCell(String(idx + 1), { width: colWidths[0] }),
@@ -320,7 +322,7 @@ export async function buildProtocolDocxBlob(data: ProtocolDocxData): Promise<Blo
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [new TextRun({
-                text: `Сформировано: ${format(new Date(data.exportMeta.exportedAt), "dd.MM.yyyy HH:mm")} • ${data.exportMeta.exportedByName} (${data.exportMeta.exportedByLogin})`,
+                text: `Подготовил: ${data.exportMeta.exportedByName} (${data.exportMeta.exportedByLogin})`,
                 size: 18, font: "Times New Roman", color: "999999",
               })],
             }),
