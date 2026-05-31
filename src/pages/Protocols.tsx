@@ -45,6 +45,7 @@ export default function Protocols() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const [signersFor, setSignersFor] = useState<string | null>(null);
   const [bulkSignersOpen, setBulkSignersOpen] = useState(false);
 
@@ -243,6 +244,7 @@ export default function Protocols() {
       return;
     }
     setBulkBusy(true);
+    setBulkProgress({ done: 0, total: ids.length, label: "Подготовка…" });
     try {
       const { data: setting } = await supabase
         .from("integration_settings")
@@ -256,15 +258,19 @@ export default function Protocols() {
 
       let okCount = 0;
       let errCount = 0;
-      for (const id of ids) {
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
         try {
           const proto = protocols.find((p) => p.id === id);
+          const siteName0 = proto?.sites?.name ?? "site";
+          setBulkProgress({ done: i, total: ids.length, label: `Подготовка: ${siteName0}` });
           const data = await fetchProtocolDocxData(id);
           const blob = await buildProtocolDocxBlob(data);
           const freqLabel = FREQ_LBL[proto?.frequency ?? ""] ?? proto?.frequency ?? "protocol";
           const siteName = proto?.sites?.name ?? "site";
           const dateStr = proto?.period_end ?? format(new Date(), "yyyy-MM-dd");
           const filename = `Протокол_${freqLabel}_${siteName}_${dateStr}.docx`.replace(/[/\\:*?"<>|]/g, "_");
+          setBulkProgress({ done: i, total: ids.length, label: `Загрузка в облако: ${siteName} (${i + 1}/${ids.length})` });
           await sendToSeafile({
             kind: "protocol",
             blob,
@@ -275,6 +281,12 @@ export default function Protocols() {
               frequency: proto?.frequency,
               period_start: proto?.period_start,
               period_end: proto?.period_end,
+              // Путь в Seafile должен строиться по отчётной дате (period_end),
+              // а не по дате выгрузки.
+              date: dateStr,
+              year: dateStr.slice(0, 4),
+              month: dateStr.slice(5, 7),
+              period: dateStr,
             },
           });
           okCount++;
@@ -282,6 +294,7 @@ export default function Protocols() {
           errCount++;
           console.error("Seafile upload failed for", id, err);
         }
+        setBulkProgress({ done: i + 1, total: ids.length, label: `Готово: ${i + 1}/${ids.length}` });
       }
       await logAudit({ action: `Массовая отправка протоколов в облако (${okCount}/${ids.length})`, module: "protocols", details: ids.join(", ") });
       toast({
@@ -291,6 +304,7 @@ export default function Protocols() {
       if (errCount === 0) setSelectedIds(new Set());
     } finally {
       setBulkBusy(false);
+      setBulkProgress(null);
     }
   }
 
@@ -543,7 +557,7 @@ export default function Protocols() {
               <FileDown className="h-3.5 w-3.5 mr-1" /> Экспорт CSV
             </Button>
             <Button size="sm" variant="outline" onClick={bulkSendSeafile} disabled={bulkBusy}>
-              <Cloud className="h-3.5 w-3.5 mr-1" /> В облако
+              <Cloud className="h-3.5 w-3.5 mr-1" /> {bulkBusy && bulkProgress ? `${bulkProgress.done}/${bulkProgress.total}` : "В облако"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setBulkSignersOpen(true)}>
               <UserCheck className="h-3.5 w-3.5 mr-1" /> Подписанты
