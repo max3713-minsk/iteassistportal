@@ -554,7 +554,11 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Выберите инженера" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent
+                      position="popper"
+                      sideOffset={4}
+                      className="z-[100] max-h-[280px] overflow-y-auto"
+                    >
                       {profiles.map((p: any) => (
                         <SelectItem key={p.user_id} value={p.user_id}>
                           {p.full_name ?? p.user_id.slice(0, 8)}

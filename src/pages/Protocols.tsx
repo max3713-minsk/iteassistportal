@@ -548,15 +548,13 @@ export default function Protocols() {
             <Button size="sm" variant="outline" onClick={() => setBulkSignersOpen(true)}>
               <UserCheck className="h-3.5 w-3.5 mr-1" /> Подписанты
             </Button>
+            <Button size="sm" variant="outline" onClick={bulkCompleteWorks}>
+              <ListChecks className="h-3.5 w-3.5 mr-1" /> Выполнить все работы
+            </Button>
             {activeTab !== "completed" && (
-              <>
-                <Button size="sm" variant="outline" onClick={bulkCompleteWorks}>
-                  <ListChecks className="h-3.5 w-3.5 mr-1" /> Выполнить все работы
-                </Button>
-                <Button size="sm" onClick={bulkComplete}>
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Завершить
-                </Button>
-              </>
+              <Button size="sm" onClick={bulkComplete}>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Завершить
+              </Button>
             )}
             <Button size="sm" variant="destructive" onClick={bulkDelete} disabled={bulkBusy}>
               <Trash2 className="h-3.5 w-3.5 mr-1" /> Удалить
