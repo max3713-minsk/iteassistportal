@@ -324,7 +324,17 @@ export default function WorkScopeManager() {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{cat?.name ?? "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {eq ? `🖥 ${eq.name}` : site ? `🏢 ${site.name}` : "—"}
+                      {(() => {
+                        const ids = (t.equipment_ids ?? []).filter(Boolean);
+                        if (ids.length > 1) {
+                          return `🖥 ${ids.length} ед.`;
+                        }
+                        if (ids.length === 1) {
+                          const e = equipment.find((x: any) => x.id === ids[0]);
+                          return e ? `🖥 ${e.name}` : "—";
+                        }
+                        return eq ? `🖥 ${eq.name}` : site ? `🏢 ${site.name}` : "—";
+                      })()}
                     </TableCell>
                     {canEdit && (
                       <TableCell>
