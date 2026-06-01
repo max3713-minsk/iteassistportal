@@ -119,7 +119,7 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, category_id, equipment_categories(name)")
+        .select("id, title, description, category_id, equipment_id, equipment_ids, equipment_categories(name)")
         .eq("frequency", frequency)
         .order("title");
       return data ?? [];
@@ -222,7 +222,12 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
       const items: any[] = [];
       for (const eq of eqs) {
         for (const task of ts) {
-          if (!task.category_id || task.category_id === eq.category_id) {
+          const ids = (task as any).equipment_ids as string[] | null;
+          let match = true;
+          if (ids && ids.length > 0) match = ids.includes(eq.id);
+          else if ((task as any).equipment_id) match = (task as any).equipment_id === eq.id;
+          else if (task.category_id) match = task.category_id === eq.category_id;
+          if (match) {
             items.push({
               protocol_id: protocol.id,
               equipment_id: eq.id,

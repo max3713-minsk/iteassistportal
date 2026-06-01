@@ -107,7 +107,7 @@ export function useAutoProtocols() {
           // Get equipment + tasks and generate items
           const [{ data: equipment }, { data: tasks }] = await Promise.all([
             supabase.from("equipment").select("id, category_id").eq("site_id", site.id),
-            supabase.from("maintenance_tasks").select("id, category_id").eq("frequency", freq),
+            supabase.from("maintenance_tasks").select("id, category_id, equipment_id, equipment_ids").eq("frequency", freq),
           ]);
 
           if (!equipment?.length || !tasks?.length) continue;
@@ -115,9 +115,15 @@ export function useAutoProtocols() {
           const items: { protocol_id: string; equipment_id: string; task_id: string }[] = [];
           for (const eq of equipment) {
             for (const task of tasks) {
-              if (!task.category_id || task.category_id === eq.category_id) {
-                items.push({ protocol_id: protocol.id, equipment_id: eq.id, task_id: task.id });
+              const ids = (task as any).equipment_ids as string[] | null;
+              if (ids && ids.length > 0) {
+                if (!ids.includes(eq.id)) continue;
+              } else if ((task as any).equipment_id) {
+                if ((task as any).equipment_id !== eq.id) continue;
+              } else if (task.category_id && task.category_id !== eq.category_id) {
+                continue;
               }
+              items.push({ protocol_id: protocol.id, equipment_id: eq.id, task_id: task.id });
             }
           }
 

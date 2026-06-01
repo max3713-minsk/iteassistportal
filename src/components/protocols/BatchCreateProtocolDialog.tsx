@@ -148,7 +148,7 @@ export default function BatchCreateProtocolDialog() {
         if (!taskCache.has(p.frequency)) {
           const { data } = await supabase
             .from("maintenance_tasks")
-            .select("id, title, category_id")
+            .select("id, title, category_id, equipment_id, equipment_ids")
             .eq("frequency", p.frequency)
             .eq("is_active", true);
           taskCache.set(p.frequency, data ?? []);
@@ -180,7 +180,12 @@ export default function BatchCreateProtocolDialog() {
         const items: any[] = [];
         for (const eq of equipment) {
           for (const t of tasks) {
-            if (!t.category_id || t.category_id === eq.category_id) {
+            const ids = (t as any).equipment_ids as string[] | null;
+            let match = true;
+            if (ids && ids.length > 0) match = ids.includes(eq.id);
+            else if ((t as any).equipment_id) match = (t as any).equipment_id === eq.id;
+            else if (t.category_id) match = t.category_id === eq.category_id;
+            if (match) {
               items.push({
                 protocol_id: protocol.id,
                 equipment_id: eq.id,
