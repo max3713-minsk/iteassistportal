@@ -16,7 +16,7 @@ acls:
 
 services:
   - name: auth-v1
-    url: http://auth:9999
+    url: http://app_auth:9999
     routes:
       - name: auth-v1-all
         strip_path: true
@@ -35,7 +35,7 @@ services:
             - admin
 
   - name: rest-v1
-    url: http://rest:3000
+    url: http://app_rest:3000
     routes:
       - name: rest-v1-all
         strip_path: true

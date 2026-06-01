@@ -92,19 +92,6 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): { 
       return { method: "graph.get", params: { output: ["graphid","name","width","height"], selectHosts: ["hostid","name"], sortfield: "name", ...extraParams }, cacheTtl: 60000 };
     case "getScripts":
       return { method: "script.get", params: { output: ["scriptid","name","command","description","type","scope"], selectGroups: ["groupid","name"], ...extraParams }, cacheTtl: 60000 };
-    case "getTemplateDetail":
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-      if (extraParams && extraParams.templateid) {
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-        extraParams.templateids = Array.isArray(extraParams.templateid) ? extraParams.templateid : [extraParams.templateid];
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-        delete extraParams.templateid;
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-      }
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-      return { method: "template.get", params: { output: "extend", ...extraParams }, cacheTtl: 60000 };
-      console.log("Requested templateid:", extraParams.templateid, "converted to:", extraParams.templateids);
-
     case "getHostGroups":
       return { method: "hostgroup.get", params: { output: ["groupid","name"], sortfield: "name", ...extraParams }, cacheTtl: 120000 };
     case "getEvents":
