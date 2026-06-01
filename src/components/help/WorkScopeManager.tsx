@@ -407,16 +407,49 @@ export default function WorkScopeManager() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Конкретное оборудование</Label>
-                  <Select value={editing.equipment_id ?? "__none__"} onValueChange={(v) => setEditing((p) => ({ ...p!, equipment_id: v === "__none__" ? null : v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Не привязано —</SelectItem>
-                      {equipment
-                        .filter((e: any) => !editing.site_id || e.site_id === editing.site_id)
-                        .map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label>Оборудование (множ. выбор)</Label>
+                  {(() => {
+                    const list = (equipment as any[]).filter((e) => !editing.site_id || e.site_id === editing.site_id)
+                      .filter((e) => !editing.category_id || e.category_id === editing.category_id);
+                    const selectedIds = new Set((editing.equipment_ids ?? (editing.equipment_id ? [editing.equipment_id] : [])).filter(Boolean) as string[]);
+                    const allSelected = list.length > 0 && list.every((e: any) => selectedIds.has(e.id));
+                    const toggleAll = () => {
+                      const next = allSelected ? [] : list.map((e: any) => e.id);
+                      setEditing((p) => ({ ...p!, equipment_ids: next, equipment_id: null }));
+                    };
+                    const toggleOne = (id: string) => {
+                      const next = new Set(selectedIds);
+                      if (next.has(id)) next.delete(id); else next.add(id);
+                      setEditing((p) => ({ ...p!, equipment_ids: Array.from(next), equipment_id: null }));
+                    };
+                    return (
+                      <div className="border rounded-md">
+                        <div className="flex items-center gap-2 px-2 py-1.5 border-b text-xs">
+                          <Checkbox checked={allSelected} onCheckedChange={toggleAll} id="ws-all-eq" />
+                          <label htmlFor="ws-all-eq" className="cursor-pointer">
+                            Выбрать все ({list.length}) {selectedIds.size > 0 && `· выбрано: ${selectedIds.size}`}
+                          </label>
+                        </div>
+                        <ScrollArea className="h-[140px]">
+                          <div className="p-1">
+                            {list.length === 0 ? (
+                              <div className="text-xs text-muted-foreground py-3 text-center">
+                                Нет оборудования по выбранным фильтрам
+                              </div>
+                            ) : list.map((e: any) => (
+                              <label key={e.id} className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted/50 rounded cursor-pointer">
+                                <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleOne(e.id)} />
+                                <span className="truncate">{e.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                        <p className="text-[10px] text-muted-foreground px-2 py-1 border-t">
+                          Пусто = применять ко всему оборудованию выбранной категории/ЦОД.
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
