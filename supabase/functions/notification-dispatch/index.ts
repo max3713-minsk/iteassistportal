@@ -425,9 +425,42 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // === AUTH GUARD ===
+    // Reject anonymous callers. Accept either a service-role bearer (for
+    // server-to-server calls from other edge functions / cron) or an
+    // authenticated end-user JWT.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+    const isServiceRole = !!token && token === SERVICE_KEY;
+
+    let callerUserId: string | null = null;
+    if (!isServiceRole) {
+      if (!token || token === ANON_KEY) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const authClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        ANON_KEY || SERVICE_KEY,
+        { global: { headers: { Authorization: `Bearer ${token}` } } },
+      );
+      const { data: userData, error: userErr } = await authClient.auth.getUser(token);
+      if (userErr || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      callerUserId = userData.user.id;
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      SERVICE_KEY,
     );
 
     const event = (await req.json()) as EventInput;
@@ -439,6 +472,12 @@ Deno.serve(async (req) => {
     if (event.test_channel_id) {
       const { data: ch } = await supabase.from("notification_channels").select("*").eq("id", event.test_channel_id).maybeSingle();
       if (!ch) return new Response(JSON.stringify({ error: "Канал не найден" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Only the channel owner (or a service-role caller) may test a channel.
+      if (!isServiceRole && ch.user_id !== callerUserId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const r = await deliverToChannel(supabase, ch.user_id, ch, event);
       if (r.ok) {
         await supabase.from("notification_channels").update({
