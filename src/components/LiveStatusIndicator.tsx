@@ -14,7 +14,7 @@ export function LiveStatusIndicator() {
   const { active, isLoading } = useZabbixConnection();
   const navigate = useNavigate();
 
-  const { data, isError } = useQuery({
+  const { data, isError, isFetching } = useQuery({
     enabled: !!active?.id,
     queryKey: ["live-status", active?.id],
     refetchInterval: 30_000,
@@ -34,9 +34,14 @@ export function LiveStatusIndicator() {
 
   const offline = isError || !data;
   const hasIssues = !!data && data.problems > 0;
-  const dotColor = offline
-    ? "bg-muted-foreground"
-    : hasIssues
+  // Indicator colour reflects collector connectivity, not problem count:
+  //  • green  — connected
+  //  • red    — collector unavailable
+  //  • yellow — connection attempt in progress
+  const connecting = isFetching && !data && !isError;
+  const dotColor = connecting
+    ? "bg-yellow-500"
+    : offline
       ? "bg-red-500"
       : "bg-emerald-500";
 
@@ -53,7 +58,7 @@ export function LiveStatusIndicator() {
           )}
         >
           <span className="relative flex h-2 w-2">
-            {!offline && (
+            {(!offline || connecting) && (
               <span className={cn(
                 "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
                 dotColor,
@@ -82,9 +87,11 @@ export function LiveStatusIndicator() {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        {offline
-          ? "Подключение к Zabbix недоступно"
-          : `${data.hosts} хостов · ${data.problems} активных проблем`}
+        {connecting
+          ? "Подключение к Zabbix…"
+          : offline
+            ? "Коллектор Zabbix недоступен"
+            : `Подключено · ${data.hosts} хостов · ${data.problems} активных проблем`}
       </TooltipContent>
     </Tooltip>
   );
