@@ -172,10 +172,20 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const { data: profiles = [] } = useQuery({
     queryKey: ["engineer-profiles"],
     queryFn: async () => {
+      // user_roles has no FK to profiles, so PostgREST embed doesn't work.
+      // Fetch role holders first, then their profiles.
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["admin", "engineer"]);
+      const ids = Array.from(new Set((roles ?? []).map((r: any) => r.user_id))).filter(Boolean);
+      if (!ids.length) return [];
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, full_name, user_roles!inner(role)")
-        .in("user_roles.role", ["admin", "engineer"]);
+        .select("user_id, full_name")
+        .in("user_id", ids)
+        .eq("is_active", true)
+        .order("full_name");
       return data ?? [];
     },
     enabled: hasRole("admin"),
