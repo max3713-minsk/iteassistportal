@@ -19,6 +19,8 @@ import { Plus, Pencil, Trash2, Upload, FileDown, Search, Filter } from "lucide-r
 import { frequencyLabels, frequencyColors, type FrequencyType } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Frequency = FrequencyType;
 const FREQS: Frequency[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual", "on_request"];
@@ -31,6 +33,7 @@ interface TaskRow {
   category_id: string | null;
   site_id: string | null;
   equipment_id: string | null;
+  equipment_ids: string[] | null;
   is_active: boolean;
   is_system: boolean;
 }
@@ -86,7 +89,7 @@ export default function WorkScopeManager() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, site_id, equipment_id, is_active, is_system")
+        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system")
         .order("title");
       if (error) throw error;
       return (data ?? []) as TaskRow[];
@@ -109,13 +112,15 @@ export default function WorkScopeManager() {
 
   const saveMutation = useMutation({
     mutationFn: async (row: Partial<TaskRow>) => {
+      const eqIds = (row.equipment_ids ?? []).filter(Boolean);
       const payload = {
         title: row.title!,
         description: row.description || null,
         frequency: row.frequency!,
         category_id: row.category_id || null,
         site_id: row.site_id || null,
-        equipment_id: row.equipment_id || null,
+        equipment_id: eqIds.length === 1 ? eqIds[0] : null,
+        equipment_ids: eqIds,
         is_active: row.is_active ?? true,
       };
       if (row.id) {
