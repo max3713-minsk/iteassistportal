@@ -906,6 +906,7 @@ export type Database = {
           created_at: string
           description: string | null
           equipment_id: string | null
+          equipment_ids: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id: string
           is_active: boolean
@@ -923,6 +924,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           equipment_id?: string | null
+          equipment_ids?: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           is_active?: boolean
@@ -940,6 +942,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           equipment_id?: string | null
+          equipment_ids?: string[]
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           is_active?: boolean
