@@ -16,10 +16,8 @@ export default function AppLayout() {
         <MobileNav />
         <main className="flex-1 overflow-auto relative">
           <DynamicIsland />
-          <div className="hidden lg:flex items-center justify-end gap-3 px-6 -mt-12 mb-2 relative z-30 pointer-events-none">
-            <div className="pointer-events-auto">
-              <ZabbixConnectionPicker />
-            </div>
+          <div className="hidden lg:flex items-center justify-end gap-3 px-6 mt-2">
+            <ZabbixConnectionPicker />
           </div>
           <div className="p-4 md:p-6 lg:p-8 pt-2">
             <PageTransition>
