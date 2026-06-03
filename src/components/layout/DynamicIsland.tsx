@@ -1,0 +1,252 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useZabbixConnection } from "@/hooks/useZabbixConnection";
+import { invokeZabbix } from "@/lib/zabbix-invoke";
+import { cn } from "@/lib/utils";
+import {
+  Server, AlertTriangle, Bell, Ticket, MessageSquare, UserPlus, Sparkles,
+} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+/**
+ * Global Dynamic Island: a sticky pill at the top-right of every page.
+ * Combines:
+ *  • live clock (HH:MM:SS) + weekday/date tooltip
+ *  • Zabbix collector heartbeat (hosts / active problems)
+ *  • rotating ticker of recent notifications (tickets, mentions, alerts, users)
+ *  • realtime "burst" expand when a brand-new notification arrives
+ */
+
+const WEEKDAYS = ["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const pad = (n: number) => n.toString().padStart(2, "0");
+
+type NotifRow = {
+  id: string;
+  title: string | null;
+  body: string | null;
+  event_type: string | null;
+  created_at: string;
+  is_read: boolean | null;
+};
+
+function iconFor(eventType: string | null) {
+  const t = (eventType || "").toLowerCase();
+  if (t.includes("ticket")) return Ticket;
+  if (t.includes("mention") || t.includes("comment") || t.includes("message")) return MessageSquare;
+  if (t.includes("alert") || t.includes("problem") || t.includes("incident")) return AlertTriangle;
+  if (t.includes("user")) return UserPlus;
+  return Bell;
+}
+
+export function DynamicIsland() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { active } = useZabbixConnection();
+
+  // --- live clock ---
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const dateLong = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+
+  // --- zabbix status ---
+  const { data: zbx, isError: zbxErr, isFetching: zbxFetching } = useQuery({
+    enabled: !!active?.id,
+    queryKey: ["island-zabbix", active?.id],
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+    queryFn: async () => {
+      const [h, p] = await Promise.all([
+        invokeZabbix({ body: { action: "getHosts" } }),
+        invokeZabbix({ body: { action: "getProblems" } }),
+      ]);
+      return {
+        hosts: ((h.data?.result as unknown[]) ?? []).length,
+        problems: ((p.data?.result as unknown[]) ?? []).length,
+      };
+    },
+  });
+  const zbxOffline = !!active && (zbxErr || !zbx);
+  const zbxConnecting = !!active && zbxFetching && !zbx && !zbxErr;
+  const dotColor = !active
+    ? "bg-muted-foreground/40"
+    : zbxConnecting ? "bg-yellow-500"
+    : zbxOffline ? "bg-red-500"
+    : "bg-emerald-500";
+
+  // --- recent notifications (rotating ticker) ---
+  const { data: notifs = [] } = useQuery<NotifRow[]>({
+    enabled: !!user,
+    queryKey: ["island-notifications", user?.id],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("notification_log")
+        .select("id, title, body, event_type, created_at, is_read")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return (data ?? []) as NotifRow[];
+    },
+  });
+  const unread = useMemo(() => notifs.filter((n) => !n.is_read), [notifs]);
+  const ticker = unread.length ? unread : notifs.slice(0, 5);
+  const [tickIdx, setTickIdx] = useState(0);
+  useEffect(() => {
+    if (ticker.length < 2) return;
+    const id = setInterval(() => setTickIdx((i) => (i + 1) % ticker.length), 5000);
+    return () => clearInterval(id);
+  }, [ticker.length]);
+  useEffect(() => { setTickIdx(0); }, [ticker.length]);
+
+  // --- realtime "burst": when a fresh notification arrives, briefly expand ---
+  const [burst, setBurst] = useState<NotifRow | null>(null);
+  const burstTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`island-notif-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notification_log", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new as NotifRow;
+          setBurst(row);
+          if (burstTimer.current) window.clearTimeout(burstTimer.current);
+          burstTimer.current = window.setTimeout(() => setBurst(null), 6000);
+          qc.invalidateQueries({ queryKey: ["island-notifications", user.id] });
+          qc.invalidateQueries({ queryKey: ["sidebar-unread-notifications", user.id] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+      if (burstTimer.current) window.clearTimeout(burstTimer.current);
+    };
+  }, [user, qc]);
+
+  const current = burst ?? ticker[tickIdx] ?? null;
+  const Icon = current ? iconFor(current.event_type) : Sparkles;
+
+  return (
+    <div className="pointer-events-none sticky top-2 z-40 flex justify-end px-4 lg:px-6">
+      <div
+        className={cn(
+          "pointer-events-auto flex items-stretch gap-0 rounded-full border border-border/60",
+          "bg-background/70 backdrop-blur-xl shadow-lg shadow-black/20",
+          "transition-all duration-300 overflow-hidden",
+          burst ? "ring-2 ring-primary/60" : "",
+        )}
+      >
+        {/* Clock segment */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-4 h-10 hover:bg-muted/40 transition-colors"
+              aria-label="Текущее время"
+            >
+              <span className="font-heading font-bold tabular-nums text-sm leading-none">
+                {time}
+              </span>
+              <span className="hidden xl:inline text-[10px] uppercase tracking-wide text-primary font-semibold">
+                {WEEKDAYS[now.getDay()].slice(0, 2)}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{dateLong}</TooltipContent>
+        </Tooltip>
+
+        {/* Zabbix segment */}
+        {active && (
+          <>
+            <span className="w-px bg-border/60 my-2" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate(zbx && zbx.problems > 0 ? "/monitoring?tab=problems" : "/monitoring")}
+                  className="flex items-center gap-2 px-3 h-10 hover:bg-muted/40 transition-colors text-xs font-medium"
+                >
+                  <span className="relative flex h-2 w-2">
+                    {(!zbxOffline || zbxConnecting) && (
+                      <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", dotColor)} />
+                    )}
+                    <span className={cn("relative inline-flex rounded-full h-2 w-2", dotColor)} />
+                  </span>
+                  <span className="text-muted-foreground hidden sm:inline">Zabbix</span>
+                  {zbx && !zbxOffline ? (
+                    <>
+                      <span className="inline-flex items-center gap-1">
+                        <Server className="h-3 w-3 opacity-70" />{zbx.hosts}
+                      </span>
+                      <span className={cn(
+                        "inline-flex items-center gap-1",
+                        zbx.problems > 0 ? "text-red-500" : "text-muted-foreground/70",
+                      )}>
+                        <AlertTriangle className="h-3 w-3" />{zbx.problems}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground hidden sm:inline">
+                      {zbxConnecting ? "…" : "офлайн"}
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {zbxConnecting ? "Подключение к Zabbix…"
+                  : zbxOffline ? "Коллектор Zabbix недоступен"
+                  : `Подключено · ${zbx?.hosts ?? 0} хостов · ${zbx?.problems ?? 0} активных проблем`}
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
+
+        {/* Notification ticker segment */}
+        <span className="w-px bg-border/60 my-2" />
+        <button
+          type="button"
+          onClick={() => navigate("/notifications")}
+          className={cn(
+            "flex items-center gap-2 px-3 h-10 hover:bg-muted/40 transition-colors min-w-0",
+            "max-w-[140px] sm:max-w-[220px] md:max-w-[320px]",
+            burst && "bg-primary/10",
+          )}
+          title={current ? (current.title ?? "") : "Уведомления"}
+        >
+          <span className="relative shrink-0">
+            <Icon className={cn("h-4 w-4", burst ? "text-primary animate-pulse" : "text-muted-foreground")} />
+            {unread.length > 0 && !burst && (
+              <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-primary" />
+            )}
+          </span>
+          {current ? (
+            <span
+              key={burst ? `b-${burst.id}` : `t-${current.id}-${tickIdx}`}
+              className="text-xs truncate animate-fade-in"
+            >
+              {current.title || current.body || "Уведомление"}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground hidden sm:inline">Тихо</span>
+          )}
+          {unread.length > 0 && (
+            <span className="ml-auto shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground tabular-nums">
+              {unread.length}
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
