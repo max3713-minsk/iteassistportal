@@ -24,7 +24,6 @@ import { useDashboardLayout, type WidgetInstance } from "@/hooks/useDashboardLay
 import {
   WIDGET_REGISTRY, CHART_TYPE_LABELS, type ChartType,
 } from "@/components/dashboard/widgets";
-import { ClockBanner } from "@/components/dashboard/ClockBanner";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -62,7 +61,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <ClockBanner />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="font-heading text-2xl font-bold">Панель управления</h1>
