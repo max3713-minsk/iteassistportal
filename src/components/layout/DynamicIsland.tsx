@@ -150,14 +150,19 @@ export function DynamicIsland() {
   const current = burst ?? ticker[tickIdx] ?? null;
   const Icon = current ? iconFor(current.event_type) : Sparkles;
 
+  // --- global background tasks (Seafile uploads, exports, syncs…) ---
+  const islandTasks = useIslandTasks();
+  const hasTasks = islandTasks.length > 0;
+
   return (
     <div className="pointer-events-none sticky top-2 z-40 flex justify-end px-4 lg:px-6">
       <div
         className={cn(
           "pointer-events-auto flex items-stretch gap-0 rounded-full border border-border/60",
           "bg-background/70 backdrop-blur-xl shadow-lg shadow-black/20",
-          "transition-all duration-300 overflow-hidden",
+          "transition-[max-width,box-shadow,background] duration-500 ease-out overflow-hidden max-w-full",
           burst ? "ring-2 ring-primary/60" : "",
+          hasTasks ? "ring-1 ring-primary/40" : "",
         )}
       >
         {/* Clock segment */}
