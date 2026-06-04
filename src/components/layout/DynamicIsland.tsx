@@ -270,6 +270,82 @@ export function DynamicIsland() {
             </span>
           )}
         </button>
+
+        {/* Background task segments (Seafile uploads, exports, syncs…) */}
+        {islandTasks.map((task) => {
+          const TIcon = taskIcon(task.kind);
+          const pct = task.total && task.total > 0
+            ? Math.min(100, Math.round((task.done / task.total) * 100))
+            : null;
+          const isDone = task.status !== "running";
+          const isErr = task.status === "error";
+          return (
+            <div key={task.id} className="flex items-stretch animate-fade-in">
+              <span className="w-px bg-border/60 my-2" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => task.href && navigate(task.href)}
+                    className={cn(
+                      "relative flex items-center gap-2 px-3 h-10 transition-colors min-w-0 max-w-[260px]",
+                      "hover:bg-muted/40",
+                      isErr ? "text-red-500" : isDone ? "text-emerald-500" : "text-foreground",
+                    )}
+                  >
+                    <span className="relative shrink-0 inline-flex items-center justify-center">
+                      {task.status === "running" ? (
+                        pct == null ? (
+                          <TIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <TIcon className="h-4 w-4 text-primary" />
+                        )
+                      ) : isErr ? (
+                        <XCircle className="h-4 w-4" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                    </span>
+                    <span className="flex flex-col items-start min-w-0 leading-tight">
+                      <span className="text-xs font-medium truncate max-w-[200px]">
+                        {task.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[200px] tabular-nums">
+                        {task.status === "running"
+                          ? (pct != null
+                              ? `${pct}% · ${task.done}/${task.total}${task.message ? ` · ${task.message}` : ""}`
+                              : (task.message ?? "выполняется…"))
+                          : (task.message ?? (isErr ? "ошибка" : "готово"))}
+                      </span>
+                    </span>
+                    {pct != null && task.status === "running" && (
+                      <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-muted overflow-hidden">
+                        <span
+                          className="block h-full bg-primary transition-all duration-300"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </span>
+                    )}
+                    {isDone && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); dismissIslandTask(task.id); }}
+                        className="ml-1 shrink-0 rounded-full p-0.5 hover:bg-muted text-muted-foreground"
+                        aria-label="Скрыть"
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {task.label}{task.message ? ` — ${task.message}` : ""}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
