@@ -177,10 +177,15 @@ export function DynamicIsland() {
                   onClick={() => navigate(zbx && zbx.problems > 0 ? "/monitoring?tab=problems" : "/monitoring")}
                   className="flex items-center gap-2 px-3 h-10 hover:bg-muted/40 transition-colors text-xs font-medium"
                 >
-                  <span className="relative flex h-2 w-2">
-                    {(!zbxOffline || zbxConnecting) && (
+                  <span className="relative flex h-2 w-2 items-center justify-center">
+                    {zbxConnecting ? (
+                      <span className={cn(
+                        "absolute inline-block h-3.5 w-3.5 rounded-full border-2 border-yellow-500/70 animate-spin",
+                        "border-t-transparent",
+                      )} />
+                    ) : !zbxOffline ? (
                       <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping", dotColor)} />
-                    )}
+                    ) : null}
                     <span className={cn("relative inline-flex rounded-full h-2 w-2", dotColor)} />
                   </span>
                   <span className="text-muted-foreground hidden sm:inline">Zabbix</span>
