@@ -26,6 +26,7 @@ import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { sendToSeafile } from "@/lib/seafile";
 import { frequencyLabels as FREQ_LBL } from "@/lib/schedule-utils";
+import { startIslandTask, updateIslandTask, finishIslandTask } from "@/lib/island-tasks";
 
 export default function Protocols() {
   const { isStaff, user, hasRole } = useAuth();
