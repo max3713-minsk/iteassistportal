@@ -26,6 +26,7 @@ import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { sendToSeafile } from "@/lib/seafile";
 import { frequencyLabels as FREQ_LBL } from "@/lib/schedule-utils";
+import { startIslandTask, updateIslandTask, finishIslandTask } from "@/lib/island-tasks";
 
 export default function Protocols() {
   const { isStaff, user, hasRole } = useAuth();
@@ -245,6 +246,13 @@ export default function Protocols() {
     }
     setBulkBusy(true);
     setBulkProgress({ done: 0, total: ids.length, label: "Подготовка…" });
+    const islandTaskId = startIslandTask({
+      label: `Отправка протоколов в Seafile`,
+      kind: "seafile",
+      total: ids.length,
+      href: "/protocols",
+      message: "подготовка…",
+    });
     try {
       const { data: setting } = await supabase
         .from("integration_settings")
@@ -253,6 +261,7 @@ export default function Protocols() {
         .maybeSingle();
       if (!setting?.enabled) {
         toast({ title: "Seafile не настроен", description: "Включите интеграцию в разделе «Интеграции».", variant: "destructive" });
+        finishIslandTask(islandTaskId, { status: "error", message: "Seafile не настроен" });
         return;
       }
 
@@ -264,6 +273,7 @@ export default function Protocols() {
           const proto = protocols.find((p) => p.id === id);
           const siteName0 = proto?.sites?.name ?? "site";
           setBulkProgress({ done: i, total: ids.length, label: `Подготовка: ${siteName0}` });
+          updateIslandTask(islandTaskId, { done: i, message: siteName0 });
           const data = await fetchProtocolDocxData(id);
           const blob = await buildProtocolDocxBlob(data);
           const freqLabel = FREQ_LBL[proto?.frequency ?? ""] ?? proto?.frequency ?? "protocol";
@@ -271,6 +281,7 @@ export default function Protocols() {
           const dateStr = proto?.period_end ?? format(new Date(), "yyyy-MM-dd");
           const filename = `Протокол_${freqLabel}_${siteName}_${dateStr}.docx`.replace(/[/\\:*?"<>|]/g, "_");
           setBulkProgress({ done: i, total: ids.length, label: `Загрузка в облако: ${siteName} (${i + 1}/${ids.length})` });
+          updateIslandTask(islandTaskId, { done: i, message: siteName });
           await sendToSeafile({
             kind: "protocol",
             blob,
@@ -295,8 +306,15 @@ export default function Protocols() {
           console.error("Seafile upload failed for", id, err);
         }
         setBulkProgress({ done: i + 1, total: ids.length, label: `Готово: ${i + 1}/${ids.length}` });
+        updateIslandTask(islandTaskId, { done: i + 1 });
       }
       await logAudit({ action: `Массовая отправка протоколов в облако (${okCount}/${ids.length})`, module: "protocols", details: ids.join(", ") });
+      finishIslandTask(islandTaskId, {
+        status: errCount === 0 ? "success" : "error",
+        message: errCount === 0
+          ? `${okCount}/${ids.length} отправлено`
+          : `Отправлено ${okCount}, ошибок ${errCount}`,
+      });
       toast({
         title: errCount === 0 ? `Отправлено в облако: ${okCount}` : `Отправлено: ${okCount}, ошибок: ${errCount}`,
         variant: errCount > 0 ? "destructive" : "default",
