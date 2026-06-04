@@ -58,12 +58,14 @@ export function LiveStatusIndicator() {
           )}
         >
           <span className="relative flex h-2 w-2">
-            {(!offline || connecting) && (
+            {connecting ? (
+              <span className="absolute inline-block h-3.5 w-3.5 -left-[3px] -top-[3px] rounded-full border-2 border-yellow-500/70 border-t-transparent animate-spin" />
+            ) : !offline ? (
               <span className={cn(
                 "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
                 dotColor,
               )} />
-            )}
+            ) : null}
             <span className={cn("relative inline-flex rounded-full h-2 w-2", dotColor)} />
           </span>
           <span className="text-muted-foreground">Zabbix</span>

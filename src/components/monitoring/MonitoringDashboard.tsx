@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import RecentEventsFeed from "./RecentEventsFeed";
 import FavoriteGraphs from "./FavoriteGraphs";
+import { CountUp } from "@/components/ui/count-up";
 
 interface Props {
   hosts: { hostid?: string; name?: string; available?: string; groups?: { name: string }[] }[];
@@ -93,7 +94,9 @@ export default function MonitoringDashboard({
               <CardTitle className="text-sm font-medium">{c.emoji} {c.label}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-heading font-bold ${c.color}`}>{c.count}</div>
+              <div className={`text-3xl font-heading font-bold ${c.color}`}>
+                <CountUp value={c.count} />
+              </div>
               <p className="text-xs text-muted-foreground mt-1">{c.desc}</p>
             </CardContent>
           </Card>
@@ -108,7 +111,7 @@ export default function MonitoringDashboard({
             <Server className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-heading font-bold">{hostsArr.length}</div>
+            <div className="text-3xl font-heading font-bold"><CountUp value={hostsArr.length} /></div>
             <div className="flex gap-3 mt-1 text-xs">
               <span className="text-green-600 flex items-center gap-1"><Wifi className="h-3 w-3" />{hostsAvailable}</span>
               <span className="text-red-500 flex items-center gap-1"><WifiOff className="h-3 w-3" />{hostsUnavailable}</span>
@@ -121,7 +124,7 @@ export default function MonitoringDashboard({
             <AlertTriangle className="h-5 w-5 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-heading font-bold">{problemsArr.length}</div>
+            <div className="text-3xl font-heading font-bold"><CountUp value={problemsArr.length} /></div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("automation")}>
@@ -130,7 +133,7 @@ export default function MonitoringDashboard({
             <Terminal className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-heading font-bold">{Array.isArray(playbooks) ? playbooks.length : 0}</div>
+            <div className="text-3xl font-heading font-bold"><CountUp value={Array.isArray(playbooks) ? playbooks.length : 0} /></div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onTabChange("tz")}>
@@ -139,7 +142,7 @@ export default function MonitoringDashboard({
             <FileText className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-heading font-bold">{tzStats?.percent ?? 0}%</div>
+            <div className="text-3xl font-heading font-bold"><CountUp value={tzStats?.percent ?? 0} />%</div>
             <Progress value={tzStats?.percent ?? 0} className="h-1.5 mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
               {tzStats?.covered ?? 0} из {tzStats?.total ?? 0} пунктов
