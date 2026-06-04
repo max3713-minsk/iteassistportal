@@ -8,8 +8,12 @@ import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { cn } from "@/lib/utils";
 import {
   Server, AlertTriangle, Bell, Ticket, MessageSquare, UserPlus, Sparkles,
+  FolderArchive, Download, RefreshCw, Upload, Loader2, CheckCircle2, XCircle, X,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  useIslandTasks, dismissIslandTask, type IslandTask, type IslandTaskKind,
+} from "@/lib/island-tasks";
 
 /**
  * Global Dynamic Island: a sticky pill at the top-right of every page.
@@ -40,6 +44,16 @@ function iconFor(eventType: string | null) {
   if (t.includes("alert") || t.includes("problem") || t.includes("incident")) return AlertTriangle;
   if (t.includes("user")) return UserPlus;
   return Bell;
+}
+
+function taskIcon(kind: IslandTaskKind) {
+  switch (kind) {
+    case "seafile": return FolderArchive;
+    case "export":  return Download;
+    case "sync":    return RefreshCw;
+    case "import":  return Upload;
+    default:        return Loader2;
+  }
 }
 
 export function DynamicIsland() {
