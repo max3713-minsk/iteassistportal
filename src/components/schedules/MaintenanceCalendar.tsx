@@ -14,8 +14,7 @@ import {
   subMonths,
 } from "date-fns";
 import { ru } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
-import { AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -36,11 +35,13 @@ interface Props {
   holidays?: HolidayMap;
   /** Set of "yyyy-MM-dd" past/today dates that have at least one task with no completed protocol covering it. */
   incompleteDates?: Set<string>;
+  /** Set of "yyyy-MM-dd" dates that have at least one protocol uploaded to Seafile. */
+  uploadedDates?: Set<string>;
 }
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays, incompleteDates }: Props) {
+export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays, incompleteDates, uploadedDates }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const today = startOfDay(new Date());
   const startBoundary = serviceStartDate ? startOfDay(serviceStartDate) : null;
@@ -129,6 +130,7 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
           const isHoliday = holiday?.day_type === "holiday";
           const isWorkdayTransfer = holiday?.day_type === "workday";
           const isIncomplete = (past || isToday) && incompleteDates?.has(key);
+          const isUploaded = uploadedDates?.has(key);
 
           return (
             <button
@@ -185,8 +187,16 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
                   ))}
                 </div>
               )}
-              {/* Incomplete-protocol indicator (past or today only) */}
-              {isIncomplete && inMonth && (
+              {/* Cloud indicator wins over the alert when something has been uploaded. */}
+              {isUploaded && inMonth && (
+                <span
+                  className="absolute top-0.5 right-0.5 text-sky-500"
+                  title="Протоколы за эту дату отправлены в облако"
+                >
+                  <Cloud className="h-3 w-3" />
+                </span>
+              )}
+              {isIncomplete && !isUploaded && inMonth && (
                 <span
                   className="absolute top-0.5 right-0.5 text-amber-500"
                   title="Есть незавершённые протоколы на эту дату"
@@ -218,6 +228,10 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="h-3 w-3 text-amber-500" />
           <span>Незавершённый протокол</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Cloud className="h-3 w-3 text-sky-500" />
+          <span>Отправлено в облако</span>
         </div>
       </div>
     </div>
