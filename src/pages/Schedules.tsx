@@ -86,8 +86,7 @@ export default function Schedules() {
     queryFn: async () => {
       const ids = (protocols as any[]).map((p) => p.id);
       if (ids.length === 0) return [];
-      const { data } = await supabase
-        .from("protocol_uploads")
+      const { data } = await (supabase.from as any)("protocol_uploads")
         .select("protocol_id")
         .in("protocol_id", ids);
       return data ?? [];
