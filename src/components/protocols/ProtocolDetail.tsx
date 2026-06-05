@@ -20,6 +20,7 @@ import ProtocolSignersDialog from "@/components/protocols/ProtocolSignersDialog"
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
+import { isProtocolUploaded, recordProtocolUpload } from "@/lib/protocol-uploads";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -249,6 +250,14 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       );
       if (!ok) return;
     }
+    // Подтверждение повторной отправки
+    const alreadyUploaded = await isProtocolUploaded(protocolId);
+    if (alreadyUploaded) {
+      const ok = window.confirm(
+        "Этот протокол уже был отправлен в облако ранее. Отправить ещё раз? Будет создана новая версия в Seafile.",
+      );
+      if (!ok) return;
+    }
     if (!(protocol as any)?.executor_user_id && !(protocol as any)?.executor_signature_user_id) {
       toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед отправкой.", variant: "destructive" });
       setSignersOpen(true);
@@ -285,6 +294,15 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       if (error) throw error;
       const res = data as { folder?: string; uploaded?: string[]; viewUrl?: string; error?: string };
       if (res?.error) throw new Error(res.error);
+
+      await recordProtocolUpload({
+        protocol_id: protocolId,
+        storage: "seafile",
+        url: (res as any).viewUrl ?? null,
+        filename: (res.uploaded?.[0] ?? null),
+        folder: res.folder ?? null,
+        meta: { uploaded_files: res.uploaded ?? [] },
+      });
 
       await logAudit({
         action: "Экспорт протокола в Seafile",
