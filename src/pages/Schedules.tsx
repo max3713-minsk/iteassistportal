@@ -73,12 +73,38 @@ export default function Schedules() {
       if (!activeContract?.organization_id) return [];
       const { data } = await supabase
         .from("maintenance_protocols")
-        .select("period_start, period_end, frequency, status")
+        .select("id, period_start, period_end, frequency, status")
         .eq("customer_org_id", activeContract.organization_id);
       return data ?? [];
     },
     enabled: !!activeContract?.organization_id,
   });
+
+  // Уже отправленные в облако протоколы (любого статуса) — для значка облачка в календаре.
+  const { data: uploads = [] } = useQuery({
+    queryKey: ["protocol-uploads", activeContract?.organization_id],
+    queryFn: async () => {
+      const ids = (protocols as any[]).map((p) => p.id);
+      if (ids.length === 0) return [];
+      const { data } = await (supabase.from as any)("protocol_uploads")
+        .select("protocol_id")
+        .in("protocol_id", ids);
+      return data ?? [];
+    },
+    enabled: (protocols as any[]).length > 0,
+  });
+
+  const uploadedDates = useMemo(() => {
+    const uploadedProtocolIds = new Set((uploads as any[]).map((u) => u.protocol_id));
+    const out = new Set<string>();
+    for (const p of protocols as any[]) {
+      if (!uploadedProtocolIds.has(p.id)) continue;
+      let d = startOfDay(new Date(p.period_start));
+      const end = startOfDay(new Date(p.period_end));
+      while (d <= end) { out.add(format(d, "yyyy-MM-dd")); d = addDays(d, 1); }
+    }
+    return out;
+  }, [uploads, protocols]);
 
   // For each freq, set of "yyyy-MM-dd" days covered by a completed protocol.
   const completedDaysByFreq = useMemo(() => {
@@ -168,6 +194,7 @@ export default function Schedules() {
                 serviceStartDate={contractStartDate}
                 holidays={holidayMap}
                 incompleteDates={incompleteDates}
+                uploadedDates={uploadedDates}
               />
             </Card>
             {selectedDate && (
@@ -184,6 +211,7 @@ export default function Schedules() {
                 completedTaskIds={completedTaskIds}
                 onClose={() => setSelectedDate(null)}
                 holidays={holidayMap}
+                uploaded={uploadedDates.has(format(selectedDate, "yyyy-MM-dd"))}
               />
             ) : (
               <Card className="flex flex-col items-center justify-center py-16 text-center">

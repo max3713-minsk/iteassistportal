@@ -27,6 +27,7 @@ import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { sendToSeafile } from "@/lib/seafile";
 import { frequencyLabels as FREQ_LBL } from "@/lib/schedule-utils";
 import { startIslandTask, updateIslandTask, finishIslandTask } from "@/lib/island-tasks";
+import { findUploadedProtocolIds, recordProtocolUpload } from "@/lib/protocol-uploads";
 
 export default function Protocols() {
   const { isStaff, user, hasRole } = useAuth();
@@ -244,6 +245,14 @@ export default function Protocols() {
       });
       return;
     }
+    // Подтверждение повторной отправки — для уже отправленных протоколов
+    const alreadyUploaded = await findUploadedProtocolIds(ids);
+    if (alreadyUploaded.size > 0) {
+      const ok = window.confirm(
+        `Из выбранных протоколов ранее уже были отправлены в облако: ${alreadyUploaded.size}. Отправить заново? Будут созданы новые версии файлов в Seafile.`,
+      );
+      if (!ok) return;
+    }
     setBulkBusy(true);
     setBulkProgress({ done: 0, total: ids.length, label: "Подготовка…" });
     const islandTaskId = startIslandTask({
@@ -282,7 +291,7 @@ export default function Protocols() {
           const filename = `Протокол_${freqLabel}_${siteName}_${dateStr}.docx`.replace(/[/\\:*?"<>|]/g, "_");
           setBulkProgress({ done: i, total: ids.length, label: `Загрузка в облако: ${siteName} (${i + 1}/${ids.length})` });
           updateIslandTask(islandTaskId, { done: i, message: siteName });
-          await sendToSeafile({
+          const sfRes = await sendToSeafile({
             kind: "protocol",
             blob,
             filename,
@@ -300,6 +309,14 @@ export default function Protocols() {
               period: dateStr,
             },
           });
+          await recordProtocolUpload({
+            protocol_id: id,
+            storage: "seafile",
+            url: (sfRes as any)?.viewUrl ?? null,
+            filename: sfRes?.filename ?? filename,
+            folder: sfRes?.folder ?? null,
+            meta: { site: siteName, frequency: proto?.frequency, period_end: proto?.period_end },
+          });
           okCount++;
         } catch (err: any) {
           errCount++;
@@ -309,6 +326,7 @@ export default function Protocols() {
         updateIslandTask(islandTaskId, { done: i + 1 });
       }
       await logAudit({ action: `Массовая отправка протоколов в облако (${okCount}/${ids.length})`, module: "protocols", details: ids.join(", ") });
+      qc.invalidateQueries({ queryKey: ["protocol-uploads"] });
       finishIslandTask(islandTaskId, {
         status: errCount === 0 ? "success" : "error",
         message: errCount === 0

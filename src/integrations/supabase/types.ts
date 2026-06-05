@@ -1700,6 +1700,50 @@ export type Database = {
           },
         ]
       }
+      protocol_uploads: {
+        Row: {
+          filename: string | null
+          folder: string | null
+          id: string
+          meta: Json | null
+          protocol_id: string
+          storage: string
+          uploaded_at: string
+          uploaded_by: string | null
+          url: string | null
+        }
+        Insert: {
+          filename?: string | null
+          folder?: string | null
+          id?: string
+          meta?: Json | null
+          protocol_id: string
+          storage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+        }
+        Update: {
+          filename?: string | null
+          folder?: string | null
+          id?: string
+          meta?: Json | null
+          protocol_id?: string
+          storage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_uploads_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_graphs: {
         Row: {
           aggregation: string | null
