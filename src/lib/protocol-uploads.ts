@@ -14,7 +14,7 @@ export async function recordProtocolUpload(rec: ProtocolUploadRecord) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("protocol_uploads").insert({
+    await (supabase.from as any)("protocol_uploads").insert({
       protocol_id: rec.protocol_id,
       uploaded_by: user.id,
       storage: rec.storage ?? "seafile",
@@ -22,7 +22,7 @@ export async function recordProtocolUpload(rec: ProtocolUploadRecord) {
       filename: rec.filename ?? null,
       folder: rec.folder ?? null,
       meta: rec.meta ?? null,
-    } as any);
+    });
   } catch (e) {
     console.warn("recordProtocolUpload failed", e);
   }
@@ -31,16 +31,14 @@ export async function recordProtocolUpload(rec: ProtocolUploadRecord) {
 /** Вернуть protocol_id, для которых уже есть запись об отправке в облако. */
 export async function findUploadedProtocolIds(ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
-  const { data } = await supabase
-    .from("protocol_uploads")
+  const { data } = await (supabase.from as any)("protocol_uploads")
     .select("protocol_id")
     .in("protocol_id", ids);
   return new Set((data ?? []).map((r: any) => r.protocol_id));
 }
 
 export async function isProtocolUploaded(id: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("protocol_uploads")
+  const { data } = await (supabase.from as any)("protocol_uploads")
     .select("id")
     .eq("protocol_id", id)
     .limit(1)
