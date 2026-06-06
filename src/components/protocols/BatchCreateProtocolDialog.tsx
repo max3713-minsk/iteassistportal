@@ -215,7 +215,7 @@ export default function BatchCreateProtocolDialog(props: BatchCreateProtocolDial
                 protocol_id: protocol.id,
                 equipment_id: eq.id,
                 task_id: t.id,
-                status: markAllDone ? "done" : "pending",
+                status: markAllDone ? "completed" : "pending",
                 completed_by: markAllDone ? uid : null,
                 completed_at: markAllDone ? nowIso : null,
                 equipment_snapshot: {
