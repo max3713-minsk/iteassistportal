@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,8 @@ import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 import { isProtocolUploaded, recordProtocolUpload } from "@/lib/protocol-uploads";
+import { isLogAnalysisTask } from "@/lib/log-task-detect";
+import LogAnalysisDialog from "@/components/logs/LogAnalysisDialog";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -106,6 +108,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const [protocolNotes, setProtocolNotes] = useState("");
   const [seafileUploading, setSeafileUploading] = useState(false);
   const [signersOpen, setSignersOpen] = useState(false);
+  const [logTarget, setLogTarget] = useState<{ itemId: string; equipmentId: string | null; equipmentName: string; taskTitle: string } | null>(null);
 
   const isOnRequest = protocol?.frequency === "on_request";
 
@@ -560,6 +563,23 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
                             ✅ {format(new Date(item.completed_at), "dd.MM.yyyy HH:mm")}
                           </p>
                         )}
+                        {isLogAnalysisTask(item.maintenance_tasks?.title, item.maintenance_tasks?.description) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-1 h-7 text-xs gap-1.5"
+                            onClick={() =>
+                              setLogTarget({
+                                itemId: item.id,
+                                equipmentId: item.equipment_id,
+                                equipmentName: group.equipmentName,
+                                taskTitle: item.maintenance_tasks?.title ?? "",
+                              })
+                            }
+                          >
+                            <Sparkles className="h-3.5 w-3.5 text-primary" /> Анализ логов с ИИ
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -573,6 +593,15 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         protocolId={protocolId}
         open={signersOpen}
         onOpenChange={setSignersOpen}
+      />
+      <LogAnalysisDialog
+        open={!!logTarget}
+        onOpenChange={(v) => { if (!v) setLogTarget(null); }}
+        equipmentId={logTarget?.equipmentId ?? null}
+        protocolItemId={logTarget?.itemId ?? null}
+        protocolId={protocolId}
+        equipmentName={logTarget?.equipmentName}
+        taskTitle={logTarget?.taskTitle}
       />
     </div>
   );
