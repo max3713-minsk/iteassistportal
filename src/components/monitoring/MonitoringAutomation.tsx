@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
-import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
+import { Terminal, Play, Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Ban } from "lucide-react";
 import DeviceHintsPanel from "./DeviceHintsPanel";
 
 interface Props {
@@ -49,6 +49,26 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
     queryClient.invalidateQueries({ queryKey: ["zabbix", "getScripts"] });
     toast({ title: "Синхронизация скриптов с Zabbix..." });
   };
+
+  const cancelMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase.from("automation_logs").update({
+        status: "cancelled",
+        cancel_requested: true,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: session?.user?.id ?? null,
+        result: "Отменено пользователем через портал. Скрипт уже отправлен в Zabbix и не может быть отозван — статус помечен локально.",
+      }).eq("id", logId);
+      if (error) throw error;
+      await logAudit({ action: "Отмена скрипта Zabbix", module: "monitoring", entityId: logId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["automation-logs"] });
+      toast({ title: "Запись помечена как отменённая" });
+    },
+    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
 
   // Подтягиваем device_type для выбранного хоста (если он есть в monitored_hosts)
   const { data: selectedHostDevice } = useQuery({
@@ -213,6 +233,7 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
                   <TableHead>Скрипт</TableHead>
                   <TableHead>Хост</TableHead>
                   <TableHead>Статус</TableHead>
+                  {isStaff && <TableHead className="text-right">Действие</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -232,12 +253,31 @@ export default function MonitoringAutomation({ hosts, scripts, isZabbixConfigure
                         <Badge variant="destructive">
                           <XCircle className="h-3 w-3 mr-1" />Ошибка
                         </Badge>
+                      ) : log.status === "cancelled" ? (
+                        <Badge variant="outline">
+                          <Ban className="h-3 w-3 mr-1" />Отменено
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">
                           <Loader2 className="h-3 w-3 mr-1 animate-spin" />Выполняется
                         </Badge>
                       )}
                     </TableCell>
+                    {isStaff && (
+                      <TableCell className="text-right">
+                        {log.status === "running" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => cancelMutation.mutate(log.id)}
+                            disabled={cancelMutation.isPending}
+                            title="Пометить как отменённую (Zabbix API не умеет прерывать уже запущенный скрипт)"
+                          >
+                            <Ban className="h-3.5 w-3.5 mr-1" />Отменить
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

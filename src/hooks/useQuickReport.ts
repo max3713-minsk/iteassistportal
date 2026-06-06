@@ -173,7 +173,7 @@ export function useQuickReport() {
                 .eq("site_id", item.siteId),
               supabase
                 .from("maintenance_tasks")
-                .select("id, category_id")
+                .select("id, category_id, equipment_id, equipment_ids")
                 .eq("frequency", item.freq)
                 .eq("is_active", true),
             ]);
@@ -181,7 +181,12 @@ export function useQuickReport() {
             const items: any[] = [];
             for (const eq of equipment ?? []) {
               for (const task of tasks ?? []) {
-                if (!task.category_id || task.category_id === (eq as any).category_id) {
+                const ids = (task as any).equipment_ids as string[] | null;
+                let match = true;
+                if (ids && ids.length > 0) match = ids.includes((eq as any).id);
+                else if ((task as any).equipment_id) match = (task as any).equipment_id === (eq as any).id;
+                else if (task.category_id) match = task.category_id === (eq as any).category_id;
+                if (match) {
                   items.push({
                     protocol_id: protocolId,
                     equipment_id: eq.id,

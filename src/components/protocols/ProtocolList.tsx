@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, ClipboardList, Plus, UserCheck } from "lucide-react";
+import { Eye, ClipboardList, Plus, UserCheck, ListChecks, Cloud } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
@@ -52,9 +52,11 @@ interface Props {
   loading?: boolean;
   onCreate?: () => void;
   onAssignSigners?: (id: string) => void;
+  onCompleteAllWorks?: (id: string) => void;
+  uploadedIds?: Set<string>;
 }
 
-export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate, onAssignSigners }: Props) {
+export default function ProtocolList({ protocols, onSelect, selectedIds, onToggleSelect, onToggleSelectAll, loading, onCreate, onAssignSigners, onCompleteAllWorks, uploadedIds }: Props) {
   if (loading) {
     return (
       <Card className="p-4 space-y-2">
@@ -117,6 +119,14 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
               <TableCell className="font-medium">{p.sites?.name ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant="outline">{frequencyLabels[p.frequency] ?? p.frequency}</Badge>
+                {uploadedIds?.has(p.id) && (
+                  <span
+                    className="inline-flex items-center ml-2 text-sky-500"
+                    title="Отправлено в облако"
+                  >
+                    <Cloud className="h-3.5 w-3.5" />
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {format(new Date(p.period_start), "dd.MM.yyyy")} — {format(new Date(p.period_end), "dd.MM.yyyy")}
@@ -136,6 +146,16 @@ export default function ProtocolList({ protocols, onSelect, selectedIds, onToggl
                 {onAssignSigners && (
                   <Button variant="ghost" size="icon" onClick={() => onAssignSigners(p.id)} title="Подписанты">
                     <UserCheck className="h-4 w-4" />
+                  </Button>
+                )}
+                {onCompleteAllWorks && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onCompleteAllWorks(p.id)}
+                    title={p.status === "completed" ? "Перепроверить: отметить все работы выполненными" : "Выполнить все работы"}
+                  >
+                    <ListChecks className="h-4 w-4 text-emerald-500" />
                   </Button>
                 )}
               </TableCell>

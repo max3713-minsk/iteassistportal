@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileDown, FileText, Check, Save, CloudUpload, UserCheck, ListChecks, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { frequencyLabels } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -19,6 +20,9 @@ import ProtocolSignersDialog from "@/components/protocols/ProtocolSignersDialog"
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { fetchProtocolDocxData } from "@/lib/protocol-docx-data";
 import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
+import { isProtocolUploaded, recordProtocolUpload } from "@/lib/protocol-uploads";
+import { isLogAnalysisTask } from "@/lib/log-task-detect";
+import LogAnalysisDialog from "@/components/logs/LogAnalysisDialog";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -56,6 +60,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const { toast } = useToast();
   const qc = useQueryClient();
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const { data: protocol } = useQuery({
     queryKey: ["protocol", protocolId],
@@ -103,6 +108,7 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const [protocolNotes, setProtocolNotes] = useState("");
   const [seafileUploading, setSeafileUploading] = useState(false);
   const [signersOpen, setSignersOpen] = useState(false);
+  const [logTarget, setLogTarget] = useState<{ itemId: string; equipmentId: string | null; equipmentName: string; taskTitle: string } | null>(null);
 
   const isOnRequest = protocol?.frequency === "on_request";
 
@@ -156,6 +162,21 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
   const completeProtocol = useMutation({
     mutationFn: async () => {
+      // Auto-complete all pending items: завершение протокола = все работы выполнены
+      const pendingItems = items.filter((i) => i.status !== "completed");
+      if (pendingItems.length > 0) {
+        const nowIso = new Date().toISOString();
+        const { error: itemsErr } = await supabase
+          .from("protocol_items")
+          .update({
+            status: "completed",
+            completed_by: session?.user.id,
+            completed_at: nowIso,
+          })
+          .in("id", pendingItems.map((i) => i.id));
+        if (itemsErr) throw itemsErr;
+      }
+
       const { error } = await supabase
         .from("maintenance_protocols")
         .update({
@@ -183,9 +204,37 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["protocol", protocolId] });
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
       qc.invalidateQueries({ queryKey: ["protocols"] });
       qc.invalidateQueries({ queryKey: ["tickets"] });
       toast({ title: "Протокол завершён" });
+    },
+  });
+
+  const bulkCompleteItems = useMutation({
+    mutationFn: async (ids?: string[]) => {
+      const pendingItems = ids && ids.length > 0
+        ? items.filter((i) => ids.includes(i.id) && i.status !== "completed")
+        : items.filter((i) => i.status !== "completed");
+      if (pendingItems.length === 0) return 0;
+      const { error } = await supabase
+        .from("protocol_items")
+        .update({
+          status: "completed",
+          completed_by: session?.user.id,
+          completed_at: new Date().toISOString(),
+        })
+        .in("id", pendingItems.map((i) => i.id));
+      if (error) throw error;
+      return pendingItems.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["protocol-items", protocolId] });
+      setSelectedItemIds(new Set());
+      toast({ title: "Работы отмечены выполненными", description: `Обновлено: ${count}` });
+    },
+    onError: (e: any) => {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     },
   });
 
@@ -198,6 +247,20 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
   const isCompleted = protocol.status === "completed";
 
   const sendToSeafile = async () => {
+    if (!allCompleted && !isOnRequest) {
+      const ok = window.confirm(
+        `Протокол не завершён: выполнено ${completedCount} из ${totalCount}. Отправить в Seafile несмотря на это?`
+      );
+      if (!ok) return;
+    }
+    // Подтверждение повторной отправки
+    const alreadyUploaded = await isProtocolUploaded(protocolId);
+    if (alreadyUploaded) {
+      const ok = window.confirm(
+        "Этот протокол уже был отправлен в облако ранее. Отправить ещё раз? Будет создана новая версия в Seafile.",
+      );
+      if (!ok) return;
+    }
     if (!(protocol as any)?.executor_user_id && !(protocol as any)?.executor_signature_user_id) {
       toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед отправкой.", variant: "destructive" });
       setSignersOpen(true);
@@ -234,6 +297,15 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
       if (error) throw error;
       const res = data as { folder?: string; uploaded?: string[]; viewUrl?: string; error?: string };
       if (res?.error) throw new Error(res.error);
+
+      await recordProtocolUpload({
+        protocol_id: protocolId,
+        storage: "seafile",
+        url: (res as any).viewUrl ?? null,
+        filename: (res.uploaded?.[0] ?? null),
+        folder: res.folder ?? null,
+        meta: { uploaded_files: res.uploaded ?? [] },
+      });
 
       await logAudit({
         action: "Экспорт протокола в Seafile",
@@ -294,13 +366,41 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
 
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
-        {isStaff && !isCompleted && (allCompleted || isOnRequest) && (
+        {isStaff && !isCompleted && !isOnRequest && !allCompleted && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => bulkCompleteItems.mutate(undefined)}
+              disabled={bulkCompleteItems.isPending}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Выполнить все работы
+            </Button>
+            {selectedItemIds.size > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => bulkCompleteItems.mutate(Array.from(selectedItemIds))}
+                disabled={bulkCompleteItems.isPending}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Выполнить выбранные ({selectedItemIds.size})
+              </Button>
+            )}
+          </>
+        )}
+        {isStaff && !isCompleted && (
           <Button onClick={() => {
             const p: any = protocol;
             if (!(p?.executor_user_id || p?.executor_signature_user_id) || !(p?.responsible_user_id || p?.responsible_signature_user_id)) {
               toast({ title: "Заполните подписантов", description: "Укажите «Выполнил» и «Ответственный» перед завершением.", variant: "destructive" });
               setSignersOpen(true);
               return;
+            }
+            if (!isOnRequest && !allCompleted) {
+              const ok = window.confirm(
+                `Все работы будут автоматически отмечены выполненными (${totalCount - completedCount} осталось). Продолжить?`
+              );
+              if (!ok) return;
             }
             completeProtocol.mutate();
           }} disabled={completeProtocol.isPending}>
@@ -372,7 +472,26 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         <div className="space-y-4">
           {grouped.map((group) => (
             <Card key={group.equipmentName}>
-              <CardHeader className="py-3 px-4">
+              <CardHeader className="py-3 px-4 flex flex-row items-center gap-3 space-y-0">
+                {isStaff && !isCompleted && !isOnRequest && (
+                  <Checkbox
+                    checked={
+                      group.items.filter((i) => i.status !== "completed").length > 0 &&
+                      group.items
+                        .filter((i) => i.status !== "completed")
+                        .every((i) => selectedItemIds.has(i.id))
+                    }
+                    onCheckedChange={(v) => {
+                      setSelectedItemIds((prev) => {
+                        const next = new Set(prev);
+                        const pending = group.items.filter((i) => i.status !== "completed");
+                        if (v) pending.forEach((i) => next.add(i.id));
+                        else pending.forEach((i) => next.delete(i.id));
+                        return next;
+                      });
+                    }}
+                  />
+                )}
                 <CardTitle className="text-base">{group.equipmentName}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 pt-0 space-y-2">
@@ -386,6 +505,20 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
                         done && "bg-muted/50"
                       )}
                     >
+                      {isStaff && !isCompleted && !isOnRequest && !done && (
+                        <Checkbox
+                          className="mt-1 shrink-0"
+                          checked={selectedItemIds.has(item.id)}
+                          onCheckedChange={(v) => {
+                            setSelectedItemIds((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(item.id);
+                              else next.delete(item.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      )}
                       {isStaff && !isCompleted ? (
                         <button
                           onClick={() => toggleItem.mutate(item)}
@@ -430,6 +563,23 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
                             ✅ {format(new Date(item.completed_at), "dd.MM.yyyy HH:mm")}
                           </p>
                         )}
+                        {isLogAnalysisTask(item.maintenance_tasks?.title, item.maintenance_tasks?.description) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-1 h-7 text-xs gap-1.5"
+                            onClick={() =>
+                              setLogTarget({
+                                itemId: item.id,
+                                equipmentId: item.equipment_id,
+                                equipmentName: group.equipmentName,
+                                taskTitle: item.maintenance_tasks?.title ?? "",
+                              })
+                            }
+                          >
+                            <Sparkles className="h-3.5 w-3.5 text-primary" /> Анализ логов с ИИ
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -443,6 +593,15 @@ export default function ProtocolDetail({ protocolId, onBack, onExportPdf, onExpo
         protocolId={protocolId}
         open={signersOpen}
         onOpenChange={setSignersOpen}
+      />
+      <LogAnalysisDialog
+        open={!!logTarget}
+        onOpenChange={(v) => { if (!v) setLogTarget(null); }}
+        equipmentId={logTarget?.equipmentId ?? null}
+        protocolItemId={logTarget?.itemId ?? null}
+        protocolId={protocolId}
+        equipmentName={logTarget?.equipmentName}
+        taskTitle={logTarget?.taskTitle}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import AppSidebar from "./AppSidebar";
 import MobileNav from "./MobileNav";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import ZabbixConnectionPicker from "@/components/ZabbixConnectionPicker";
-import { LiveStatusIndicator } from "@/components/LiveStatusIndicator";
+import { DynamicIsland } from "@/components/layout/DynamicIsland";
 import { PageTransition } from "@/components/PageTransition";
 
 export default function AppLayout() {
@@ -14,14 +14,16 @@ export default function AppLayout() {
       <AppSidebar />
       <div className="flex-1 flex flex-col">
         <MobileNav />
-        <div className="hidden lg:flex items-center justify-end gap-3 px-6 pt-4">
-          <LiveStatusIndicator />
-          <ZabbixConnectionPicker />
-        </div>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
+        <main className="flex-1 overflow-auto relative">
+          <DynamicIsland />
+          <div className="hidden lg:flex items-center justify-end gap-3 px-6 mt-2">
+            <ZabbixConnectionPicker />
+          </div>
+          <div className="p-4 md:p-6 lg:p-8 pt-2">
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          </div>
         </main>
       </div>
     </div>

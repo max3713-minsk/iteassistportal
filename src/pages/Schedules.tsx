@@ -15,9 +15,11 @@ import HolidaysPanel from "@/pages/Holidays";
 import {
   frequencyColors,
   frequencyLabels,
+  isTaskScheduledOnDate,
   type TaskWithCategory,
   type FrequencyType,
 } from "@/lib/schedule-utils";
+import { format, addDays, startOfDay } from "date-fns";
 
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -63,6 +65,78 @@ export default function Schedules() {
   // For now, completed tasks would come from protocol_items
   // Placeholder: no completed tasks until protocols are created
   const completedTaskIds = useMemo(() => new Set<string>(), []);
+
+  // Past protocols by period — used to flag overdue (incomplete) dates in the calendar.
+  const { data: protocols = [] } = useQuery({
+    queryKey: ["maintenance-protocols-coverage", activeContract?.organization_id],
+    queryFn: async () => {
+      if (!activeContract?.organization_id) return [];
+      const { data } = await supabase
+        .from("maintenance_protocols")
+        .select("id, period_start, period_end, frequency, status")
+        .eq("customer_org_id", activeContract.organization_id);
+      return data ?? [];
+    },
+    enabled: !!activeContract?.organization_id,
+  });
+
+  // Уже отправленные в облако протоколы (любого статуса) — для значка облачка в календаре.
+  const { data: uploads = [] } = useQuery({
+    queryKey: ["protocol-uploads", activeContract?.organization_id],
+    queryFn: async () => {
+      const ids = (protocols as any[]).map((p) => p.id);
+      if (ids.length === 0) return [];
+      const { data } = await (supabase.from as any)("protocol_uploads")
+        .select("protocol_id")
+        .in("protocol_id", ids);
+      return data ?? [];
+    },
+    enabled: (protocols as any[]).length > 0,
+  });
+
+  const uploadedDates = useMemo(() => {
+    const uploadedProtocolIds = new Set((uploads as any[]).map((u) => u.protocol_id));
+    const out = new Set<string>();
+    for (const p of protocols as any[]) {
+      if (!uploadedProtocolIds.has(p.id)) continue;
+      let d = startOfDay(new Date(p.period_start));
+      const end = startOfDay(new Date(p.period_end));
+      while (d <= end) { out.add(format(d, "yyyy-MM-dd")); d = addDays(d, 1); }
+    }
+    return out;
+  }, [uploads, protocols]);
+
+  // For each freq, set of "yyyy-MM-dd" days covered by a completed protocol.
+  const completedDaysByFreq = useMemo(() => {
+    const map = new Map<FrequencyType, Set<string>>();
+    for (const p of protocols as any[]) {
+      if (p.status !== "completed") continue;
+      const set = map.get(p.frequency as FrequencyType) ?? new Set<string>();
+      let d = startOfDay(new Date(p.period_start));
+      const end = startOfDay(new Date(p.period_end));
+      while (d <= end) { set.add(format(d, "yyyy-MM-dd")); d = addDays(d, 1); }
+      map.set(p.frequency as FrequencyType, set);
+    }
+    return map;
+  }, [protocols]);
+
+  // Compute incomplete past dates: any past (or today) day where a task is scheduled
+  // and there is NO completed protocol of that frequency covering the day.
+  const incompleteDates = useMemo(() => {
+    const today = startOfDay(new Date());
+    const out = new Set<string>();
+    if (!contractStartDate) return out;
+    let d = startOfDay(contractStartDate);
+    while (d <= today) {
+      for (const t of tasks) {
+        if (!isTaskScheduledOnDate(t.frequency, d, contractStartDate, holidayMap)) continue;
+        const covered = completedDaysByFreq.get(t.frequency)?.has(format(d, "yyyy-MM-dd"));
+        if (!covered) { out.add(format(d, "yyyy-MM-dd")); break; }
+      }
+      d = addDays(d, 1);
+    }
+    return out;
+  }, [tasks, contractStartDate, holidayMap, completedDaysByFreq]);
 
   const legend: FrequencyType[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual"];
 
@@ -119,6 +193,8 @@ export default function Schedules() {
                 onSelectDate={setSelectedDate}
                 serviceStartDate={contractStartDate}
                 holidays={holidayMap}
+                incompleteDates={incompleteDates}
+                uploadedDates={uploadedDates}
               />
             </Card>
             {selectedDate && (
@@ -135,6 +211,7 @@ export default function Schedules() {
                 completedTaskIds={completedTaskIds}
                 onClose={() => setSelectedDate(null)}
                 holidays={holidayMap}
+                uploaded={uploadedDates.has(format(selectedDate, "yyyy-MM-dd"))}
               />
             ) : (
               <Card className="flex flex-col items-center justify-center py-16 text-center">

@@ -26,6 +26,8 @@ import { snapshotProtocolGraphs } from "@/components/monitoring/ProtocolGraphs";
 import { buildProtocolDocxBlob } from "@/lib/export-protocol-docx";
 import { sendToSeafile } from "@/lib/seafile";
 import { frequencyLabels as FREQ_LBL } from "@/lib/schedule-utils";
+import { startIslandTask, updateIslandTask, finishIslandTask } from "@/lib/island-tasks";
+import { findUploadedProtocolIds, recordProtocolUpload } from "@/lib/protocol-uploads";
 
 export default function Protocols() {
   const { isStaff, user, hasRole } = useAuth();
@@ -45,6 +47,7 @@ export default function Protocols() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"active" | "overdue" | "completed">("active");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; label: string } | null>(null);
   const [signersFor, setSignersFor] = useState<string | null>(null);
   const [bulkSignersOpen, setBulkSignersOpen] = useState(false);
 
@@ -70,6 +73,19 @@ export default function Protocols() {
       return data ?? [];
     },
   });
+
+  // Все отправки в облако — для значка облачка в списке.
+  const { data: uploadedRows = [] } = useQuery({
+    queryKey: ["protocol-uploads", "all"],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("protocol_uploads").select("protocol_id");
+      return data ?? [];
+    },
+  });
+  const uploadedIds = useMemo(
+    () => new Set((uploadedRows as any[]).map((u) => u.protocol_id)),
+    [uploadedRows],
+  );
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
@@ -137,15 +153,73 @@ export default function Protocols() {
   async function bulkComplete() {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
+    const nowIso = new Date().toISOString();
+    // Сначала отмечаем все работы выполненными — завершение протокола
+    // подразумевает 100% выполнение работ.
+    const { error: itemsErr } = await supabase
+      .from("protocol_items")
+      .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+      .in("protocol_id", ids)
+      .neq("status", "completed");
+    if (itemsErr) { toast({ title: "Ошибка", description: itemsErr.message, variant: "destructive" }); return; }
     const { error } = await supabase
       .from("maintenance_protocols")
-      .update({ status: "completed", completed_at: new Date().toISOString(), completed_by: user!.id } as any)
+      .update({ status: "completed", completed_at: nowIso, completed_by: user!.id } as any)
       .in("id", ids);
     if (error) { toast({ title: "Ошибка", description: error.message, variant: "destructive" }); return; }
     await logAudit({ action: `Массовое завершение протоколов (${ids.length})`, module: "protocols", details: ids.join(", ") });
     toast({ title: `Завершено: ${ids.length}` });
     setSelectedIds(new Set());
     qc.invalidateQueries({ queryKey: ["protocols"] });
+    qc.invalidateQueries({ queryKey: ["protocol-items"] });
+  }
+
+  async function bulkCompleteWorks() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!window.confirm(`Отметить все работы в ${ids.length} протокол(ах) выполненными?`)) return;
+    const nowIso = new Date().toISOString();
+    const { error: itemsErr } = await supabase
+      .from("protocol_items")
+      .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+      .in("protocol_id", ids)
+      .neq("status", "completed");
+    if (itemsErr) { toast({ title: "Ошибка", description: itemsErr.message, variant: "destructive" }); return; }
+    // Переводим протоколы из pending в in_progress (если ещё не завершены)
+    await supabase
+      .from("maintenance_protocols")
+      .update({ status: "in_progress" } as any)
+      .in("id", ids)
+      .neq("status", "completed");
+    await logAudit({ action: `Массовое выполнение работ (${ids.length})`, module: "protocols", details: ids.join(", ") });
+    toast({ title: `Работы отмечены выполненными: ${ids.length}` });
+    qc.invalidateQueries({ queryKey: ["protocols"] });
+    qc.invalidateQueries({ queryKey: ["protocol-items"] });
+  }
+
+  async function completeAllWorks(id: string) {
+    if (!window.confirm("Отметить все работы протокола выполненными?")) return;
+    try {
+      const nowIso = new Date().toISOString();
+      const { error: itemsErr } = await supabase
+        .from("protocol_items")
+        .update({ status: "completed", completed_by: user!.id, completed_at: nowIso })
+        .eq("protocol_id", id)
+        .neq("status", "completed");
+      if (itemsErr) throw itemsErr;
+      const { error: pErr } = await supabase
+        .from("maintenance_protocols")
+        .update({ status: "in_progress" })
+        .eq("id", id)
+        .neq("status", "completed");
+      if (pErr) throw pErr;
+      await logAudit({ action: "Выполнение всех работ протокола", module: "protocols", entityId: id });
+      toast({ title: "Все работы отмечены выполненными" });
+      qc.invalidateQueries({ queryKey: ["protocols"] });
+      qc.invalidateQueries({ queryKey: ["protocol-items", id] });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    }
   }
 
   async function bulkDelete() {
@@ -184,7 +258,23 @@ export default function Protocols() {
       });
       return;
     }
+    // Подтверждение повторной отправки — для уже отправленных протоколов
+    const alreadyUploaded = await findUploadedProtocolIds(ids);
+    if (alreadyUploaded.size > 0) {
+      const ok = window.confirm(
+        `Из выбранных протоколов ранее уже были отправлены в облако: ${alreadyUploaded.size}. Отправить заново? Будут созданы новые версии файлов в Seafile.`,
+      );
+      if (!ok) return;
+    }
     setBulkBusy(true);
+    setBulkProgress({ done: 0, total: ids.length, label: "Подготовка…" });
+    const islandTaskId = startIslandTask({
+      label: `Отправка протоколов в Seafile`,
+      kind: "seafile",
+      total: ids.length,
+      href: "/protocols",
+      message: "подготовка…",
+    });
     try {
       const { data: setting } = await supabase
         .from("integration_settings")
@@ -193,21 +283,28 @@ export default function Protocols() {
         .maybeSingle();
       if (!setting?.enabled) {
         toast({ title: "Seafile не настроен", description: "Включите интеграцию в разделе «Интеграции».", variant: "destructive" });
+        finishIslandTask(islandTaskId, { status: "error", message: "Seafile не настроен" });
         return;
       }
 
       let okCount = 0;
       let errCount = 0;
-      for (const id of ids) {
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
         try {
           const proto = protocols.find((p) => p.id === id);
+          const siteName0 = proto?.sites?.name ?? "site";
+          setBulkProgress({ done: i, total: ids.length, label: `Подготовка: ${siteName0}` });
+          updateIslandTask(islandTaskId, { done: i, message: siteName0 });
           const data = await fetchProtocolDocxData(id);
           const blob = await buildProtocolDocxBlob(data);
           const freqLabel = FREQ_LBL[proto?.frequency ?? ""] ?? proto?.frequency ?? "protocol";
           const siteName = proto?.sites?.name ?? "site";
           const dateStr = proto?.period_end ?? format(new Date(), "yyyy-MM-dd");
           const filename = `Протокол_${freqLabel}_${siteName}_${dateStr}.docx`.replace(/[/\\:*?"<>|]/g, "_");
-          await sendToSeafile({
+          setBulkProgress({ done: i, total: ids.length, label: `Загрузка в облако: ${siteName} (${i + 1}/${ids.length})` });
+          updateIslandTask(islandTaskId, { done: i, message: siteName });
+          const sfRes = await sendToSeafile({
             kind: "protocol",
             blob,
             filename,
@@ -217,15 +314,38 @@ export default function Protocols() {
               frequency: proto?.frequency,
               period_start: proto?.period_start,
               period_end: proto?.period_end,
+              // Путь в Seafile должен строиться по отчётной дате (period_end),
+              // а не по дате выгрузки.
+              date: dateStr,
+              year: dateStr.slice(0, 4),
+              month: dateStr.slice(5, 7),
+              period: dateStr,
             },
+          });
+          await recordProtocolUpload({
+            protocol_id: id,
+            storage: "seafile",
+            url: (sfRes as any)?.viewUrl ?? null,
+            filename: sfRes?.filename ?? filename,
+            folder: sfRes?.folder ?? null,
+            meta: { site: siteName, frequency: proto?.frequency, period_end: proto?.period_end },
           });
           okCount++;
         } catch (err: any) {
           errCount++;
           console.error("Seafile upload failed for", id, err);
         }
+        setBulkProgress({ done: i + 1, total: ids.length, label: `Готово: ${i + 1}/${ids.length}` });
+        updateIslandTask(islandTaskId, { done: i + 1 });
       }
       await logAudit({ action: `Массовая отправка протоколов в облако (${okCount}/${ids.length})`, module: "protocols", details: ids.join(", ") });
+      qc.invalidateQueries({ queryKey: ["protocol-uploads"] });
+      finishIslandTask(islandTaskId, {
+        status: errCount === 0 ? "success" : "error",
+        message: errCount === 0
+          ? `${okCount}/${ids.length} отправлено`
+          : `Отправлено ${okCount}, ошибок ${errCount}`,
+      });
       toast({
         title: errCount === 0 ? `Отправлено в облако: ${okCount}` : `Отправлено: ${okCount}, ошибок: ${errCount}`,
         variant: errCount > 0 ? "destructive" : "default",
@@ -233,6 +353,7 @@ export default function Protocols() {
       if (errCount === 0) setSelectedIds(new Set());
     } finally {
       setBulkBusy(false);
+      setBulkProgress(null);
     }
   }
 
@@ -480,15 +601,29 @@ export default function Protocols() {
       {isStaff && selectedIds.size > 0 && (
         <div className="flex items-center gap-2 mb-3 p-2 bg-primary/5 border border-primary/20 rounded-lg">
           <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          {bulkProgress && (
+            <span className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="inline-block h-2 w-32 rounded bg-muted overflow-hidden">
+                <span
+                  className="block h-full bg-primary transition-all"
+                  style={{ width: `${Math.round((bulkProgress.done / Math.max(1, bulkProgress.total)) * 100)}%` }}
+                />
+              </span>
+              {bulkProgress.label}
+            </span>
+          )}
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="outline" onClick={bulkExportCsv}>
               <FileDown className="h-3.5 w-3.5 mr-1" /> Экспорт CSV
             </Button>
             <Button size="sm" variant="outline" onClick={bulkSendSeafile} disabled={bulkBusy}>
-              <Cloud className="h-3.5 w-3.5 mr-1" /> В облако
+              <Cloud className="h-3.5 w-3.5 mr-1" /> {bulkBusy && bulkProgress ? `${bulkProgress.done}/${bulkProgress.total}` : "В облако"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setBulkSignersOpen(true)}>
               <UserCheck className="h-3.5 w-3.5 mr-1" /> Подписанты
+            </Button>
+            <Button size="sm" variant="outline" onClick={bulkCompleteWorks}>
+              <ListChecks className="h-3.5 w-3.5 mr-1" /> Выполнить все работы
             </Button>
             {activeTab !== "completed" && (
               <Button size="sm" onClick={bulkComplete}>
@@ -519,6 +654,8 @@ export default function Protocols() {
         onToggleSelect={isStaff ? toggleSelect : undefined}
         onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
         onAssignSigners={isStaff ? (id) => setSignersFor(id) : undefined}
+        onCompleteAllWorks={isStaff ? completeAllWorks : undefined}
+        uploadedIds={uploadedIds}
       />
       </>
       )}

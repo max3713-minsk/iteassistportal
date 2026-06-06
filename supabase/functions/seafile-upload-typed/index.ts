@@ -15,7 +15,7 @@ const FREQ_RU: Record<string, string> = {
 };
 
 const DEFAULT_FOLDERS: Record<string, string> = {
-  protocol: "Протоколы/{org}/{year}/{frequency_ru}/{period}",
+  protocol: "Протоколы/{org}/{year}/{month_ru}/{frequency_ru}/{period}",
   graph: "Графики/{org}/{year}-{month}",
   report: "Отчёты/{org}/{year}-{month}",
   document: "Документы/{org}/{category}",
@@ -24,6 +24,11 @@ const DEFAULT_FOLDERS: Record<string, string> = {
   ticket: "Обращения/{org}/{year}-{month}",
 };
 const DEFAULT_FILENAME = "{date}_{name}_{user}";
+
+const MONTHS_RU = [
+  "01_Январь","02_Февраль","03_Март","04_Апрель","05_Май","06_Июнь",
+  "07_Июль","08_Август","09_Сентябрь","10_Октябрь","11_Ноябрь","12_Декабрь",
+];
 
 function sanitize(s: string): string {
   return String(s ?? "—").replace(/[\/\\:*?"<>|]/g, "_").trim().slice(0, 120) || "—";
@@ -151,6 +156,10 @@ export default async function handler(req: Request) {
       org: String(meta.org ?? "Без_организации"),
       year: String(meta.year ?? dateStr.slice(0, 4)),
       month: String(meta.month ?? dateStr.slice(5, 7)),
+      month_ru: (() => {
+        const m = parseInt(String(meta.month ?? dateStr.slice(5, 7)), 10);
+        return Number.isFinite(m) && m >= 1 && m <= 12 ? MONTHS_RU[m - 1] : "—";
+      })(),
       date: dateStr,
       time: timeStr,
       frequency: String(meta.frequency ?? ""),

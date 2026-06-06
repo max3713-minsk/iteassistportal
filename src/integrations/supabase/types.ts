@@ -73,6 +73,33 @@ export type Database = {
           },
         ]
       }
+      applied_migrations: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          checksum: string | null
+          duration_ms: number | null
+          filename: string
+          note: string | null
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          checksum?: string | null
+          duration_ms?: number | null
+          filename: string
+          note?: string | null
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          checksum?: string | null
+          duration_ms?: number | null
+          filename?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -114,6 +141,9 @@ export type Database = {
       }
       automation_logs: {
         Row: {
+          cancel_requested: boolean
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           host_id: string | null
           host_name: string | null
@@ -125,6 +155,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancel_requested?: boolean
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           host_id?: string | null
           host_name?: string | null
@@ -136,6 +169,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancel_requested?: boolean
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           host_id?: string | null
           host_name?: string | null
@@ -206,6 +242,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dismissed_alerts: {
+        Row: {
+          dismissed_at: string
+          eventid: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          eventid: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          eventid?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -366,6 +426,73 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      equipment_logs: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          equipment_id: string | null
+          filename: string | null
+          id: string
+          protocol_id: string | null
+          protocol_item_id: string | null
+          raw_text: string | null
+          size_bytes: number | null
+          source: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          equipment_id?: string | null
+          filename?: string | null
+          id?: string
+          protocol_id?: string | null
+          protocol_item_id?: string | null
+          raw_text?: string | null
+          size_bytes?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          equipment_id?: string | null
+          filename?: string | null
+          id?: string
+          protocol_id?: string | null
+          protocol_item_id?: string | null
+          raw_text?: string | null
+          size_bytes?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_logs_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_logs_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_protocols"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_logs_protocol_item_id_fkey"
+            columns: ["protocol_item_id"]
+            isOneToOne: false
+            referencedRelation: "protocol_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       factory_reset_requests: {
         Row: {
@@ -636,6 +763,45 @@ export type Database = {
           },
         ]
       }
+      item_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custom_display_name: string | null
+          custom_oid: string | null
+          disabled: boolean
+          id: string
+          item_key: string
+          notes: string | null
+          updated_at: string
+          zabbix_host_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custom_display_name?: string | null
+          custom_oid?: string | null
+          disabled?: boolean
+          id?: string
+          item_key: string
+          notes?: string | null
+          updated_at?: string
+          zabbix_host_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custom_display_name?: string | null
+          custom_oid?: string | null
+          disabled?: boolean
+          id?: string
+          item_key?: string
+          notes?: string | null
+          updated_at?: string
+          zabbix_host_id?: string
+        }
+        Relationships: []
+      }
       maintenance_protocols: {
         Row: {
           completed_at: string | null
@@ -807,6 +973,7 @@ export type Database = {
           created_at: string
           description: string | null
           equipment_id: string | null
+          equipment_ids: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id: string
           is_active: boolean
@@ -824,6 +991,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           equipment_id?: string | null
+          equipment_ids?: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           is_active?: boolean
@@ -841,6 +1009,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           equipment_id?: string | null
+          equipment_ids?: string[]
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
           is_active?: boolean
@@ -915,6 +1084,33 @@ export type Database = {
           key_pattern?: string
           match_type?: string
           priority?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mib_oid_cache: {
+        Row: {
+          description: string | null
+          fetched_at: string
+          name: string | null
+          oid: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          description?: string | null
+          fetched_at?: string
+          name?: string | null
+          oid: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          description?: string | null
+          fetched_at?: string
+          name?: string | null
+          oid?: string
+          source?: string
           updated_at?: string
         }
         Relationships: []
@@ -1333,6 +1529,45 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_flags: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          eventid: string | null
+          flag: Database["public"]["Enums"]["problem_flag_level"]
+          host: string | null
+          id: string
+          triggerid: string | null
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          eventid?: string | null
+          flag?: Database["public"]["Enums"]["problem_flag_level"]
+          host?: string | null
+          id?: string
+          triggerid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          eventid?: string | null
+          flag?: Database["public"]["Enums"]["problem_flag_level"]
+          host?: string | null
+          id?: string
+          triggerid?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1528,6 +1763,50 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocol_uploads: {
+        Row: {
+          filename: string | null
+          folder: string | null
+          id: string
+          meta: Json | null
+          protocol_id: string
+          storage: string
+          uploaded_at: string
+          uploaded_by: string | null
+          url: string | null
+        }
+        Insert: {
+          filename?: string | null
+          folder?: string | null
+          id?: string
+          meta?: Json | null
+          protocol_id: string
+          storage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+        }
+        Update: {
+          filename?: string | null
+          folder?: string | null
+          id?: string
+          meta?: Json | null
+          protocol_id?: string
+          storage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_uploads_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_protocols"
             referencedColumns: ["id"]
           },
         ]
@@ -2368,6 +2647,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      force_delete_organization: { Args: { _org_id: string }; Returns: Json }
       get_tables_list: {
         Args: never
         Returns: {
@@ -2383,6 +2663,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      preview_organization_cascade: { Args: { _org_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "engineer" | "customer"
@@ -2403,6 +2684,7 @@ export type Database = {
         | "semi_annual"
         | "on_request"
       monitoring_protocol: "SNMP" | "IPMI" | "SSH" | "HTTP" | "HTTPS" | "Agent"
+      problem_flag_level: "important" | "attention" | "minor"
       protocol_status: "pending" | "in_progress" | "completed" | "overdue"
       ticket_link_kind:
         | "related"
@@ -2568,6 +2850,7 @@ export const Constants = {
         "on_request",
       ],
       monitoring_protocol: ["SNMP", "IPMI", "SSH", "HTTP", "HTTPS", "Agent"],
+      problem_flag_level: ["important", "attention", "minor"],
       protocol_status: ["pending", "in_progress", "completed", "overdue"],
       ticket_link_kind: [
         "related",

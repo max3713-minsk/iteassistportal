@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/users/ConfirmDialog";
-import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow, MapPin } from "lucide-react";
+import { Building2, Plus, FileText, Download, Trash2, AlertTriangle, Calendar as CalendarIcon, Workflow, MapPin, Archive, ArchiveRestore, ShieldAlert } from "lucide-react";
 import { logAudit } from "@/lib/audit";
 import SupportSchemeView from "@/components/organizations/SupportSchemeView";
 import { ClientReportWizard } from "@/components/organizations/ClientReportWizard";
@@ -122,6 +122,10 @@ function OrganizationsTab({ toast, qc }: any) {
   const [editing, setEditing] = useState<any | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [deleteBlocker, setDeleteBlocker] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [forceDeleteOrg, setForceDeleteOrg] = useState<any | null>(null);
+  const [cascadePreview, setCascadePreview] = useState<Record<string, number> | null>(null);
+  const [cascadeConfirmText, setCascadeConfirmText] = useState("");
   const [form, setForm] = useState({
     name: "", short_name: "", legal_full_name: "", inn: "",
     contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "",
@@ -135,6 +139,8 @@ function OrganizationsTab({ toast, qc }: any) {
       return data;
     },
   });
+
+  const visibleOrgs = (orgs as any[]).filter((o) => showArchived ? !o.is_active : o.is_active);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -199,6 +205,51 @@ function OrganizationsTab({ toast, qc }: any) {
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: async (org: any) => {
+      const { error } = await supabase.from("organizations").update({ is_active: true }).eq("id", org.id);
+      if (error) throw error;
+      logAudit({ action: "Восстановление организации из архива", module: "organizations", entityId: org.id, details: org.name });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["organizations"] });
+      toast({ title: "Организация восстановлена" });
+    },
+    onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const forceDeleteMutation = useMutation({
+    mutationFn: async (org: any) => {
+      const { data, error } = await supabase.rpc("force_delete_organization", { _org_id: org.id });
+      if (error) throw error;
+      logAudit({ action: "Принудительное каскадное удаление организации", module: "organizations", entityId: org.id, details: `${org.name} | ${JSON.stringify(data)}` });
+      return data as any;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["organizations"] });
+      setForceDeleteOrg(null);
+      setCascadePreview(null);
+      setCascadeConfirmText("");
+      toast({
+        title: "Организация и связанные данные удалены",
+        description: `Удалено: ЦОД ${data?.sites ?? 0}, оборудование ${data?.equipment ?? 0}, договоры ${data?.contracts ?? 0}, хосты ${data?.monitored_hosts ?? 0}, протоколы ${data?.protocols ?? 0}`,
+      });
+    },
+    onError: (e: any) => toast({ title: "Ошибка удаления", description: e.message, variant: "destructive" }),
+  });
+
+  async function openForceDelete(org: any) {
+    setForceDeleteOrg(org);
+    setCascadeConfirmText("");
+    setCascadePreview(null);
+    const { data, error } = await supabase.rpc("preview_organization_cascade", { _org_id: org.id });
+    if (error) {
+      toast({ title: "Ошибка предпросмотра", description: error.message, variant: "destructive" });
+      return;
+    }
+    setCascadePreview((data as any) ?? {});
+  }
+
   const openEdit = (org: any) => {
     setEditing(org);
     setForm({
@@ -222,6 +273,18 @@ function OrganizationsTab({ toast, qc }: any) {
           <CardTitle>Организации</CardTitle>
           <CardDescription>Заказчики, под каждого ведётся отдельный календарь и протоколы</CardDescription>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={showArchived ? "default" : "outline"}
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            <Archive className="h-4 w-4 mr-1.5" />
+            {showArchived ? "Скрыть архив" : "Архив"}
+            <Badge variant="secondary" className="ml-1.5 text-[10px]">
+              {(orgs as any[]).filter((o) => !o.is_active).length}
+            </Badge>
+          </Button>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm({ name: "", short_name: "", legal_full_name: "", inn: "", contact_email: "", contact_phone: "", address: "", notes: "", executor_default: "" }); } }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />Добавить организацию</Button>
@@ -254,6 +317,7 @@ function OrganizationsTab({ toast, qc }: any) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? <p className="text-muted-foreground">Загрузка...</p> : (
@@ -268,7 +332,12 @@ function OrganizationsTab({ toast, qc }: any) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orgs.map((o: any) => (
+              {visibleOrgs.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                  {showArchived ? "В архиве пусто." : "Нет активных организаций."}
+                </TableCell></TableRow>
+              )}
+              {visibleOrgs.map((o: any) => (
                 <TableRow key={o.id}>
                   <TableCell className="font-medium">
                     {o.name}
@@ -280,15 +349,35 @@ function OrganizationsTab({ toast, qc }: any) {
                   </TableCell>
                   <TableCell>{o.is_active ? <Badge>Активна</Badge> : <Badge variant="secondary">Архив</Badge>}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(o)}>Изменить</Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => { setDeleteBlocker(null); setConfirmDelete(o); }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {o.is_active ? (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(o)}>Изменить</Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => { setDeleteBlocker(null); setConfirmDelete(o); }}
+                          title="Удалить (если нет связанных данных) либо архивировать"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => restoreMutation.mutate(o)}>
+                          <ArchiveRestore className="h-4 w-4 mr-1.5" />Восстановить
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => openForceDelete(o)}
+                          title="Каскадное удаление со всеми связанными данными"
+                        >
+                          <ShieldAlert className="h-4 w-4 mr-1.5" />Удалить навсегда
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -313,6 +402,65 @@ function OrganizationsTab({ toast, qc }: any) {
           else deleteMutation.mutate(confirmDelete);
         }}
       />
+
+      {/* Force cascade delete dialog */}
+      <Dialog open={!!forceDeleteOrg} onOpenChange={(v) => { if (!v) { setForceDeleteOrg(null); setCascadePreview(null); setCascadeConfirmText(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="h-5 w-5" /> Полное удаление «{forceDeleteOrg?.name}»
+            </DialogTitle>
+            <DialogDescription>
+              Действие необратимо. Будут безвозвратно удалены все связанные данные.
+            </DialogDescription>
+          </DialogHeader>
+          {cascadePreview === null ? (
+            <p className="text-sm text-muted-foreground">Подсчёт связанных записей…</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                <div className="font-semibold mb-2 text-destructive">Будет удалено:</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div>Договоры: <strong>{cascadePreview.contracts ?? 0}</strong></div>
+                  <div>ЦОД: <strong>{cascadePreview.sites ?? 0}</strong></div>
+                  <div>Оборудование: <strong>{cascadePreview.equipment ?? 0}</strong></div>
+                  <div>Хосты мониторинга: <strong>{cascadePreview.monitored_hosts ?? 0}</strong></div>
+                  <div>Документы: <strong>{cascadePreview.documents ?? 0}</strong></div>
+                  <div>Графики ТО: <strong>{cascadePreview.schedules ?? 0}</strong></div>
+                  <div>Протоколы ТО: <strong>{cascadePreview.protocols ?? 0}</strong></div>
+                  <div>Схемы поддержки: <strong>{cascadePreview.support_schemes ?? 0}</strong></div>
+                  <div>Карты инфраструктуры: <strong>{cascadePreview.infra_maps ?? 0}</strong></div>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Для подтверждения введите название организации <code className="bg-muted px-1 rounded">{forceDeleteOrg?.name}</code>:</Label>
+                <Input
+                  value={cascadeConfirmText}
+                  onChange={(e) => setCascadeConfirmText(e.target.value)}
+                  placeholder={forceDeleteOrg?.name}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setForceDeleteOrg(null); setCascadePreview(null); setCascadeConfirmText(""); }}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                !forceDeleteOrg ||
+                cascadeConfirmText.trim() !== (forceDeleteOrg?.name ?? "").trim() ||
+                forceDeleteMutation.isPending
+              }
+              onClick={() => forceDeleteMutation.mutate(forceDeleteOrg)}
+            >
+              {forceDeleteMutation.isPending ? "Удаление…" : "Удалить навсегда"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

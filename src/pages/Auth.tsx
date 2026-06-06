@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
-import { Phone, Mail, Globe, Clock } from "lucide-react";
+import { Phone, Mail, Globe, Clock, ShieldPlus } from "lucide-react";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bootstrapAvailable, setBootstrapAvailable] = useState(false);
+  const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check whether system is empty and offers initial superadmin setup.
+    supabase.functions
+      .invoke("bootstrap-admin", { method: "GET" })
+      .then(({ data }) => setBootstrapAvailable(!!data?.needs_bootstrap))
+      .catch(() => setBootstrapAvailable(false));
+  }, []);
+
+  const handleBootstrap = async () => {
+    if (!confirm("Создать суперадминистратора admin@iteng.local с паролем derby3713? Это работает только при пустой БД.")) return;
+    setBootstrapBusy(true);
+    const { data, error } = await supabase.functions.invoke("bootstrap-admin", { method: "POST" });
+    setBootstrapBusy(false);
+    if (error || data?.error) {
+      toast({ title: "Не удалось", description: data?.error ?? error?.message, variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Суперадмин создан",
+      description: `Логин: ${data.email}  •  Пароль: ${data.password}. СРАЗУ смените пароль в профиле!`,
+    });
+    setEmail(data.email);
+    setPassword(data.password);
+    setBootstrapAvailable(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +136,25 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {bootstrapAvailable && (
+        <Card className="w-full max-w-md mt-4 border-dashed border-primary/50">
+          <CardContent className="p-4 space-y-2 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <ShieldPlus className="h-4 w-4 text-primary" />
+              Первичная инициализация портала
+            </div>
+            <p className="text-xs text-muted-foreground">
+              В системе ещё нет пользователей. Создайте суперадминистратора одним кликом —
+              логин <code>admin@iteng.local</code>, пароль <code>derby3713</code>.
+              Сразу после входа смените пароль в профиле.
+            </p>
+            <Button size="sm" className="w-full" onClick={handleBootstrap} disabled={bootstrapBusy}>
+              {bootstrapBusy ? "Создаём…" : "Создать суперадмина"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Company info footer */}
       <div className="mt-8 text-center space-y-2 max-w-md">

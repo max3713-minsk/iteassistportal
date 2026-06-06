@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,15 +54,40 @@ interface PlannedProtocol {
   exists?: boolean;
 }
 
-export default function BatchCreateProtocolDialog() {
+interface BatchCreateProtocolDialogProps {
+  /** Если передан — диалог управляется снаружи и кнопка-триггер не рендерится. */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  /** Дата по умолчанию (yyyy-MM-dd) для предзаполнения. */
+  initialDate?: string;
+  /** Включать ли по умолчанию режим «Период» вместо «Дата». */
+  initialMode?: "date" | "period";
+  /** Не рендерить кнопку-триггер (если внешний контролируемый режим). */
+  hideTrigger?: boolean;
+}
+
+export default function BatchCreateProtocolDialog(props: BatchCreateProtocolDialogProps = {}) {
   const { session } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = props.open ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (props.onOpenChange) props.onOpenChange(v);
+    else setInternalOpen(v);
+  };
 
-  const [mode, setMode] = useState<"date" | "period">("date");
-  const [dateFrom, setDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [mode, setMode] = useState<"date" | "period">(props.initialMode ?? "date");
+  const [dateFrom, setDateFrom] = useState(props.initialDate ?? format(new Date(), "yyyy-MM-dd"));
+  const [dateTo, setDateTo] = useState(props.initialDate ?? format(new Date(), "yyyy-MM-dd"));
+
+  // При открытии диалога с initialDate — подставить дату.
+  useEffect(() => {
+    if (open && props.initialDate) {
+      setDateFrom(props.initialDate);
+      setDateTo(props.initialDate);
+    }
+  }, [open, props.initialDate]);
   const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
   const [enabledFreqs, setEnabledFreqs] = useState<Set<Frequency>>(new Set(SCHEDULED_FREQUENCIES));
   const [matchRegulation, setMatchRegulation] = useState(true);
@@ -148,7 +173,7 @@ export default function BatchCreateProtocolDialog() {
         if (!taskCache.has(p.frequency)) {
           const { data } = await supabase
             .from("maintenance_tasks")
-            .select("id, title, category_id")
+            .select("id, title, category_id, equipment_id, equipment_ids")
             .eq("frequency", p.frequency)
             .eq("is_active", true);
           taskCache.set(p.frequency, data ?? []);
@@ -180,12 +205,17 @@ export default function BatchCreateProtocolDialog() {
         const items: any[] = [];
         for (const eq of equipment) {
           for (const t of tasks) {
-            if (!t.category_id || t.category_id === eq.category_id) {
+            const ids = (t as any).equipment_ids as string[] | null;
+            let match = true;
+            if (ids && ids.length > 0) match = ids.includes(eq.id);
+            else if ((t as any).equipment_id) match = (t as any).equipment_id === eq.id;
+            else if (t.category_id) match = t.category_id === eq.category_id;
+            if (match) {
               items.push({
                 protocol_id: protocol.id,
                 equipment_id: eq.id,
                 task_id: t.id,
-                status: markAllDone ? "done" : "pending",
+                status: markAllDone ? "completed" : "pending",
                 completed_by: markAllDone ? uid : null,
                 completed_at: markAllDone ? nowIso : null,
                 equipment_snapshot: {
@@ -225,9 +255,11 @@ export default function BatchCreateProtocolDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline"><CalendarPlus className="h-4 w-4 mr-2" />Массовое создание</Button>
-      </DialogTrigger>
+      {!props.hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="outline"><CalendarPlus className="h-4 w-4 mr-2" />Массовое создание</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Массовое создание протоколов</DialogTitle>

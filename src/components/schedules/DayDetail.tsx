@@ -1,12 +1,13 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, Circle, X, FileText } from "lucide-react";
+import { CheckCircle2, Circle, X, FileText, CalendarPlus, Cloud } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import BatchCreateProtocolDialog from "@/components/protocols/BatchCreateProtocolDialog";
 import {
   frequencyColors,
   frequencyLabels,
@@ -22,6 +23,8 @@ interface Props {
   completedTaskIds: Set<string>;
   onClose: () => void;
   holidays?: HolidayMap;
+  /** Дата отправлена в облако — показать индикатор. */
+  uploaded?: boolean;
 }
 
 interface GroupedCategory {
@@ -29,8 +32,11 @@ interface GroupedCategory {
   items: { task: TaskWithCategory; completed: boolean }[];
 }
 
-export default function DayDetail({ date, tasks, completedTaskIds, onClose, holidays }: Props) {
+export default function DayDetail({ date, tasks, completedTaskIds, onClose, holidays, uploaded }: Props) {
   const navigate = useNavigate();
+  const [batchOpen, setBatchOpen] = useState(false);
+  const dateStr = format(date, "yyyy-MM-dd");
+  const isPastOrToday = date.getTime() <= new Date(new Date().toDateString()).getTime();
   const grouped = useMemo(() => {
     // Filter tasks scheduled on this date
     const scheduled = tasks.filter((t) =>
@@ -69,8 +75,13 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose, holi
           <h3 className="font-heading text-lg font-semibold">
             {format(date, "d MMMM yyyy", { locale: ru })}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            Задач: {totalTasks} • Выполнено: {completedCount}
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <span>Задач: {totalTasks} • Выполнено: {completedCount}</span>
+            {uploaded && (
+              <span className="inline-flex items-center gap-1 text-sky-500" title="Протоколы за эту дату отправлены в облако">
+                <Cloud className="h-3.5 w-3.5" /> в облаке
+              </span>
+            )}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -89,16 +100,27 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose, holi
       </div>
 
       {/* Navigate to protocols */}
-      <div className="px-4 py-2 border-b">
+      <div className="px-4 py-2 border-b space-y-2">
         <Button
           variant="outline"
           size="sm"
           className="w-full gap-2"
-          onClick={() => navigate(`/protocols?date=${format(date, "yyyy-MM-dd")}`)}
+          onClick={() => navigate(`/protocols?date=${dateStr}`)}
         >
           <FileText className="h-4 w-4" />
           Перейти к протоколам за эту дату
         </Button>
+        {isPastOrToday && totalTasks > 0 && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full gap-2"
+            onClick={() => setBatchOpen(true)}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Сформировать протоколы за эту дату
+          </Button>
+        )}
       </div>
 
       {/* Task list */}
@@ -156,6 +178,13 @@ export default function DayDetail({ date, tasks, completedTaskIds, onClose, holi
           )}
         </div>
       </ScrollArea>
+      <BatchCreateProtocolDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        initialDate={dateStr}
+        initialMode="date"
+        hideTrigger
+      />
     </div>
   );
 }
