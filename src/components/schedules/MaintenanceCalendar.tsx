@@ -135,12 +135,12 @@ export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate,
           return (
             <button
               key={key}
-              onClick={() => !past && !beforeStart && inMonth && onSelectDate(day)}
-              disabled={past || beforeStart || !inMonth}
+              onClick={() => !beforeStart && inMonth && onSelectDate(day)}
+              disabled={beforeStart || !inMonth}
               className={cn(
                 "relative flex flex-col items-center justify-start rounded-lg p-1 min-h-[60px] md:min-h-[72px] transition-all text-sm border border-transparent",
                 !inMonth && "opacity-20 cursor-default",
-                inMonth && past && "opacity-40 cursor-default bg-muted/50",
+                inMonth && past && !beforeStart && "opacity-60 cursor-pointer hover:opacity-100 hover:border-primary/40 bg-muted/30",
                 inMonth && beforeStart && "opacity-30 cursor-not-allowed bg-muted/30",
                 inMonth && !past && !beforeStart && "hover:border-primary/40 cursor-pointer",
                 isToday && "ring-2 ring-primary/50 font-bold",

@@ -232,7 +232,7 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
               protocol_id: protocol.id,
               equipment_id: eq.id,
               task_id: task.id,
-              status: markAllDone ? "done" : "pending",
+              status: markAllDone ? "completed" : "pending",
               completed_by: markAllDone ? session?.user.id : null,
               completed_at: markAllDone ? new Date().toISOString() : null,
             });
