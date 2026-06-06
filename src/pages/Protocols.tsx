@@ -74,6 +74,19 @@ export default function Protocols() {
     },
   });
 
+  // Все отправки в облако — для значка облачка в списке.
+  const { data: uploadedRows = [] } = useQuery({
+    queryKey: ["protocol-uploads", "all"],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("protocol_uploads").select("protocol_id");
+      return data ?? [];
+    },
+  });
+  const uploadedIds = useMemo(
+    () => new Set((uploadedRows as any[]).map((u) => u.protocol_id)),
+    [uploadedRows],
+  );
+
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
   const activeProtocols = useMemo(() => {
@@ -642,6 +655,7 @@ export default function Protocols() {
         onToggleSelectAll={isStaff ? toggleSelectAll : undefined}
         onAssignSigners={isStaff ? (id) => setSignersFor(id) : undefined}
         onCompleteAllWorks={isStaff ? completeAllWorks : undefined}
+        uploadedIds={uploadedIds}
       />
       </>
       )}
