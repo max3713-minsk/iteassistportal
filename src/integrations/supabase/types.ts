@@ -427,6 +427,73 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment_logs: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          equipment_id: string | null
+          filename: string | null
+          id: string
+          protocol_id: string | null
+          protocol_item_id: string | null
+          raw_text: string | null
+          size_bytes: number | null
+          source: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          equipment_id?: string | null
+          filename?: string | null
+          id?: string
+          protocol_id?: string | null
+          protocol_item_id?: string | null
+          raw_text?: string | null
+          size_bytes?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          equipment_id?: string | null
+          filename?: string | null
+          id?: string
+          protocol_id?: string | null
+          protocol_item_id?: string | null
+          raw_text?: string | null
+          size_bytes?: number | null
+          source?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_logs_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_logs_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_protocols"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_logs_protocol_item_id_fkey"
+            columns: ["protocol_item_id"]
+            isOneToOne: false
+            referencedRelation: "protocol_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factory_reset_requests: {
         Row: {
           approved_at: string | null
