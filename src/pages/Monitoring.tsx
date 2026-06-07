@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
-import { Activity, AlertTriangle, RefreshCw, Boxes, LayoutDashboard } from "lucide-react";
+import { Activity, AlertTriangle, RefreshCw, Boxes, LayoutDashboard, ScrollText } from "lucide-react";
 import { priorityToIncident, priorityLabel } from "@/components/monitoring/monitoringUtils";
 
 import MonitoringHosts from "@/components/monitoring/MonitoringHosts";
@@ -20,6 +20,7 @@ import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
 import ProblemsHeatmap from "@/components/monitoring/ProblemsHeatmap";
+import MonitoringLogs from "@/components/monitoring/MonitoringLogs";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -188,6 +189,10 @@ export default function Monitoring() {
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
           <TabsTrigger value="tz">Покрытие регламента</TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1">
+            <ScrollText className="h-3.5 w-3.5" />
+            Логи и ИИ
+          </TabsTrigger>
           <TabsTrigger value="catalog" className="flex items-center gap-1">
             <Boxes className="h-3.5 w-3.5" />
             Хосты и шаблоны
@@ -240,6 +245,10 @@ export default function Monitoring() {
 
         <TabsContent value="tz">
           <TZCoverage />
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <MonitoringLogs />
         </TabsContent>
 
         <TabsContent value="catalog" className="space-y-6">
