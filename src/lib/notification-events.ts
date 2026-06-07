@@ -66,11 +66,11 @@ export const PRIORITY_OPTIONS = [
 ];
 
 export const WEEKDAYS = [
-  { value: 1, label: "Пн" },
-  { value: 2, label: "Вт" },
-  { value: 3, label: "Ср" },
-  { value: 4, label: "Чт" },
-  { value: 5, label: "Пт" },
-  { value: 6, label: "Сб" },
-  { value: 0, label: "Вс" },
+  { value: 1, label: "ПН" },
+  { value: 2, label: "ВТ" },
+  { value: 3, label: "СР" },
+  { value: 4, label: "ЧТ" },
+  { value: 5, label: "ПТ" },
+  { value: 6, label: "СБ" },
+  { value: 0, label: "ВС" },
 ];

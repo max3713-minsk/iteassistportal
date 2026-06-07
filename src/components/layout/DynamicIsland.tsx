@@ -178,7 +178,7 @@ export function DynamicIsland() {
                 {time}
               </span>
               <span className="hidden xl:inline text-[10px] uppercase tracking-wide text-primary font-semibold">
-                {WEEKDAYS[now.getDay()].slice(0, 2)}
+                {["ВС","ПН","ВТ","СР","ЧТ","ПТ","СБ"][now.getDay()]}
               </span>
             </button>
           </TooltipTrigger>
