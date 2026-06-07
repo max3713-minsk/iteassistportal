@@ -9,7 +9,7 @@ interface Props {
   events?: { created_at: string }[];
 }
 
-const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const DAYS = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 /**

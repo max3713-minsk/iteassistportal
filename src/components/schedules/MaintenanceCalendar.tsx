@@ -39,7 +39,7 @@ interface Props {
   uploadedDates?: Set<string>;
 }
 
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAYS = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
 
 export default function MaintenanceCalendar({ tasks, selectedDate, onSelectDate, serviceStartDate, holidays, incompleteDates, uploadedDates }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
