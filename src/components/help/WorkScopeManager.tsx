@@ -323,15 +323,56 @@ export default function WorkScopeManager() {
         </CardContent>
       </Card>
 
+      {selectedIds.size > 0 && canEdit && (
+        <Card className="border-primary/40">
+          <CardContent className="py-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+            <Button size="sm" variant="outline" className="gap-1.5"
+              onClick={() => bulkUpdate.mutate({ ids: Array.from(selectedIds), patch: { include_in_protocol: true } })}>
+              <FileCheck2 className="h-3.5 w-3.5" /> Включить в протокол
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5"
+              onClick={() => bulkUpdate.mutate({ ids: Array.from(selectedIds), patch: { include_in_protocol: false } })}>
+              <FileX2 className="h-3.5 w-3.5" /> Исключить из протокола
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => bulkUpdate.mutate({ ids: Array.from(selectedIds), patch: { is_active: true } })}>
+              Активировать
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => bulkUpdate.mutate({ ids: Array.from(selectedIds), patch: { is_active: false } })}>
+              Деактивировать
+            </Button>
+            <Button size="sm" variant="outline" className="text-destructive"
+              onClick={() => { if (confirm(`Удалить ${selectedIds.size} работ?`)) bulkDelete.mutate(Array.from(selectedIds)); }}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Удалить
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Снять выделение</Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                {canEdit && (
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((t) => selectedIds.has(t.id))}
+                      onCheckedChange={(v) => {
+                        if (v) setSelectedIds(new Set(filtered.map((t) => t.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Наименование</TableHead>
                 <TableHead className="w-[140px]">Периодичность</TableHead>
                 <TableHead className="w-[180px]">Категория</TableHead>
                 <TableHead className="w-[160px]">Привязка</TableHead>
+                <TableHead className="w-[120px]">В протокол</TableHead>
                 {canEdit && <TableHead className="w-[100px]"></TableHead>}
               </TableRow>
             </TableHeader>
@@ -342,6 +383,20 @@ export default function WorkScopeManager() {
                 const eq = equipment.find((e: any) => e.id === t.equipment_id);
                 return (
                   <TableRow key={t.id} className={cn(!t.is_active && "opacity-50")}>
+                    {canEdit && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(t.id)}
+                          onCheckedChange={(v) => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(t.id); else next.delete(t.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="font-medium text-sm">{t.title}</div>
                       {t.description && <div className="text-xs text-muted-foreground">{t.description}</div>}
@@ -365,6 +420,20 @@ export default function WorkScopeManager() {
                         return eq ? `🖥 ${eq.name}` : site ? `🏢 ${site.name}` : "—";
                       })()}
                     </TableCell>
+                    <TableCell>
+                      {canEdit ? (
+                        <Checkbox
+                          checked={t.include_in_protocol}
+                          onCheckedChange={(v) =>
+                            bulkUpdate.mutate({ ids: [t.id], patch: { include_in_protocol: !!v } })
+                          }
+                        />
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          {t.include_in_protocol ? "Да" : "Нет"}
+                        </Badge>
+                      )}
+                    </TableCell>
                     {canEdit && (
                       <TableCell>
                         <div className="flex gap-1">
@@ -382,7 +451,7 @@ export default function WorkScopeManager() {
                 );
               })}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={canEdit ? 5 : 4} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
+                <TableRow><TableCell colSpan={canEdit ? 7 : 5} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
