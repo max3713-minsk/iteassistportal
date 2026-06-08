@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, FileDown, Search, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, FileDown, Search, Filter, FileCheck2, FileX2 } from "lucide-react";
 import { frequencyLabels, frequencyColors, type FrequencyType } from "@/lib/schedule-utils";
 import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -36,6 +36,7 @@ interface TaskRow {
   equipment_ids: string[] | null;
   is_active: boolean;
   is_system: boolean;
+  include_in_protocol: boolean;
 }
 
 const FREQ_BY_LABEL: Record<string, Frequency> = {
@@ -61,6 +62,7 @@ export default function WorkScopeManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<TaskRow> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: categories = [] } = useQuery({
     queryKey: ["wsm-categories"],
@@ -89,7 +91,7 @@ export default function WorkScopeManager() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system")
+        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol")
         .order("title");
       if (error) throw error;
       return (data ?? []) as TaskRow[];
@@ -122,6 +124,7 @@ export default function WorkScopeManager() {
         equipment_id: eqIds.length === 1 ? eqIds[0] : null,
         equipment_ids: eqIds,
         is_active: row.is_active ?? true,
+        include_in_protocol: row.include_in_protocol ?? true,
       };
       if (row.id) {
         const { error } = await supabase.from("maintenance_tasks").update(payload).eq("id", row.id);
@@ -141,6 +144,32 @@ export default function WorkScopeManager() {
     onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
 
+  const bulkUpdate = useMutation({
+    mutationFn: async ({ ids, patch }: { ids: string[]; patch: Partial<Pick<TaskRow, "include_in_protocol" | "is_active">> }) => {
+      const { error } = await supabase.from("maintenance_tasks").update(patch).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wsm-tasks"] });
+      toast({ title: "Обновлено" });
+      setSelectedIds(new Set());
+    },
+    onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("maintenance_tasks").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wsm-tasks"] });
+      toast({ title: "Удалено" });
+      setSelectedIds(new Set());
+    },
+    onError: (e: any) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("maintenance_tasks").delete().eq("id", id);
@@ -154,7 +183,7 @@ export default function WorkScopeManager() {
   });
 
   function openCreate() {
-    setEditing({ frequency: "monthly", is_active: true });
+    setEditing({ frequency: "monthly", is_active: true, include_in_protocol: true });
     setDialogOpen(true);
   }
   function openEdit(t: TaskRow) {
