@@ -976,6 +976,7 @@ export type Database = {
           equipment_ids: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id: string
+          include_in_protocol: boolean
           is_active: boolean
           is_automatable: boolean | null
           is_system: boolean
@@ -994,6 +995,7 @@ export type Database = {
           equipment_ids?: string[]
           frequency: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
+          include_in_protocol?: boolean
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
@@ -1012,6 +1014,7 @@ export type Database = {
           equipment_ids?: string[]
           frequency?: Database["public"]["Enums"]["maintenance_frequency"]
           id?: string
+          include_in_protocol?: boolean
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
