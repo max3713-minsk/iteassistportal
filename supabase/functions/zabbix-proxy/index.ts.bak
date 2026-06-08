@@ -3,10 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const ZABBIX_TIMEOUT = 15000;
+
+/* ─── Simple in-memory cache ─── */
 const cache = new Map<string, { data: unknown; ts: number }>();
 function getCached(key: string, ttlMs: number): unknown | null {
   const entry = cache.get(key);
@@ -15,12 +16,14 @@ function getCached(key: string, ttlMs: number): unknown | null {
 }
 function setCache(key: string, data: unknown) {
   cache.set(key, { data, ts: Date.now() });
+  // Evict old entries (max 100)
   if (cache.size > 100) {
     const oldest = [...cache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
     if (oldest) cache.delete(oldest[0]);
   }
 }
 
+/* ─── Helpers ─── */
 async function fetchWithTimeout(url: string, options: RequestInit, timeout = ZABBIX_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -45,14 +48,24 @@ function jsonRpc(method: string, params: unknown, auth?: string, id = 1) {
   return JSON.stringify(body);
 }
 
-const ok = (data: unknown) => new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-const fail = (error: string, status = 500) => new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+const ok = (data: unknown) =>
+  new Response(JSON.stringify(data), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+const fail = (error: string, status = 500) =>
+  new Response(JSON.stringify({ error }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
+/* ─── Zabbix auth session (per connection, 1h TTL) ─── */
 const authTokenCache = new Map<string, { token: string; ts: number }>();
-const AUTH_TTL = 60 * 60 * 1000;
+const AUTH_TTL = 60 * 60 * 1000; // 1 hour
+
 async function getAuthToken(cacheKey: string, apiUrl: string, user: string, password: string): Promise<string> {
   const entry = authTokenCache.get(cacheKey);
   if (entry && Date.now() - entry.ts < AUTH_TTL) return entry.token;
+
   const res = await fetchWithTimeout(apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -64,38 +77,189 @@ async function getAuthToken(cacheKey: string, apiUrl: string, user: string, pass
   return data.result;
 }
 
-function getActionDef(action: string, extraParams?: Record<string, unknown>): { method: string; params: Record<string, unknown>; cacheTtl: number } | null {
+/* ─── Action definitions with cache TTL ─── */
+interface ActionDef {
+  method: string;
+  params: Record<string, unknown>;
+  cacheTtl: number; // ms, 0 = no cache
+}
+
+function getActionDef(action: string, extraParams?: Record<string, unknown>): ActionDef | null {
   switch (action) {
     case "getHosts":
-      return { method: "host.get", params: { output: ["hostid","host","name","status","available"], selectInterfaces: ["ip","dns","port","type"], selectGroups: ["groupid","name"], sortfield: "name", ...extraParams }, cacheTtl: 60000 };
+      return {
+        method: "host.get",
+        params: {
+          output: ["hostid", "host", "name", "status", "available", "snmp_available"],
+          selectInterfaces: ["ip", "dns", "port", "type"],
+          selectGroups: ["groupid", "name"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
     case "getProblems":
-      return { method: "problem.get", params: { output: "extend", selectAcknowledges: "extend", selectTags: "extend", recent: true, sortfield: ["eventid"], sortorder: "DESC", limit: 100, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "problem.get",
+        params: {
+          output: "extend",
+          selectAcknowledges: "extend",
+          selectTags: "extend",
+          recent: true,
+          sortfield: ["eventid"],
+          sortorder: "DESC",
+          limit: 100,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getAlerts":
-      return { method: "trigger.get", params: { output: ["triggerid","description","priority","value","lastchange","status"], selectHosts: ["hostid","name"], filter: { value: 1 }, sortfield: "priority", sortorder: "DESC", limit: 100, only_true: true, active: true, expandDescription: true, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "description", "priority", "value", "lastchange", "status"],
+          selectHosts: ["hostid", "name"],
+          filter: { value: 1 },
+          sortfield: "priority",
+          sortorder: "DESC",
+          limit: 100,
+          only_true: true,
+          active: true,
+          expandDescription: true,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getHostAvailability":
-      return { method: "host.get", params: { output: ["hostid","host","name","available"], selectInterfaces: ["ip"], ...extraParams }, cacheTtl: 60000 };
+      return {
+        method: "host.get",
+        params: {
+          output: ["hostid", "host", "name", "available"],
+          selectInterfaces: ["ip"],
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
     case "getItems":
-      return { method: "item.get", params: { output: ["itemid","name","key_","lastvalue","lastclock","units","state","status"], selectHosts: ["hostid","name"], sortfield: "name", limit: 500, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "item.get",
+        params: {
+          output: ["itemid", "name", "key_", "lastvalue", "lastclock", "units", "state", "status"],
+          selectHosts: ["hostid", "name"],
+          sortfield: "name",
+          limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getGraphs":
-      return { method: "graph.get", params: { output: ["graphid","name","width","height"], selectHosts: ["hostid","name"], sortfield: "name", ...extraParams }, cacheTtl: 60000 };
+      return {
+        method: "graph.get",
+        params: {
+          output: ["graphid", "name", "width", "height"],
+          selectHosts: ["hostid", "name"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
     case "getScripts":
-      return { method: "script.get", params: { output: ["scriptid","name","command","description","type","scope"], selectGroups: ["groupid","name"], ...extraParams }, cacheTtl: 60000 };
+      return {
+        method: "script.get",
+        params: {
+          output: ["scriptid", "name", "command", "description", "type", "scope"],
+          selectGroups: ["groupid", "name"],
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
     case "getHostGroups":
-      return { method: "hostgroup.get", params: { output: ["groupid","name"], sortfield: "name", ...extraParams }, cacheTtl: 120000 };
+      return {
+        method: "hostgroup.get",
+        params: {
+          output: ["groupid", "name"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 120000,
+      };
     case "getEvents":
-      return { method: "event.get", params: { output: "extend", selectHosts: ["hostid","name"], sortfield: ["clock"], sortorder: "DESC", limit: 200, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "event.get",
+        params: {
+          output: "extend",
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 200,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getRecentEvents":
-      return { method: "event.get", params: { output: ["eventid","source","object","objectid","clock","value","name","severity","acknowledged"], selectHosts: ["hostid","name"], sortfield: ["clock"], sortorder: "DESC", limit: 10, value: 1, ...extraParams }, cacheTtl: 15000 };
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 10,
+          value: 1,
+          ...extraParams,
+        },
+        cacheTtl: 15000,
+      };
     case "getTemplates":
-      return { method: "template.get", params: { output: ["templateid","host","name","description"], sortfield: "name", ...extraParams }, cacheTtl: 300000 };
+      return {
+        method: "template.get",
+        params: {
+          output: ["templateid", "host", "name", "description"],
+          sortfield: "name",
+          ...extraParams,
+        },
+        cacheTtl: 300000,
+      };
     case "getHistory":
-      return { method: "history.get", params: { output: "extend", history: 0, sortfield: "clock", sortorder: "DESC", limit: 500, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 500,
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getTrends":
-      return { method: "trend.get", params: { output: "extend", sortfield: "clock", sortorder: "DESC", limit: 1000, ...extraParams }, cacheTtl: 60000 };
+      return {
+        method: "trend.get",
+        params: {
+          output: "extend",
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 1000,
+          ...extraParams,
+        },
+        cacheTtl: 60000,
+      };
     case "getClosedEvents":
-      return { method: "event.get", params: { output: ["eventid","source","object","objectid","clock","value","name","severity","acknowledged","r_eventid"], selectHosts: ["hostid","name"], sortfield: ["clock"], sortorder: "DESC", limit: 200, value: 0, ...extraParams }, cacheTtl: 30000 };
+      return {
+        method: "event.get",
+        params: {
+          output: ["eventid", "source", "object", "objectid", "clock", "value", "name", "severity", "acknowledged", "r_eventid"],
+          selectHosts: ["hostid", "name"],
+          sortfield: ["clock"],
+          sortorder: "DESC",
+          limit: 200,
+          value: 0, // recovered
+          ...extraParams,
+        },
+        cacheTtl: 30000,
+      };
     case "getTriggerCounts":
-<<<<<<< HEAD
       return {
         method: "trigger.get",
         params: {
@@ -106,35 +270,25 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): { 
         },
         cacheTtl: 30000,
       };
-    case "getDisabledTriggers":
-      return {
-        method: "trigger.get",
-        params: {
-          output: ["triggerid", "description", "priority", "status", "lastchange", "templateid"],
-          selectHosts: ["hostid", "name"],
-          filter: { status: 1 },
-          expandDescription: true,
-          sortfield: "description",
-          limit: 500,
-          ...extraParams,
-        },
-        cacheTtl: 30000,
-      };
-=======
-      return { method: "trigger.get", params: { output: ["triggerid","priority"], filter: { value: 1, status: 0 }, countOutput: false, ...extraParams }, cacheTtl: 30000 };
-    case "getHostDetail":
-      return { method: "host.get", params: { hostids: [extraParams?.hostid], output: "extend", selectInterfaces: "extend", selectGroups: "extend", selectParentTemplates: ["templateid","name","host"], selectTriggers: ["triggerid","description","priority","value"] }, cacheTtl: 60000 };
-    case "getItemsByHost":
-      return { method: "item.get", params: { hostids: [extraParams?.hostid], output: ["itemid","name","key_","lastvalue","lastclock","units","value_type","state","status"], sortfield: "name", limit: 1000 }, cacheTtl: 30000 };
->>>>>>> 106335c (fix: исправлена синхронизация CMDB (дедупликация equipment_id))
     default:
       return null;
   }
 }
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+/* ─── Main handler ─── */
+Deno.serve(async (req) => {
+  let bodyParsed: Record<string, unknown> = {};
+  try { 
+    bodyParsed = await req.clone().json(); 
+    console.log("🔹 Zabbix action received:", bodyParsed.action);
+  } catch(e) { 
+    console.log("🔹 Could not parse JSON body"); 
+  }
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
+  // Verify user auth
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return fail("Unauthorized", 401);
 
@@ -146,45 +300,134 @@ export default async function handler(req: Request) {
   const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
   if (authError || !user) return fail("Unauthorized", 401);
 
-  const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Get Zabbix settings
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-  let body: any = {};
-  try { body = await req.json(); } catch { /* empty */ }
-  const explicitConnId = body.connection_id;
-  let ZABBIX_URL = "", ZABBIX_USER = "", ZABBIX_PASSWORD = "", resolvedConnId = null;
+  // Resolve which Zabbix connection to use:
+  // 1) explicit `connection_id` in request body (preferred — set by global picker),
+  // 2) the row in `zabbix_connections` flagged is_default,
+  // 3) any active row in `zabbix_connections`.
+  let bodyParsed: Record<string, unknown> = {};
+  try { bodyParsed = await req.clone().json(); } catch { /* ignore — handled below */ }
+  const explicitConnId = typeof bodyParsed?.connection_id === "string" ? bodyParsed.connection_id as string : null;
+
+  let ZABBIX_URL = "", ZABBIX_USER = "", ZABBIX_PASSWORD = "";
+  let resolvedConnId: string | null = null;
 
   if (explicitConnId) {
-    const { data: conn } = await supabaseAdmin.from("zabbix_connections").select("id, zabbix_url, zabbix_user, zabbix_password, is_active").eq("id", explicitConnId).maybeSingle();
-    if (conn && conn.is_active) { ZABBIX_URL = conn.zabbix_url; ZABBIX_USER = conn.zabbix_user; ZABBIX_PASSWORD = conn.zabbix_password; resolvedConnId = conn.id; }
+    const { data: conn } = await supabaseAdmin
+      .from("zabbix_connections")
+      .select("id, zabbix_url, zabbix_user, zabbix_password, is_active")
+      .eq("id", explicitConnId)
+      .maybeSingle();
+    if (conn && conn.is_active) {
+      ZABBIX_URL = conn.zabbix_url; ZABBIX_USER = conn.zabbix_user; ZABBIX_PASSWORD = conn.zabbix_password;
+      resolvedConnId = conn.id;
+    }
   }
   if (!ZABBIX_URL) {
-    const { data: conns } = await supabaseAdmin.from("zabbix_connections").select("id, zabbix_url, zabbix_user, zabbix_password, is_default").eq("is_active", true).order("is_default", { ascending: false }).limit(1);
-    if (conns && conns.length) { const c = conns[0]; ZABBIX_URL = c.zabbix_url; ZABBIX_USER = c.zabbix_user; ZABBIX_PASSWORD = c.zabbix_password; resolvedConnId = c.id; }
+    const { data: conns } = await supabaseAdmin
+      .from("zabbix_connections")
+      .select("id, zabbix_url, zabbix_user, zabbix_password, is_default")
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .limit(1);
+    if (conns && conns.length) {
+      const c = conns[0] as any;
+      ZABBIX_URL = c.zabbix_url; ZABBIX_USER = c.zabbix_user; ZABBIX_PASSWORD = c.zabbix_password;
+      resolvedConnId = c.id;
+    }
   }
-  if (!ZABBIX_URL) return fail("Подключение Zabbix не сконфигурировано. Добавьте подключение в разделе «Подключения».");
+  if (!ZABBIX_URL) {
+    return fail("Подключение Zabbix не сконфигурировано. Добавьте подключение в разделе «Подключения».");
+  }
+
+  // Per-connection auth-token cache key suffix
+  const connCacheKey = resolvedConnId ?? `legacy:${ZABBIX_URL}`;
+
+  if (!ZABBIX_URL || !ZABBIX_USER || !ZABBIX_PASSWORD) {
+    return fail("Заполните все поля подключения к Zabbix в настройках.");
+  }
 
   const apiUrl = `${ZABBIX_URL}/api_jsonrpc.php`;
   const headers = { "Content-Type": "application/json" };
-  const { action, params: extraParams } = body;
-  const connCacheKey = resolvedConnId ?? `legacy:${ZABBIX_URL}`;
 
   try {
+    const body = await req.json();
+    console.log("📡 Zabbix proxy action:", body.action);
+    const { action, params: extraParams } = body;
+
+    /* ─── Test Connection ─── */
     if (action === "testConnection") {
       try {
-        const versionRes = await fetchWithTimeout(apiUrl, { method: "POST", headers, body: jsonRpc("apiinfo.version", {}) }, 10000);
-        const versionData = await versionRes.json();
-        if (!versionData.result) return ok({ ok: false, error: "invalid_url", message: "Не удалось получить версию Zabbix API." });
-        const loginRes = await fetchWithTimeout(apiUrl, { method: "POST", headers, body: jsonRpc("user.login", { username: ZABBIX_USER, password: ZABBIX_PASSWORD }) }, 10000);
+        // Step 1: apiinfo.version
+        let versionRes: Response;
+        try {
+          versionRes = await fetchWithTimeout(apiUrl, {
+            method: "POST", headers,
+            body: jsonRpc("apiinfo.version", {}),
+          }, 10000);
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes("abort") || msg.includes("Abort")) {
+            return ok({ ok: false, error: "timeout", message: "Таймаут соединения (10 сек). Сервер недоступен." });
+          }
+          return ok({ ok: false, error: "network_error", message: `Сервер не отвечает. Проверьте VPN (BelVPN). (${msg})` });
+        }
+
+        const versionText = await versionRes.text();
+        let versionData: { result?: string; error?: { message?: string } };
+        try { versionData = JSON.parse(versionText); } catch {
+          return ok({ ok: false, error: "invalid_url", message: "Ответ не соответствует API Zabbix. Проверьте URL." });
+        }
+        if (!versionData.result) {
+          return ok({ ok: false, error: "invalid_url", message: "Не удалось получить версию Zabbix API." });
+        }
+
+        const zabbixVersion = versionData.result;
+
+        // Step 2: user.login
+        let loginRes: Response;
+        try {
+          loginRes = await fetchWithTimeout(apiUrl, {
+            method: "POST", headers,
+            body: jsonRpc("user.login", { username: ZABBIX_USER, password: ZABBIX_PASSWORD }),
+          }, 10000);
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return ok({ ok: false, error: "network_error", message: `Ошибка сети при аутентификации: ${msg}` });
+        }
+
         const loginData = await loginRes.json();
-        if (loginData.error) return ok({ ok: false, error: "auth_failed", message: `Неверные учётные данные.` });
-        if (!loginData.result) return ok({ ok: false, error: "auth_failed", message: "Не удалось получить токен." });
-        try { await fetchWithTimeout(apiUrl, { method: "POST", headers, body: jsonRpc("user.logout", [], loginData.result) }, 5000); } catch { }
+        if (loginData.error) {
+          return ok({ ok: false, error: "auth_failed", message: `Неверные учётные данные. (${loginData.error.data || loginData.error.message})` });
+        }
+        if (!loginData.result) {
+          return ok({ ok: false, error: "auth_failed", message: "Не удалось получить токен авторизации." });
+        }
+
+        // Step 3: logout
+        try {
+          const lr = await fetchWithTimeout(apiUrl, {
+            method: "POST", headers,
+            body: jsonRpc("user.logout", [], loginData.result),
+          }, 5000);
+          await lr.text();
+        } catch { /* ignore */ }
+
+        // Invalidate cached auth token since we just did a fresh login
         authTokenCache.delete(connCacheKey);
-        return ok({ ok: true, data: { version: versionData.result } });
-      } catch (err: any) { return ok({ ok: false, error: "network_error", message: err.message }); }
+
+        return ok({ ok: true, data: { version: zabbixVersion }, rawLogin: loginData });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return ok({ ok: false, error: "unknown", message: `Непредвиденная ошибка: ${msg}` });
+      }
     }
 
-<<<<<<< HEAD
     /* ─── Execute Script ─── */
     if (action === "executeScript") {
       const { scriptid, hostid } = extraParams || {};
@@ -529,95 +772,96 @@ export default async function handler(req: Request) {
     }
 
 
-    /* ─── Update item (disable / enable / change key/name) ─── */
-    if (action === "disableItem" || action === "enableItem" || action === "updateItemKey") {
-      // staff-only
-      const { data: roleRows } = await supabaseAdmin
-        .from("user_roles").select("role").eq("user_id", user.id);
-      const roles = (roleRows ?? []).map((r: any) => r.role);
-      if (!roles.includes("admin") && !roles.includes("engineer")) {
-        return fail("Forbidden", 403);
+        /* ─── Save/Update Zabbix connection (create or update) ─── */
+    if (action === "saveConnection" || action === "create" || action === "update") {
+      const { id, name, zabbix_url, zabbix_user, zabbix_password, is_default, is_active } = body;
+      if (!name || !zabbix_url || !zabbix_user || !zabbix_password) {
+        return fail("Заполните все поля (название, URL, пользователь, пароль)", 400);
       }
 
-      const { itemid, key_, name } = extraParams || {};
-      if (!itemid) return fail("itemid обязателен", 400);
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
 
-      const params: Record<string, unknown> = { itemid };
-      if (action === "disableItem") params.status = 1;
-      if (action === "enableItem") params.status = 0;
-      if (action === "updateItemKey") {
-        if (!key_) return fail("key_ обязателен", 400);
-        params.key_ = key_;
-        if (name) params.name = name;
+      let result;
+      if (id) {
+        // Обновление существующего подключения
+        const { data, error } = await supabaseAdmin
+          .from("zabbix_connections")
+          .update({ 
+            name, 
+            zabbix_url, 
+            zabbix_user, 
+            zabbix_password, 
+            is_default, 
+            is_active, 
+            updated_at: new Date() 
+          })
+          .eq("id", id)
+          .select();
+        if (error) throw error;
+        result = data;
+      } else {
+        // Создание нового подключения
+        const { data, error } = await supabaseAdmin
+          .from("zabbix_connections")
+          .insert({ 
+            name, 
+            zabbix_url, 
+            zabbix_user, 
+            zabbix_password, 
+            is_default, 
+            is_active,
+            created_at: new Date(),
+            updated_at: new Date()
+          })
+          .select();
+        if (error) throw error;
+        result = data;
       }
-
-      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
-      const res = await fetchWithTimeout(apiUrl, {
-        method: "POST", headers,
-        body: JSON.stringify({
-          jsonrpc: "2.0", method: "item.update", params,
-          auth: authToken, id: 41,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) return fail(`item.update error: ${data.error.data || data.error.message}`);
-      return ok({ result: data.result });
+      return ok({ success: true, data: result });
     }
 
-    /* ─── Disable / Enable trigger (admin/engineer) ─── */
-    if (action === "setTriggerStatus") {
-      const { data: roleRows } = await supabaseAdmin
-        .from("user_roles").select("role").eq("user_id", user.id);
-      const roles = (roleRows ?? []).map((r: any) => r.role);
-      if (!roles.includes("admin") && !roles.includes("engineer")) {
-        return fail("Forbidden", 403);
-      }
-      const { triggerids, disabled } = extraParams || {};
-      const ids = Array.isArray(triggerids) ? triggerids : (triggerids ? [triggerids] : []);
-      if (ids.length === 0) return fail("triggerids обязателен", 400);
-      const status = disabled ? 1 : 0; // 0=enabled, 1=disabled in Zabbix
-      const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
-      const payload = ids.map((id: string) => ({ triggerid: id, status }));
-      const res = await fetchWithTimeout(apiUrl, {
-        method: "POST", headers,
-        body: JSON.stringify({
-          jsonrpc: "2.0", method: "trigger.update", params: payload,
-          auth: authToken, id: 42,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) return fail(`trigger.update error: ${data.error.data || data.error.message}`);
-      // Invalidate problem/alert caches so UI refreshes
-      for (const k of Array.from(cache.keys())) {
-        if (k.includes(":getProblems:") || k.includes(":getAlerts:") || k.includes(":getRecentEvents:")) {
-          cache.delete(k);
-        }
-      }
-      return ok({ result: data.result, count: ids.length });
-    }
-
-=======
->>>>>>> 106335c (fix: исправлена синхронизация CMDB (дедупликация equipment_id))
     const actionDef = getActionDef(action, extraParams);
     if (!actionDef) return fail("Unknown action", 400);
+
+    // Check cache (per-connection isolation)
     const cacheKey = `${connCacheKey}:${action}:${JSON.stringify(extraParams || {})}`;
     if (actionDef.cacheTtl > 0) {
       const cached = getCached(cacheKey, actionDef.cacheTtl);
       if (cached !== null) return ok({ result: cached, cached: true });
     }
+
+    // Get auth token (cached)
     const authToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
+
     const dataResponse = await fetchWithTimeout(apiUrl, {
       method: "POST", headers,
-      body: jsonRpc(actionDef.method, actionDef.params, authToken, 2),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: actionDef.method,
+        params: actionDef.params,
+        auth: authToken,
+        id: 2,
+      }),
     });
     const data = await dataResponse.json();
+
     if (data.error) {
+      // Auth expired - retry once
       if (data.error.code === -32602 || data.error.data === "Session terminated") {
         authTokenCache.delete(connCacheKey);
         const newToken = await getAuthToken(connCacheKey, apiUrl, ZABBIX_USER, ZABBIX_PASSWORD);
         const retryRes = await fetchWithTimeout(apiUrl, {
           method: "POST", headers,
-          body: jsonRpc(actionDef.method, actionDef.params, newToken, 3),
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: actionDef.method,
+            params: actionDef.params,
+            auth: newToken,
+            id: 3,
+          }),
         });
         const retryData = await retryRes.json();
         if (retryData.error) return fail(`Zabbix API error: ${retryData.error.message || retryData.error.data}`);
@@ -626,14 +870,23 @@ export default async function handler(req: Request) {
       }
       return fail(`Zabbix API error: ${data.error.message || data.error.data}`);
     }
+
+    // Cache result
     if (actionDef.cacheTtl > 0) setCache(cacheKey, data.result);
+
     return ok({ result: data.result });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Zabbix proxy error:", err);
-    const isUnreachable = /недоступен|timeout|aborted|network|fetch failed|ECONN|ENOTFOUND/i.test(err.message);
-    return new Response(JSON.stringify({ error: err.message, fallback: isUnreachable }), {
-      status: isUnreachable ? 200 : 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    // Return 200 with fallback flag so the frontend doesn't blank-screen on
+    // unreachable/timeout situations (Zabbix host behind VPN, internal IP, etc).
+    const isUnreachable = /недоступен|timeout|aborted|network|fetch failed|ECONN|ENOTFOUND/i.test(msg);
+    return new Response(
+      JSON.stringify({ error: msg, fallback: isUnreachable }),
+      {
+        status: isUnreachable ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
-}
+});

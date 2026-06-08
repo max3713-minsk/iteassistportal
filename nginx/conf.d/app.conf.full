@@ -1,9 +1,4 @@
 server {
-    listen 80;
-    server_name _;
-    return 301 https://$host$request_uri;
-}
-server {
     listen 443 ssl http2;
     server_name _;
     ssl_certificate     /etc/nginx/ssl/server.crt;
@@ -12,7 +7,7 @@ server {
     root  /usr/share/nginx/html;
     index index.html;
 
-    # ---------- API прокси (должны быть ПЕРЕД location /) ----------
+    # ---------- Сначала прокси для API ----------
     location /auth/v1/ {
         proxy_pass http://kong:8000/auth/v1/;
         proxy_set_header Host $host;
@@ -58,3 +53,9 @@ server {
         add_header Cache-Control "no-cache";
     }
 }
+    location /auth/v1/ {
+        add_header X-Debug-Location "auth-v1-proxy" always;
+        proxy_pass http://kong:8000/auth/v1/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
