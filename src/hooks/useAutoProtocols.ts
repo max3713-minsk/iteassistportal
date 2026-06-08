@@ -107,7 +107,12 @@ export function useAutoProtocols() {
           // Get equipment + tasks and generate items
           const [{ data: equipment }, { data: tasks }] = await Promise.all([
             supabase.from("equipment").select("id, category_id").eq("site_id", site.id),
-            supabase.from("maintenance_tasks").select("id, category_id, equipment_id, equipment_ids").eq("frequency", freq),
+            supabase
+              .from("maintenance_tasks")
+              .select("id, category_id, equipment_id, equipment_ids")
+              .eq("frequency", freq)
+              .eq("is_active", true)
+              .eq("include_in_protocol", true),
           ]);
 
           if (!equipment?.length || !tasks?.length) continue;
