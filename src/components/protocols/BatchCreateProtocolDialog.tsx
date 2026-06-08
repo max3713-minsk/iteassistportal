@@ -175,7 +175,8 @@ export default function BatchCreateProtocolDialog(props: BatchCreateProtocolDial
             .from("maintenance_tasks")
             .select("id, title, category_id, equipment_id, equipment_ids")
             .eq("frequency", p.frequency)
-            .eq("is_active", true);
+            .eq("is_active", true)
+            .eq("include_in_protocol", true);
           taskCache.set(p.frequency, data ?? []);
         }
 

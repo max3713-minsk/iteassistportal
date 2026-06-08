@@ -175,7 +175,8 @@ export function useQuickReport() {
                 .from("maintenance_tasks")
                 .select("id, category_id, equipment_id, equipment_ids")
                 .eq("frequency", item.freq)
-                .eq("is_active", true),
+                .eq("is_active", true)
+                .eq("include_in_protocol", true),
             ]);
 
             const items: any[] = [];

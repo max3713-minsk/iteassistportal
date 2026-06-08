@@ -121,6 +121,8 @@ export default function CreateProtocolDialog({ defaultDate }: Props) {
         .from("maintenance_tasks")
         .select("id, title, description, category_id, equipment_id, equipment_ids, equipment_categories(name)")
         .eq("frequency", frequency)
+        .eq("is_active", true)
+        .eq("include_in_protocol", true)
         .order("title");
       return data ?? [];
     },
