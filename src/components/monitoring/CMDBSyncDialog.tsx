@@ -141,11 +141,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
         });
       }
       if (rows.length === 0) throw new Error("Нет выбранных связей для сохранения");
-      // Удаляем дубликаты по equipment_id (оставляем первый встреченный)
-      const uniqueRows = Array.from(
-        new Map(rows.map(item => [item.equipment_id, item])).values()
-      );
-      const { error } = await supabase.from("monitoring_host_links").upsert(uniqueRows, {
+      const { error } = await supabase.from("monitoring_host_links").upsert(rows, {
         onConflict: "equipment_id",
       });
       if (error) throw error;
