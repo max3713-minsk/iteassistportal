@@ -552,6 +552,21 @@ export default function WorkScopeManager() {
               </div>
             </div>
           )}
+          {editing && (
+            <div className="flex items-center gap-2 mt-2 pt-3 border-t">
+              <Checkbox
+                id="ws-include"
+                checked={editing.include_in_protocol ?? true}
+                onCheckedChange={(v) => setEditing((p) => ({ ...p!, include_in_protocol: !!v }))}
+              />
+              <Label htmlFor="ws-include" className="cursor-pointer text-sm">
+                Включать в протокол ТО
+              </Label>
+              <span className="text-xs text-muted-foreground ml-2">
+                Снимите, если работа должна быть в составе, но не попадать в протокол.
+              </span>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>Отмена</Button>
             <Button onClick={() => saveMutation.mutate(editing!)} disabled={!editing?.title || !editing?.frequency || saveMutation.isPending}>
