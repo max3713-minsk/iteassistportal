@@ -430,6 +430,23 @@ export default function WorkScopeManager() {
                       })()}
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(t.metric_bindings?.length ?? 0) > 0 && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                            <BarChart3 className="h-3 w-3" /> {t.metric_bindings!.length}
+                          </Badge>
+                        )}
+                        {isLogAnalysisTask(t.title, t.description) && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-sky-500/40 text-sky-600 dark:text-sky-400">
+                            <ScrollText className="h-3 w-3" /> логи
+                          </Badge>
+                        )}
+                        {(t.metric_bindings?.length ?? 0) === 0 && !isLogAnalysisTask(t.title, t.description) && (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {canEdit ? (
                         <Checkbox
                           checked={t.include_in_protocol}
