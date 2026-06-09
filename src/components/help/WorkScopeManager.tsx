@@ -21,6 +21,9 @@ import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import TaskMetricBindings, { type MetricBinding } from "./TaskMetricBindings";
+import { isLogAnalysisTask } from "@/lib/log-task-detect";
+import { BarChart3, ScrollText } from "lucide-react";
 
 type Frequency = FrequencyType;
 const FREQS: Frequency[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual", "on_request"];
@@ -37,6 +40,7 @@ interface TaskRow {
   is_active: boolean;
   is_system: boolean;
   include_in_protocol: boolean;
+  metric_bindings: MetricBinding[];
 }
 
 const FREQ_BY_LABEL: Record<string, Frequency> = {
@@ -91,10 +95,13 @@ export default function WorkScopeManager() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol")
+        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol, metric_bindings")
         .order("title");
       if (error) throw error;
-      return (data ?? []) as TaskRow[];
+      return ((data ?? []) as any[]).map((t) => ({
+        ...t,
+        metric_bindings: Array.isArray(t.metric_bindings) ? t.metric_bindings : [],
+      })) as TaskRow[];
     },
   });
 
@@ -125,12 +132,13 @@ export default function WorkScopeManager() {
         equipment_ids: eqIds,
         is_active: row.is_active ?? true,
         include_in_protocol: row.include_in_protocol ?? true,
+        metric_bindings: (row.metric_bindings ?? []) as any,
       };
       if (row.id) {
-        const { error } = await supabase.from("maintenance_tasks").update(payload).eq("id", row.id);
+        const { error } = await supabase.from("maintenance_tasks").update(payload as any).eq("id", row.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("maintenance_tasks").insert(payload);
+        const { error } = await supabase.from("maintenance_tasks").insert(payload as any);
         if (error) throw error;
       }
     },
