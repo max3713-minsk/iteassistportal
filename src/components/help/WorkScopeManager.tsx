@@ -21,6 +21,9 @@ import { cn } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import TaskMetricBindings, { type MetricBinding } from "./TaskMetricBindings";
+import { isLogAnalysisTask } from "@/lib/log-task-detect";
+import { BarChart3, ScrollText } from "lucide-react";
 
 type Frequency = FrequencyType;
 const FREQS: Frequency[] = ["daily", "weekly", "monthly", "quarterly", "semi_annual", "on_request"];
@@ -37,6 +40,7 @@ interface TaskRow {
   is_active: boolean;
   is_system: boolean;
   include_in_protocol: boolean;
+  metric_bindings: MetricBinding[];
 }
 
 const FREQ_BY_LABEL: Record<string, Frequency> = {
@@ -91,10 +95,13 @@ export default function WorkScopeManager() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol")
+        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol, metric_bindings")
         .order("title");
       if (error) throw error;
-      return (data ?? []) as TaskRow[];
+      return ((data ?? []) as any[]).map((t) => ({
+        ...t,
+        metric_bindings: Array.isArray(t.metric_bindings) ? t.metric_bindings : [],
+      })) as TaskRow[];
     },
   });
 
@@ -125,12 +132,13 @@ export default function WorkScopeManager() {
         equipment_ids: eqIds,
         is_active: row.is_active ?? true,
         include_in_protocol: row.include_in_protocol ?? true,
+        metric_bindings: (row.metric_bindings ?? []) as any,
       };
       if (row.id) {
-        const { error } = await supabase.from("maintenance_tasks").update(payload).eq("id", row.id);
+        const { error } = await supabase.from("maintenance_tasks").update(payload as any).eq("id", row.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("maintenance_tasks").insert(payload);
+        const { error } = await supabase.from("maintenance_tasks").insert(payload as any);
         if (error) throw error;
       }
     },
@@ -372,6 +380,7 @@ export default function WorkScopeManager() {
                 <TableHead className="w-[140px]">Периодичность</TableHead>
                 <TableHead className="w-[180px]">Категория</TableHead>
                 <TableHead className="w-[160px]">Привязка</TableHead>
+                <TableHead className="w-[120px]">Покрытие</TableHead>
                 <TableHead className="w-[120px]">В протокол</TableHead>
                 {canEdit && <TableHead className="w-[100px]"></TableHead>}
               </TableRow>
@@ -421,6 +430,23 @@ export default function WorkScopeManager() {
                       })()}
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(t.metric_bindings?.length ?? 0) > 0 && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                            <BarChart3 className="h-3 w-3" /> {t.metric_bindings!.length}
+                          </Badge>
+                        )}
+                        {isLogAnalysisTask(t.title, t.description) && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-sky-500/40 text-sky-600 dark:text-sky-400">
+                            <ScrollText className="h-3 w-3" /> логи
+                          </Badge>
+                        )}
+                        {(t.metric_bindings?.length ?? 0) === 0 && !isLogAnalysisTask(t.title, t.description) && (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {canEdit ? (
                         <Checkbox
                           checked={t.include_in_protocol}
@@ -451,7 +477,7 @@ export default function WorkScopeManager() {
                 );
               })}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={canEdit ? 7 : 5} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
+                <TableRow><TableCell colSpan={canEdit ? 8 : 6} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -459,7 +485,7 @@ export default function WorkScopeManager() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing?.id ? "Редактировать работу" : "Новая работа"}</DialogTitle>
             <DialogDescription>Регламентная работа выполняется по периодичности и может быть привязана к категории, ЦОД или конкретному оборудованию.</DialogDescription>
@@ -565,6 +591,17 @@ export default function WorkScopeManager() {
               <span className="text-xs text-muted-foreground ml-2">
                 Снимите, если работа должна быть в составе, но не попадать в протокол.
               </span>
+            </div>
+          )}
+          {editing && (
+            <div className="mt-3 pt-3 border-t">
+              <TaskMetricBindings
+                bindings={(editing.metric_bindings ?? []) as MetricBinding[]}
+                onChange={(next) => setEditing((p) => ({ ...p!, metric_bindings: next }))}
+              />
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Если привязана хотя бы одна метрика или в названии/описании есть слово «лог/журнал», пункт автоматически считается покрытым в разделе «Покрытие регламента».
+              </p>
             </div>
           )}
           <DialogFooter>

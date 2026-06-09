@@ -980,6 +980,7 @@ export type Database = {
           is_active: boolean
           is_automatable: boolean | null
           is_system: boolean
+          metric_bindings: Json
           organization_id: string | null
           site_id: string | null
           sort_order: number
@@ -999,6 +1000,7 @@ export type Database = {
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
+          metric_bindings?: Json
           organization_id?: string | null
           site_id?: string | null
           sort_order?: number
@@ -1018,6 +1020,7 @@ export type Database = {
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
+          metric_bindings?: Json
           organization_id?: string | null
           site_id?: string | null
           sort_order?: number

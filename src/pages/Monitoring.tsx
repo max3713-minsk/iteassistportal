@@ -21,6 +21,8 @@ import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
 import TZCoverage from "@/components/monitoring/TZCoverage";
 import ProblemsHeatmap from "@/components/monitoring/ProblemsHeatmap";
 import MonitoringLogs from "@/components/monitoring/MonitoringLogs";
+import WorkScopeCoverage from "@/components/monitoring/WorkScopeCoverage";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -244,7 +246,17 @@ export default function Monitoring() {
         </TabsContent>
 
         <TabsContent value="tz">
-          <TZCoverage />
+          <div className="space-y-6">
+            <WorkScopeCoverage />
+            <Accordion type="single" collapsible>
+              <AccordionItem value="legacy">
+                <AccordionTrigger className="text-sm">Старое представление: пункты ТЗ</AccordionTrigger>
+                <AccordionContent>
+                  <TZCoverage />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </TabsContent>
 
         <TabsContent value="logs">
