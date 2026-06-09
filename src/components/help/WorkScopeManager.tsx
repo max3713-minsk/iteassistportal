@@ -593,6 +593,17 @@ export default function WorkScopeManager() {
               </span>
             </div>
           )}
+          {editing && (
+            <div className="mt-3 pt-3 border-t">
+              <TaskMetricBindings
+                bindings={(editing.metric_bindings ?? []) as MetricBinding[]}
+                onChange={(next) => setEditing((p) => ({ ...p!, metric_bindings: next }))}
+              />
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Если привязана хотя бы одна метрика или в названии/описании есть слово «лог/журнал», пункт автоматически считается покрытым в разделе «Покрытие регламента».
+              </p>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>Отмена</Button>
             <Button onClick={() => saveMutation.mutate(editing!)} disabled={!editing?.title || !editing?.frequency || saveMutation.isPending}>
