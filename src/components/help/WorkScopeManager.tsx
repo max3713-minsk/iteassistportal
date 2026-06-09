@@ -477,7 +477,7 @@ export default function WorkScopeManager() {
                 );
               })}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={canEdit ? 7 : 5} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
+                <TableRow><TableCell colSpan={canEdit ? 8 : 6} className="text-center text-muted-foreground py-8">Ничего не найдено</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
