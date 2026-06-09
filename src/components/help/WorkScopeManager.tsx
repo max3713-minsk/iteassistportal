@@ -485,7 +485,7 @@ export default function WorkScopeManager() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing?.id ? "Редактировать работу" : "Новая работа"}</DialogTitle>
             <DialogDescription>Регламентная работа выполняется по периодичности и может быть привязана к категории, ЦОД или конкретному оборудованию.</DialogDescription>
