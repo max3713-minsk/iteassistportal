@@ -380,6 +380,7 @@ export default function WorkScopeManager() {
                 <TableHead className="w-[140px]">Периодичность</TableHead>
                 <TableHead className="w-[180px]">Категория</TableHead>
                 <TableHead className="w-[160px]">Привязка</TableHead>
+                <TableHead className="w-[120px]">Покрытие</TableHead>
                 <TableHead className="w-[120px]">В протокол</TableHead>
                 {canEdit && <TableHead className="w-[100px]"></TableHead>}
               </TableRow>
