@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 interface MentionUser {
@@ -15,6 +15,7 @@ interface Props {
   placeholder?: string;
   onEnter?: () => void;
   className?: string;
+  rows?: number;
 }
 
 /**
@@ -22,11 +23,11 @@ interface Props {
  * Suggestions appear after typing "@" followed by 0+ chars (until space).
  * Returns the resolved mention user_ids alongside the text.
  */
-export function MentionInput({ value, onChange, placeholder, onEnter, className }: Props) {
+export function MentionInput({ value, onChange, placeholder, onEnter, className, rows = 3 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: users = [] } = useQuery<MentionUser[]>({
     queryKey: ["mention-users"],
@@ -83,12 +84,13 @@ export function MentionInput({ value, onChange, placeholder, onEnter, className 
 
   return (
     <div className="relative flex-1">
-      <Input
+      <Textarea
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value, resolveMentions(e.target.value))}
         placeholder={placeholder}
         className={className}
+        rows={rows}
         onKeyDown={(e) => {
           if (open && filtered.length) {
             if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => (i + 1) % filtered.length); return; }
@@ -100,7 +102,8 @@ export function MentionInput({ value, onChange, placeholder, onEnter, className 
             }
             if (e.key === "Escape") { setOpen(false); return; }
           }
-          if (e.key === "Enter" && !e.shiftKey && !open) {
+          // Submit on Ctrl/Cmd+Enter only; plain Enter inserts newline.
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !open) {
             e.preventDefault();
             onEnter?.();
           }
