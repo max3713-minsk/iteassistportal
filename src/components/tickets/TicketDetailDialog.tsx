@@ -83,10 +83,18 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from("ticket_comments")
-        .select("*, profiles:user_id(full_name)")
+        .select("*")
         .eq("ticket_id", ticket.id)
         .order("created_at", { ascending: true });
-      return data ?? [];
+      const rows = data ?? [];
+      const ids = Array.from(new Set(rows.map((r: any) => r.user_id).filter(Boolean)));
+      if (ids.length === 0) return rows;
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", ids);
+      const map = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
+      return rows.map((r: any) => ({ ...r, profiles: map.get(r.user_id) ?? null }));
     },
   });
 
