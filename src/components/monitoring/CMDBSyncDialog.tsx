@@ -17,7 +17,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, RefreshCw, Link2, CheckCircle2, AlertCircle } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ZabbixHost = {
   hostid: string;
@@ -191,7 +190,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 border rounded-md">
+        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md">
           {zbxLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -278,7 +277,7 @@ export default function CMDBSyncDialog({ open, onOpenChange }: Props) {
               </TableBody>
             </Table>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Отмена</Button>
