@@ -715,7 +715,9 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
               {comments
                 .filter((c: any) => isStaff || !c.is_internal)
-                .map((c: any) => (
+                .map((c: any) => {
+                  const parent = c.parent_id ? comments.find((x: any) => x.id === c.parent_id) : null;
+                  return (
                   <div
                     key={c.id}
                     className={cn(
@@ -733,14 +735,42 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                           </span>
                         )}
                       </span>
-                      <span className="text-muted-foreground text-xs">
-                        {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
+                      <span className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">
+                          {format(new Date(c.created_at), "dd.MM HH:mm", { locale: ru })}
+                        </span>
+                        {!["closed", "cancelled"].includes(ticket.status) && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            title="Ответить"
+                            onClick={() => setReplyTo({
+                              id: c.id,
+                              author: c.profiles?.full_name ?? "Пользователь",
+                              preview: (c.content ?? "").slice(0, 120),
+                            })}
+                          >
+                            <Reply className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </span>
                     </div>
-                    <MentionText text={c.content} />
+                    {parent && (
+                      <div className="mb-2 border-l-2 border-primary/40 pl-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <CornerDownRight className="h-3 w-3" />
+                          <span className="font-medium">{parent.profiles?.full_name ?? "Пользователь"}</span>
+                        </div>
+                        <p className="truncate">{(parent.content ?? "").slice(0, 140)}</p>
+                      </div>
+                    )}
+                    <CommentBody text={c.content} />
                     <CommentReactions commentId={c.id} />
                   </div>
-                ))}
+                  );
+                })}
               {comments.length === 0 && (
                 <EmptyState
                   icon={MessageSquare}
