@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Clock, MessageSquare, History, AlertTriangle, GitBranch, FolderArchive, ExternalLink, Loader2, Lock, Sparkles, RefreshCw, CheckSquare, Square } from "lucide-react";
+import { Reply, X, CornerDownRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -47,7 +48,8 @@ import { cn } from "@/lib/utils";
 import { EquipmentSummary } from "@/components/tickets/EquipmentSummary";
 import { AIAnalysisTab } from "@/components/tickets/AIAnalysisTab";
 import { TicketLinks } from "@/components/tickets/TicketLinks";
-import { MentionInput, MentionText } from "@/components/tickets/MentionInput";
+import { MentionInput } from "@/components/tickets/MentionInput";
+import { CommentBody } from "@/components/tickets/CommentBody";
 import { CommentReactions } from "@/components/tickets/CommentReactions";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -63,6 +65,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
   const [comment, setComment] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
   const [isInternal, setIsInternal] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: string; author: string; preview: string } | null>(null);
   const [transitionComment, setTransitionComment] = useState("");
   const [pendingTransition, setPendingTransition] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -201,7 +204,8 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
         content: comment.trim(),
         is_internal: internal,
         mentions,
-      });
+        parent_id: replyTo?.id ?? null,
+      } as any);
       if (error) throw error;
       await logAudit({ action: "Добавление комментария", module: "tickets", entityId: ticket.id });
 
@@ -258,8 +262,12 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       setComment("");
       setMentions([]);
       setIsInternal(false);
+      setReplyTo(null);
       refetchComments();
       toast({ title: "Комментарий добавлен" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Не удалось сохранить", description: e.message, variant: "destructive" });
     },
   });
 
