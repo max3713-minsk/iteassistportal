@@ -792,6 +792,19 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
             </div>
             {!["closed", "cancelled"].includes(ticket.status) && (
               <div className="space-y-2">
+                {replyTo && (
+                  <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-xs">
+                    <CornerDownRight className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-primary">Ответ {replyTo.author}</p>
+                      <p className="truncate text-muted-foreground">{replyTo.preview}</p>
+                    </div>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6"
+                            onClick={() => setReplyTo(null)} title="Отменить ответ">
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
                 {isStaff && (
                   <div className="flex items-center gap-2 px-1">
                     <Switch id="ticket-internal-toggle" checked={isInternal} onCheckedChange={setIsInternal} />
@@ -800,18 +813,22 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
                     </label>
                   </div>
                 )}
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-start">
                   <MentionInput
                     value={comment}
                     onChange={(v, m) => { setComment(v); setMentions(m); }}
-                    placeholder={isInternal ? "Внутренняя заметка… @упоминание" : "Напишите комментарий… @упоминание"}
+                    placeholder={isInternal
+                      ? "Внутренняя заметка… @упоминание • поддерживается Markdown • Ctrl+Enter — отправить"
+                      : "Напишите комментарий… @упоминание • поддерживается Markdown • Ctrl+Enter — отправить"}
                     onEnter={() => commentMutation.mutate()}
+                    rows={3}
                   />
                   <Button
                     size="sm"
                     onClick={() => commentMutation.mutate()}
                     disabled={!comment.trim() || commentMutation.isPending}
                   >
+                    {commentMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
                     Отправить
                   </Button>
                 </div>
