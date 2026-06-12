@@ -7,10 +7,12 @@ import {
   LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut, UserCircle,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
   Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks, Database,
+  MessageSquare, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -24,7 +26,7 @@ type NavItem = {
   label: string;
   roles: string[];
   moduleKey: string;
-  badgeKey?: "tickets" | "notifications";
+  badgeKey?: "tickets" | "notifications" | "chat";
 };
 
 const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem[] }[] = [
@@ -34,6 +36,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     items: [
       { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [], moduleKey: "dashboard" },
       { to: "/tickets", icon: Ticket, label: "Заявки", roles: [], moduleKey: "tickets", badgeKey: "tickets" },
+      { to: "/chat", icon: MessageSquare, label: "Чат", roles: [], moduleKey: "tickets", badgeKey: "chat" },
       { to: "/notifications", icon: Bell, label: "Уведомления", roles: [], moduleKey: "notifications", badgeKey: "notifications" },
     ],
   },
@@ -85,6 +88,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
 ];
 
 const ADMIN_OPEN_KEY = "sidebar.adminSection.open";
+const COLLAPSED_KEY = "sidebar.collapsed";
 
 export default function AppSidebar() {
   const { pathname } = useLocation();
@@ -95,6 +99,13 @@ export default function AppSidebar() {
     const v = typeof window !== "undefined" ? localStorage.getItem(ADMIN_OPEN_KEY) : null;
     return v === "1";
   });
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    const v = typeof window !== "undefined" ? localStorage.getItem(COLLAPSED_KEY) : null;
+    return v === "1";
+  });
+  useEffect(() => {
+    localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
   const [handoverOpen, setHandoverOpen] = useState(false);
   useEffect(() => {
     localStorage.setItem(ADMIN_OPEN_KEY, adminOpen ? "1" : "0");
@@ -111,6 +122,32 @@ export default function AppSidebar() {
         .eq("user_id", user.id)
         .eq("is_read", false);
       return count ?? 0;
+    },
+    enabled: !!user,
+    refetchInterval: 30_000,
+  });
+
+  // Unread chat messages for current user (messages newer than last_read_at in any thread they participate in)
+  const { data: unreadChat = 0 } = useQuery({
+    queryKey: ["sidebar-unread-chat", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const { data: parts } = await supabase
+        .from("chat_thread_participants")
+        .select("thread_id, last_read_at")
+        .eq("user_id", user.id);
+      if (!parts?.length) return 0;
+      let total = 0;
+      for (const p of parts) {
+        const { count } = await supabase
+          .from("chat_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("thread_id", p.thread_id)
+          .gt("created_at", p.last_read_at)
+          .neq("user_id", user.id);
+        total += count ?? 0;
+      }
+      return total;
     },
     enabled: !!user,
     refetchInterval: 30_000,
@@ -165,34 +202,56 @@ export default function AppSidebar() {
     const isActive = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to));
     const badgeValue =
       item.badgeKey === "notifications" ? unreadNotifs :
-      item.badgeKey === "tickets" ? ticketsBadge : 0;
-    return (
+      item.badgeKey === "tickets" ? ticketsBadge :
+      item.badgeKey === "chat" ? unreadChat : 0;
+    const link = (
       <Link
         key={item.to}
         to={item.to}
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+          collapsed && "justify-center px-2",
           isActive
             ? "bg-sidebar-primary/15 text-sidebar-primary font-medium"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         )}
       >
-        <item.icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 truncate">{item.label}</span>
-        {badgeValue > 0 && (
+        <span className="relative shrink-0">
+          <item.icon className="h-4 w-4" />
+          {collapsed && badgeValue > 0 && (
+            <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+              {badgeValue > 9 ? "9+" : badgeValue}
+            </span>
+          )}
+        </span>
+        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+        {!collapsed && badgeValue > 0 && (
           <Badge className="h-5 px-1.5 text-[10px] bg-destructive text-destructive-foreground hover:bg-destructive">
             {badgeValue > 99 ? "99+" : badgeValue}
           </Badge>
         )}
       </Link>
     );
+    if (collapsed) {
+      return (
+        <Tooltip key={item.to}>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right">{item.label}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return link;
   };
 
   const sectionLabelClass = "text-[10px] uppercase tracking-widest text-sidebar-foreground/30 px-3 mt-4 mb-1 font-medium";
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-sidebar-border">
+    <TooltipProvider delayDuration={150}>
+    <aside className={cn(
+      "hidden lg:flex lg:flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen transition-[width] duration-200",
+      collapsed ? "lg:w-16" : "lg:w-64",
+    )}>
+      <div className={cn("flex items-center gap-3 py-4 border-b border-sidebar-border", collapsed ? "px-2 justify-center" : "px-5")}>
         <button
           type="button"
           aria-label="Logo"
@@ -202,14 +261,30 @@ export default function AppSidebar() {
         >
           <BrandLogo className="h-9 w-auto" />
         </button>
-        <div className="min-w-0">
-          <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
-          <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
-        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
+            <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
+          </div>
+        )}
       </div>
 
-      <div className="px-3 pt-3">
-        <GlobalSearch />
+      <div className="px-2 pt-3 flex items-center gap-1">
+        {!collapsed && <div className="flex-1"><GlobalSearch /></div>}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed((v) => !v)}
+              className={cn("h-8 w-8 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50", collapsed && "mx-auto")}
+              aria-label={collapsed ? "Развернуть панель" : "Свернуть панель"}
+            >
+              {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{collapsed ? "Развернуть" : "Свернуть"}</TooltipContent>
+        </Tooltip>
       </div>
 
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
@@ -218,6 +293,13 @@ export default function AppSidebar() {
           if (!section) return null;
 
           if (section.adminOnly) {
+            if (collapsed) {
+              return (
+                <div key={section.id} className="space-y-1 mt-2">
+                  {section.items.map(renderItem)}
+                </div>
+              );
+            }
             return (
               <div key={section.id}>
                 <button
@@ -239,7 +321,7 @@ export default function AppSidebar() {
 
           return (
             <div key={section.id}>
-              <div className={sectionLabelClass}>{section.title}</div>
+              {!collapsed && <div className={sectionLabelClass}>{section.title}</div>}
               <div className="space-y-1">
                 {section.items.map(renderItem)}
               </div>
@@ -249,7 +331,7 @@ export default function AppSidebar() {
       </nav>
 
       {/* Zabbix indicator */}
-      <div className="px-3">
+      {!collapsed && (<div className="px-3">
         <div className="text-[11px] flex items-center gap-1.5 px-3 py-1.5 text-sidebar-foreground/40">
           <span className={cn(
             "h-1.5 w-1.5 rounded-full",
@@ -257,10 +339,10 @@ export default function AppSidebar() {
           )} />
           Zabbix: {zabbixActive ? "онлайн" : "не настроен"}
         </div>
-      </div>
+      </div>)}
 
-      <div className="px-3 py-3 border-t border-sidebar-border">
-        {(hasRole("admin") || hasRole("engineer")) && (
+      <div className={cn("py-3 border-t border-sidebar-border", collapsed ? "px-2" : "px-3")}>
+        {!collapsed && (hasRole("admin") || hasRole("engineer")) && (
           <Button
             variant="outline"
             size="sm"
@@ -270,39 +352,54 @@ export default function AppSidebar() {
             <DoorOpen className="h-4 w-4" />Сдать смену
           </Button>
         )}
-        <div className="px-3 py-2 mb-2 flex items-center justify-between gap-2">
-          <NavLink to="/profile" className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity" title="Мой профиль">
-            <AvatarHash name={profile?.full_name ?? user?.email} email={user?.email} size="md" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? user?.email ?? "—"}</p>
-              <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <NavLink to="/profile" className="block" title="Мой профиль">
+                  <AvatarHash name={profile?.full_name ?? user?.email} email={user?.email} size="md" />
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right">{profile?.full_name ?? user?.email ?? "Профиль"}</TooltipContent>
+            </Tooltip>
+            <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={signOut}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Выйти</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <>
+            <div className="px-3 py-2 mb-2 flex items-center justify-between gap-2">
+              <NavLink to="/profile" className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity" title="Мой профиль">
+                <AvatarHash name={profile?.full_name ?? user?.email} email={user?.email} size="md" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground/90 truncate">{profile?.full_name ?? user?.email ?? "—"}</p>
+                  <p className="text-xs text-sidebar-foreground/50 capitalize">{roles[0] ?? "user"}</p>
+                </div>
+              </NavLink>
+              <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
             </div>
-          </NavLink>
-          <ThemeToggle className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" />
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 mb-1"
-          asChild
-        >
-          <NavLink to="/profile">
-            <UserCircle className="h-4 w-4" />
-            Мой профиль
-          </NavLink>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-          onClick={signOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Выйти
-        </Button>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 mb-1" asChild>
+              <NavLink to="/profile">
+                <UserCircle className="h-4 w-4" />
+                Мой профиль
+              </NavLink>
+            </Button>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+              Выйти
+            </Button>
+          </>
+        )}
       </div>
       <KillSwitch open={kill.open} onOpenChange={kill.setOpen} />
       <ShiftHandoverDialog open={handoverOpen} onOpenChange={setHandoverOpen} />
     </aside>
+    </TooltipProvider>
   );
 }
