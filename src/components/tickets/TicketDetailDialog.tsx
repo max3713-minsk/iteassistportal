@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -97,6 +97,21 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       return rows.map((r: any) => ({ ...r, profiles: map.get(r.user_id) ?? null }));
     },
   });
+
+  // Live updates for comments of the currently open ticket.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`ticket-comments-${ticket.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ticket_comments", filter: `ticket_id=eq.${ticket.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ticket.id, qc]);
 
   // Status history
   const { data: statusHistory = [] } = useQuery({
