@@ -286,6 +286,7 @@ export function TicketDetailDialog({ ticket, onClose }: Props) {
       setMentions([]);
       setIsInternal(false);
       setReplyTo(null);
+      qc.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
       refetchComments();
       toast({ title: "Комментарий добавлен" });
     },
