@@ -265,3 +265,20 @@ diff /tmp/applied.txt /tmp/all.txt
 - [ ] Edge-функции, которые меняются, проверены через `supabase functions serve` или curl.
 - [ ] Перечислены файлы из §5, которые нельзя перезаписать.
 - [ ] Обновлён §9 в этом документе.
+
+---
+
+## 13. Скрипты в репозитории
+
+- `scripts/release.sh` — воспроизводимое обновление: `git ff-merge → bun install → supabase db push → supabase functions deploy → bun run build → nginx reload`. Запуск:
+  ```bash
+  ./scripts/release.sh --branch origin/main --nginx-reload
+  # доступны флаги: --skip-db --skip-functions --skip-build
+  ```
+  Лог каждого релиза + tar.gz собранного `dist/` сохраняются в `scripts/.releases/`.
+- `scripts/backfill-schema-migrations.sh` — одноразовая операция для prod, где `supabase_migrations.schema_migrations` пуст (миграции ранее пушились напрямую из Lovable, в обход CLI). Заполняет таблицу версиями из `supabase/migrations/*.sql`, после чего `supabase db push` будет видеть только реально новые миграции. Запуск:
+  ```bash
+  PGURI=postgres://postgres:PASS@HOST:5432/postgres ./scripts/backfill-schema-migrations.sh
+  ```
+
+После backfill можно безопасно выполнять `./scripts/release.sh`: пропущенные на prod колонки (`maintenance_tasks.equipment_ids/include_in_protocol/metric_bindings`, `ticket_comments.parent_id`, чат-таблицы, бакет `chat-attachments` и т.д.) приедут одной командой.
