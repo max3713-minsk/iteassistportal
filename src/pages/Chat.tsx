@@ -88,7 +88,7 @@ export default function Chat() {
     queryFn: async () => {
       const { data } = await supabase
         .from("chat_messages").select("*").eq("thread_id", threadId!).order("created_at", { ascending: true });
-      return (data ?? []) as Message[];
+      return (data ?? []) as unknown as Message[];
     },
   });
 
