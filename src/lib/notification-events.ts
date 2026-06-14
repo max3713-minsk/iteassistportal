@@ -4,7 +4,7 @@ export type NotificationEventDef = {
   label: string;
   description: string;
   defaultPriority?: "P1" | "P2" | "P3" | "P4" | "info";
-  module: "tickets" | "protocols" | "monitoring" | "documents" | "users" | "automation" | "schedules";
+  module: "tickets" | "protocols" | "monitoring" | "documents" | "users" | "automation" | "schedules" | "chat";
   audience: ("admin" | "engineer" | "customer")[]; // who typically cares
 };
 
@@ -45,6 +45,9 @@ export const NOTIFICATION_EVENTS: NotificationEventDef[] = [
   // Users
   { key: "user.created", label: "Создан новый пользователь", description: "Регистрация нового аккаунта", module: "users", audience: ["admin"] },
   { key: "user.role_changed", label: "Изменены роли пользователя", description: "Назначены/сняты роли", module: "users", audience: ["admin"] },
+
+  // Chat
+  { key: "chat.message_new", label: "Новое сообщение в чате", description: "Кто-то написал в треде, где я участник", module: "chat", audience: ["admin", "engineer", "customer"] },
 ];
 
 export const EVENT_MODULES: Record<string, string> = {
@@ -55,6 +58,7 @@ export const EVENT_MODULES: Record<string, string> = {
   automation: "Автоматизация",
   documents: "Документы",
   users: "Пользователи",
+  chat: "Чат",
 };
 
 export const PRIORITY_OPTIONS = [

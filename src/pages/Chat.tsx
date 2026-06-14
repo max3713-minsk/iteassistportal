@@ -185,6 +185,30 @@ export default function Chat() {
       attachments: atts.length ? (atts as any) : null,
     } as any);
     if (error) toast({ title: "Не удалось отправить", description: error.message, variant: "destructive" });
+    else {
+      // Fire-and-forget: уведомления участникам треда (TG / push / e-mail — через подписки).
+      try {
+        const recipients = participants.map((p) => p.user_id).filter((id) => id !== user.id);
+        if (recipients.length) {
+          const senderName = nameOf(user.id);
+          const threadTitle = threads.find((t) => t.id === threadId)?.title || "Чат";
+          const preview = (text || (atts.length ? `📎 ${atts.length} вложен.` : "")).slice(0, 200);
+          supabase.functions.invoke("notification-dispatch", {
+            body: {
+              event_type: "chat.message_new",
+              title: `💬 ${senderName} — ${threadTitle}`,
+              body: preview,
+              priority: "P4",
+              target_user_ids: recipients,
+              payload: {
+                thread_id: threadId, sender_id: user.id, sender_name: senderName,
+                thread_title: threadTitle, message_preview: preview,
+              },
+            },
+          }).catch((e) => console.warn("chat notify failed", e));
+        }
+      } catch (e) { console.warn("chat notify error", e); }
+    }
   };
 
   const insertEmoji = (emoji: any) => setDraft((d) => d + (emoji?.native ?? ""));

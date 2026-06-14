@@ -41,6 +41,8 @@ interface TaskRow {
   is_system: boolean;
   include_in_protocol: boolean;
   metric_bindings: MetricBinding[];
+  manual_coverage: boolean;
+  manual_coverage_note: string | null;
 }
 
 const FREQ_BY_LABEL: Record<string, Frequency> = {
@@ -95,12 +97,14 @@ export default function WorkScopeManager() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol, metric_bindings")
+        .select("id, title, description, frequency, category_id, site_id, equipment_id, equipment_ids, is_active, is_system, include_in_protocol, metric_bindings, manual_coverage, manual_coverage_note")
         .order("title");
       if (error) throw error;
       return ((data ?? []) as any[]).map((t) => ({
         ...t,
         metric_bindings: Array.isArray(t.metric_bindings) ? t.metric_bindings : [],
+        manual_coverage: !!t.manual_coverage,
+        manual_coverage_note: t.manual_coverage_note ?? null,
       })) as TaskRow[];
     },
   });
@@ -133,6 +137,8 @@ export default function WorkScopeManager() {
         is_active: row.is_active ?? true,
         include_in_protocol: row.include_in_protocol ?? true,
         metric_bindings: (row.metric_bindings ?? []) as any,
+        manual_coverage: !!row.manual_coverage,
+        manual_coverage_note: row.manual_coverage_note || null,
       };
       if (row.id) {
         const { error } = await supabase.from("maintenance_tasks").update(payload as any).eq("id", row.id);
@@ -601,6 +607,31 @@ export default function WorkScopeManager() {
               />
               <p className="text-[11px] text-muted-foreground mt-2">
                 Если привязана хотя бы одна метрика или в названии/описании есть слово «лог/журнал», пункт автоматически считается покрытым в разделе «Покрытие регламента».
+              </p>
+            </div>
+          )}
+          {editing && (
+            <div className="mt-3 pt-3 border-t space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="ws-manual"
+                  checked={!!editing.manual_coverage}
+                  onCheckedChange={(v) => setEditing((p) => ({ ...p!, manual_coverage: !!v }))}
+                />
+                <Label htmlFor="ws-manual" className="cursor-pointer text-sm">
+                  Покрыто вручную (без Zabbix-метрики)
+                </Label>
+              </div>
+              {editing.manual_coverage && (
+                <Textarea
+                  rows={2}
+                  placeholder="Комментарий (например: «контролируется через Seafile», «акт сверки раз в квартал»)…"
+                  value={editing.manual_coverage_note ?? ""}
+                  onChange={(e) => setEditing((p) => ({ ...p!, manual_coverage_note: e.target.value }))}
+                />
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Подходит для работ типа «актуализация схем», «сверка ЗИП», где автоматических метрик нет.
               </p>
             </div>
           )}

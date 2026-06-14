@@ -1090,6 +1090,8 @@ export type Database = {
           is_active: boolean
           is_automatable: boolean | null
           is_system: boolean
+          manual_coverage: boolean
+          manual_coverage_note: string | null
           metric_bindings: Json
           organization_id: string | null
           site_id: string | null
@@ -1110,6 +1112,8 @@ export type Database = {
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
+          manual_coverage?: boolean
+          manual_coverage_note?: string | null
           metric_bindings?: Json
           organization_id?: string | null
           site_id?: string | null
@@ -1130,6 +1134,8 @@ export type Database = {
           is_active?: boolean
           is_automatable?: boolean | null
           is_system?: boolean
+          manual_coverage?: boolean
+          manual_coverage_note?: string | null
           metric_bindings?: Json
           organization_id?: string | null
           site_id?: string | null

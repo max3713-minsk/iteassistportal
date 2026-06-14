@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Sparkles, FileText, Search, ScrollText, CloudOff } from "lucide-react";
 import { format } from "date-fns";
 import { isLogAnalysisTask } from "@/lib/log-task-detect";
@@ -16,50 +18,73 @@ import { LogResultView, type LogAnalysis } from "@/components/logs/LogResultView
 
 /**
  * Monitoring → tab "Логи".
- * - Слева: оборудование, у которого в регламенте есть пункт с анализом логов
- *   (фильтр по ключевым словам в maintenance_tasks.title/description).
+ * - Слева: всё оборудование. Можно включить фильтр «только с логами в регламенте» —
+ *   тогда показываются устройства, к категории которых привязаны пункты анализа логов.
  * - Справа: история equipment_logs для выбранного оборудования
  *   + кнопка «Загрузить и проанализировать» открывает LogAnalysisDialog.
  */
 export default function MonitoringLogs() {
   const [search, setSearch] = useState("");
+  const [onlyWithLogTasks, setOnlyWithLogTasks] = useState(false);
   const [selectedEq, setSelectedEq] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [dlgOpen, setDlgOpen] = useState(false);
 
-  // Оборудование + связанные задачи регламента (через maintenance_schedules → maintenance_tasks).
-  const { data: schedules = [] } = useQuery({
-    queryKey: ["logs-eq-tasks"],
+  // Всё оборудование.
+  const { data: equipmentList = [] } = useQuery({
+    queryKey: ["logs-all-equipment"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("maintenance_schedules")
-        .select("id, equipment:equipment_id(id,name,model,category,site_id), maintenance_tasks(id,title,description)");
+        .from("equipment")
+        .select("id, name, model, category, category_id, site_id")
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  // Все активные задачи регламента — потом фильтруем по ключевым словам логов.
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ["logs-all-tasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("maintenance_tasks")
+        .select("id, title, description, category_id, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return (data ?? []) as { id: string; title: string; description: string | null; category_id: string | null }[];
+    },
+  });
+
+  const logTasks = useMemo(
+    () => (allTasks as any[]).filter((t) => isLogAnalysisTask(t.title, t.description)),
+    [allTasks],
+  );
+
   type EqAggr = {
-    id: string; name: string; model: string | null; category: string | null;
+    id: string; name: string; model: string | null; category: string | null; category_id: string | null;
     tasks: { id: string; title: string; description: string | null }[];
   };
 
-  const eqWithLogTasks: EqAggr[] = useMemo(() => {
-    const map = new Map<string, EqAggr>();
-    for (const s of schedules as any[]) {
-      const eq = s.equipment;
-      const tasks: any[] = Array.isArray(s.maintenance_tasks) ? s.maintenance_tasks : (s.maintenance_tasks ? [s.maintenance_tasks] : []);
-      const logTasks = tasks.filter((t) => isLogAnalysisTask(t?.title, t?.description));
-      if (!eq || logTasks.length === 0) continue;
-      if (!map.has(eq.id)) map.set(eq.id, { id: eq.id, name: eq.name, model: eq.model, category: eq.category, tasks: [] });
-      const cur = map.get(eq.id)!;
-      for (const t of logTasks) if (!cur.tasks.find((x) => x.id === t.id)) cur.tasks.push(t);
-    }
+  const eqList: EqAggr[] = useMemo(() => {
+    const out: EqAggr[] = (equipmentList as any[]).map((e) => {
+      // Совпавшие задачи логов: либо без category_id (общие), либо привязанные к той же категории.
+      const matched = logTasks.filter((t) => !t.category_id || t.category_id === e.category_id);
+      return { id: e.id, name: e.name, model: e.model, category: e.category, category_id: e.category_id, tasks: matched };
+    });
     const q = search.trim().toLowerCase();
-    return Array.from(map.values())
+    return out
+      .filter((e) => !onlyWithLogTasks || e.tasks.length > 0)
       .filter((e) => !q || e.name.toLowerCase().includes(q) || (e.model ?? "").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [schedules, search]);
+  }, [equipmentList, logTasks, onlyWithLogTasks, search]);
+
+  // Глобальный fallback-список задач (если у оборудования вообще нет совпавших, чтобы можно было выбрать).
+  const taskOptions = useMemo(() => {
+    const eq = eqList.find((e) => e.id === selectedEq);
+    if (eq && eq.tasks.length > 0) return eq.tasks;
+    return logTasks;
+  }, [eqList, selectedEq, logTasks]);
 
   // История логов для выбранного оборудования.
   const { data: logs = [], refetch } = useQuery({
@@ -78,7 +103,7 @@ export default function MonitoringLogs() {
     enabled: !!selectedEq,
   });
 
-  const selectedEqObj = eqWithLogTasks.find((e) => e.id === selectedEq) ?? null;
+  const selectedEqObj = eqList.find((e) => e.id === selectedEq) ?? null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
@@ -87,7 +112,7 @@ export default function MonitoringLogs() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ScrollText className="h-4 w-4 text-primary" />
-            Оборудование с анализом логов
+            Оборудование
           </CardTitle>
           <div className="relative mt-2">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -98,25 +123,28 @@ export default function MonitoringLogs() {
               className="pl-7 h-8 text-sm"
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Список формируется из пунктов регламента, в названии которых упоминаются «лог», «журнал», «syslog», «journal».
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <Switch id="only-log" checked={onlyWithLogTasks} onCheckedChange={setOnlyWithLogTasks} />
+            <Label htmlFor="only-log" className="text-xs cursor-pointer">
+              Только с задачами по логам ({logTasks.length})
+            </Label>
+          </div>
         </CardHeader>
         <CardContent className="px-2">
           <ScrollArea className="h-[520px]">
-            {eqWithLogTasks.length === 0 ? (
+            {eqList.length === 0 ? (
               <p className="text-sm text-muted-foreground px-3 py-6 text-center">
-                Нет оборудования с пунктами анализа логов. Добавьте в регламент задачу со словом «лог» или «journal».
+                Нет оборудования. Снимите фильтр или добавьте устройства.
               </p>
             ) : (
               <ul className="space-y-1">
-                {eqWithLogTasks.map((e) => {
+                {eqList.map((e) => {
                   const active = e.id === selectedEq;
                   return (
                     <li key={e.id}>
                       <button
                         type="button"
-                        onClick={() => { setSelectedEq(e.id); setSelectedTask(e.tasks[0]?.id ?? null); }}
+                        onClick={() => { setSelectedEq(e.id); setSelectedTask(e.tasks[0]?.id ?? logTasks[0]?.id ?? null); }}
                         className={`w-full text-left rounded-md px-3 py-2 transition-colors ${
                           active ? "bg-primary/10 border border-primary/40" : "hover:bg-muted/60"
                         }`}
@@ -124,10 +152,14 @@ export default function MonitoringLogs() {
                         <p className="text-sm font-medium truncate">{e.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{e.model ?? "—"} · {e.category ?? "—"}</p>
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {e.tasks.slice(0, 2).map((t) => (
-                            <Badge key={t.id} variant="outline" className="text-[10px]">{t.title}</Badge>
-                          ))}
-                          {e.tasks.length > 2 && <Badge variant="outline" className="text-[10px]">+{e.tasks.length - 2}</Badge>}
+                          {e.tasks.length === 0 ? (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">нет лог-задач в регламенте</Badge>
+                          ) : (<>
+                            {e.tasks.slice(0, 2).map((t) => (
+                              <Badge key={t.id} variant="outline" className="text-[10px]">{t.title}</Badge>
+                            ))}
+                            {e.tasks.length > 2 && <Badge variant="outline" className="text-[10px]">+{e.tasks.length - 2}</Badge>}
+                          </>)}
                         </div>
                       </button>
                     </li>
@@ -168,9 +200,9 @@ export default function MonitoringLogs() {
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Пункт регламента</p>
                     <Select value={selectedTask ?? ""} onValueChange={setSelectedTask}>
-                      <SelectTrigger><SelectValue placeholder="Выберите пункт" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={taskOptions.length ? "Выберите пункт" : "Нет лог-задач — будет загружен без привязки"} /></SelectTrigger>
                       <SelectContent>
-                        {selectedEqObj.tasks.map((t) => (
+                        {taskOptions.map((t) => (
                           <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
                         ))}
                       </SelectContent>
@@ -178,7 +210,7 @@ export default function MonitoringLogs() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Анализ привязывается к выбранному пункту — затем виден в карточке протокола и в истории ниже.
+                  Анализ привязывается к выбранному пункту регламента — затем виден в карточке протокола и в истории ниже. Можно выгрузить лог и без привязки.
                 </p>
               </CardContent>
             </Card>
@@ -237,7 +269,7 @@ export default function MonitoringLogs() {
           protocolItemId={null}
           protocolId={null}
           equipmentName={selectedEqObj?.name}
-          taskTitle={selectedEqObj?.tasks.find((t) => t.id === selectedTask)?.title}
+          taskTitle={taskOptions.find((t) => t.id === selectedTask)?.title}
         />
       </div>
     </div>
