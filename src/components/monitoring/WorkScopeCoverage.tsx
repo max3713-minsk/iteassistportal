@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BarChart3, ScrollText, CheckCircle2, XCircle, Search, ListChecks, Activity, ExternalLink } from "lucide-react";
+import { Hand } from "lucide-react";
 import { isLogAnalysisTask } from "@/lib/log-task-detect";
 import { frequencyLabels, type FrequencyType } from "@/lib/schedule-utils";
 import MetricGraphDialog from "@/components/monitoring/MetricGraphDialog";
@@ -30,13 +31,16 @@ interface Task {
   is_active: boolean;
   include_in_protocol: boolean;
   metric_bindings: MetricBinding[];
+  manual_coverage: boolean;
+  manual_coverage_note: string | null;
 }
 
-type Status = "metric" | "logs" | "none";
+type Status = "metric" | "logs" | "manual" | "none";
 
 function statusOf(t: Task): Status {
   if ((t.metric_bindings?.length ?? 0) > 0) return "metric";
   if (isLogAnalysisTask(t.title, t.description)) return "logs";
+  if (t.manual_coverage) return "manual";
   return "none";
 }
 
@@ -50,13 +54,15 @@ export default function WorkScopeCoverage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("maintenance_tasks")
-        .select("id, title, description, frequency, category_id, is_active, include_in_protocol, metric_bindings")
+        .select("id, title, description, frequency, category_id, is_active, include_in_protocol, metric_bindings, manual_coverage, manual_coverage_note")
         .eq("is_active", true)
         .order("title");
       if (error) throw error;
       return ((data ?? []) as any[]).map((t) => ({
         ...t,
         metric_bindings: Array.isArray(t.metric_bindings) ? t.metric_bindings : [],
+        manual_coverage: !!t.manual_coverage,
+        manual_coverage_note: t.manual_coverage_note ?? null,
       })) as Task[];
     },
   });
@@ -71,15 +77,16 @@ export default function WorkScopeCoverage() {
 
   const stats = useMemo(() => {
     const total = tasks.length;
-    let metric = 0, logs = 0;
+    let metric = 0, logs = 0, manual = 0;
     for (const t of tasks) {
       const s = statusOf(t);
       if (s === "metric") metric++;
       else if (s === "logs") logs++;
+      else if (s === "manual") manual++;
     }
-    const covered = metric + logs;
+    const covered = metric + logs + manual;
     const percent = total ? Math.round((covered / total) * 100) : 0;
-    return { total, metric, logs, none: total - covered, percent };
+    return { total, metric, logs, manual, none: total - covered, percent };
   }, [tasks]);
 
   const filtered = useMemo(() => {
@@ -107,9 +114,10 @@ export default function WorkScopeCoverage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={stats.percent} className="h-3" />
-          <div className="grid grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-5 gap-3 text-center">
             <Stat n={stats.metric} label="По метрикам" color="text-emerald-500" Icon={BarChart3} />
             <Stat n={stats.logs} label="По логам" color="text-sky-500" Icon={ScrollText} />
+            <Stat n={stats.manual} label="Вручную" color="text-violet-500" Icon={Hand} />
             <Stat n={stats.none} label="Не покрыто" color="text-muted-foreground" Icon={XCircle} />
             <Stat n={stats.total} label="Всего работ" color="text-foreground" Icon={Activity} />
           </div>
@@ -127,6 +135,7 @@ export default function WorkScopeCoverage() {
             <SelectItem value="all">Все статусы</SelectItem>
             <SelectItem value="metric">По метрикам</SelectItem>
             <SelectItem value="logs">По логам</SelectItem>
+            <SelectItem value="manual">Покрыто вручную</SelectItem>
             <SelectItem value="none">Не покрыто</SelectItem>
           </SelectContent>
         </Select>
@@ -163,6 +172,11 @@ export default function WorkScopeCoverage() {
                       {s === "logs" && (
                         <Badge className="bg-sky-500/15 text-sky-600 dark:text-sky-400 gap-1 text-[10px]"><ScrollText className="h-3 w-3" /> Логи</Badge>
                       )}
+                      {s === "manual" && (
+                        <Badge className="bg-violet-500/15 text-violet-600 dark:text-violet-400 gap-1 text-[10px]" title={t.manual_coverage_note ?? "Покрыто вручную"}>
+                          <Hand className="h-3 w-3" /> Вручную
+                        </Badge>
+                      )}
                       {s === "none" && (
                         <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1"><XCircle className="h-3 w-3" /> Нет</Badge>
                       )}
@@ -170,7 +184,9 @@ export default function WorkScopeCoverage() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {t.metric_bindings.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          s === "manual" && t.manual_coverage_note
+                            ? <span className="text-xs text-muted-foreground italic">{t.manual_coverage_note}</span>
+                            : <span className="text-xs text-muted-foreground">—</span>
                         ) : t.metric_bindings.map((b, i) => (
                           <button
                             key={`${b.itemid}-${i}`}
