@@ -135,6 +135,7 @@ const EVENT_LABELS: Record<string, string> = {
   "monitoring.alert": "⚠️ Срабатывание мониторинга",
   "audit.event": "📝 Событие в журнале",
   "test.channel": "🧪 Тест канала",
+  "chat.message_new": "💬 Новое сообщение в чате",
 };
 
 function flattenPayload(prefix: string, value: any, out: Record<string, string>) {
