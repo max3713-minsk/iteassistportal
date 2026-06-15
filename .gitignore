@@ -1,5 +1,7 @@
 # Logs
 /logs/
+!src/components/logs/
+!src/components/logs/*.tsx
 *.log
 npm-debug.log*
 yarn-debug.log*
