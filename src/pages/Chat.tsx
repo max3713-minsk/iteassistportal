@@ -460,6 +460,32 @@ export default function Chat() {
       </Card>
 
       <NewThreadDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(id) => navigate(`/chat/${id}`)} />
+
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Переименовать диалог</DialogTitle></DialogHeader>
+          <Input value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} placeholder="Название" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>Отмена</Button>
+            <Button onClick={saveRename}>Сохранить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить диалог?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Будут удалены все сообщения и вложения. Действие необратимо.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
