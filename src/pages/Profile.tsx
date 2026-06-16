@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SignatureUpload from "@/components/SignatureUpload";
+import AvatarUpload from "@/components/AvatarUpload";
 import { User } from "lucide-react";
 
 export default function Profile() {
@@ -65,6 +66,10 @@ export default function Profile() {
           <CardDescription>{user?.email}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Аватар</Label>
+            <AvatarUpload userId={userId} name={fullName || user?.email} />
+          </div>
           <div className="space-y-1.5">
             <Label>ФИО</Label>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
