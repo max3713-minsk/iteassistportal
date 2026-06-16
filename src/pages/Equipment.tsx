@@ -338,6 +338,78 @@ export default function Equipment() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <FolderArchive className="h-4 w-4 text-primary" /> Резервное копирование
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Хранилище</Label>
+                    <Select
+                      value={form.backup_storage_id || "none"}
+                      onValueChange={(v) => setForm({ ...form, backup_storage_id: v === "none" ? "" : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Не используется" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Не используется —</SelectItem>
+                        {backupStorages.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}{s.enabled ? "" : " (откл.)"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.backup_storage_id && (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Путь относительно базового</Label>
+                        <Input value={form.backup_path}
+                          onChange={(e) => setForm({ ...form, backup_path: e.target.value })}
+                          placeholder="cisco/{name}/" />
+                        <p className="text-xs text-muted-foreground">
+                          Подстановки: <code>{"{name}"}</code>, <code>{"{model}"}</code>, <code>{"{serial}"}</code>.
+                          Каталог (заканчивается на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Расширения</Label>
+                          <Input value={form.backup_extensions}
+                            onChange={(e) => setForm({ ...form, backup_extensions: e.target.value })}
+                            placeholder=".cfg, .tar.gz" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Возраст, ч</Label>
+                          <Input type="number" min={1} value={form.backup_max_age_hours}
+                            onChange={(e) => setForm({ ...form, backup_max_age_hours: Number(e.target.value) || 24 })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Мин. размер, КБ</Label>
+                          <Input type="number" min={0} value={form.backup_min_size_kb}
+                            onChange={(e) => setForm({ ...form, backup_min_size_kb: Number(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Проверка MD5</Label>
+                        <Select value={form.backup_md5_source}
+                          onValueChange={(v: any) => setForm({ ...form, backup_md5_source: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sidecar">Рядом лежит файл .md5</SelectItem>
+                            <SelectItem value="stored">Эталон сохранён в портале</SelectItem>
+                            <SelectItem value="none">Не проверять MD5</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {form.backup_md5_source === "stored" && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Эталонный MD5</Label>
+                          <Input value={form.backup_md5_expected}
+                            onChange={(e) => setForm({ ...form, backup_md5_expected: e.target.value })}
+                            placeholder="d41d8cd98f00b204e9800998ecf8427e" />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveMutation.mutate(form)} disabled={!form.name || !form.site_id || saveMutation.isPending}>
