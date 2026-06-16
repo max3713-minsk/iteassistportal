@@ -175,7 +175,16 @@ export default function Equipment() {
         quantity: f.quantity,
         description: f.description || null,
         status: f.status,
-      };
+        backup_storage_id: f.backup_storage_id || null,
+        backup_path: f.backup_path || null,
+        backup_extensions: f.backup_extensions
+          ? f.backup_extensions.split(",").map((s) => s.trim()).filter(Boolean)
+          : null,
+        backup_max_age_hours: f.backup_max_age_hours || null,
+        backup_min_size_kb: f.backup_min_size_kb || null,
+        backup_md5_source: f.backup_md5_source,
+        backup_md5_expected: f.backup_md5_expected || null,
+      } as any;
       if (editing) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", editing);
         if (error) throw error;
@@ -218,6 +227,13 @@ export default function Equipment() {
       quantity: eq.quantity ?? 1,
       description: eq.description ?? "",
       status: eq.status ?? "active",
+      backup_storage_id: eq.backup_storage_id ?? "",
+      backup_path: eq.backup_path ?? "",
+      backup_extensions: Array.isArray(eq.backup_extensions) ? eq.backup_extensions.join(", ") : "",
+      backup_max_age_hours: eq.backup_max_age_hours ?? 24,
+      backup_min_size_kb: eq.backup_min_size_kb ?? 1,
+      backup_md5_source: (eq.backup_md5_source as any) ?? "sidecar",
+      backup_md5_expected: eq.backup_md5_expected ?? "",
     });
     setEditing(eq.id);
     setOpen(true);
