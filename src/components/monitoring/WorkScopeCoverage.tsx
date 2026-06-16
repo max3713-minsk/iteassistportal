@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { BarChart3, ScrollText, CheckCircle2, XCircle, Search, ListChecks, Activity, ExternalLink } from "lucide-react";
+import { BarChart3, ScrollText, CheckCircle2, XCircle, Search, ListChecks, Activity, ExternalLink, FolderArchive } from "lucide-react";
 import { Hand } from "lucide-react";
 import { isLogAnalysisTask } from "@/lib/log-task-detect";
+import { isBackupTask } from "@/lib/backup-task-detect";
 import { frequencyLabels, type FrequencyType } from "@/lib/schedule-utils";
 import MetricGraphDialog from "@/components/monitoring/MetricGraphDialog";
 import { Link } from "react-router-dom";
@@ -35,11 +36,12 @@ interface Task {
   manual_coverage_note: string | null;
 }
 
-type Status = "metric" | "logs" | "manual" | "none";
+type Status = "metric" | "logs" | "backup" | "manual" | "none";
 
 function statusOf(t: Task): Status {
   if ((t.metric_bindings?.length ?? 0) > 0) return "metric";
   if (isLogAnalysisTask(t.title, t.description)) return "logs";
+  if (isBackupTask(t.title, t.description)) return "backup";
   if (t.manual_coverage) return "manual";
   return "none";
 }
@@ -77,16 +79,17 @@ export default function WorkScopeCoverage() {
 
   const stats = useMemo(() => {
     const total = tasks.length;
-    let metric = 0, logs = 0, manual = 0;
+    let metric = 0, logs = 0, backup = 0, manual = 0;
     for (const t of tasks) {
       const s = statusOf(t);
       if (s === "metric") metric++;
       else if (s === "logs") logs++;
+      else if (s === "backup") backup++;
       else if (s === "manual") manual++;
     }
-    const covered = metric + logs + manual;
+    const covered = metric + logs + backup + manual;
     const percent = total ? Math.round((covered / total) * 100) : 0;
-    return { total, metric, logs, manual, none: total - covered, percent };
+    return { total, metric, logs, backup, manual, none: total - covered, percent };
   }, [tasks]);
 
   const filtered = useMemo(() => {
@@ -114,9 +117,10 @@ export default function WorkScopeCoverage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={stats.percent} className="h-3" />
-          <div className="grid grid-cols-5 gap-3 text-center">
+          <div className="grid grid-cols-6 gap-3 text-center">
             <Stat n={stats.metric} label="По метрикам" color="text-emerald-500" Icon={BarChart3} />
             <Stat n={stats.logs} label="По логам" color="text-sky-500" Icon={ScrollText} />
+            <Stat n={stats.backup} label="По бэкапам" color="text-amber-500" Icon={FolderArchive} />
             <Stat n={stats.manual} label="Вручную" color="text-violet-500" Icon={Hand} />
             <Stat n={stats.none} label="Не покрыто" color="text-muted-foreground" Icon={XCircle} />
             <Stat n={stats.total} label="Всего работ" color="text-foreground" Icon={Activity} />
@@ -135,6 +139,7 @@ export default function WorkScopeCoverage() {
             <SelectItem value="all">Все статусы</SelectItem>
             <SelectItem value="metric">По метрикам</SelectItem>
             <SelectItem value="logs">По логам</SelectItem>
+            <SelectItem value="backup">По бэкапам</SelectItem>
             <SelectItem value="manual">Покрыто вручную</SelectItem>
             <SelectItem value="none">Не покрыто</SelectItem>
           </SelectContent>
@@ -171,6 +176,11 @@ export default function WorkScopeCoverage() {
                       )}
                       {s === "logs" && (
                         <Badge className="bg-sky-500/15 text-sky-600 dark:text-sky-400 gap-1 text-[10px]"><ScrollText className="h-3 w-3" /> Логи</Badge>
+                      )}
+                      {s === "backup" && (
+                        <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 gap-1 text-[10px]" title="Покрыто проверкой SFTP-бэкапа на карточке оборудования">
+                          <FolderArchive className="h-3 w-3" /> Бэкап
+                        </Badge>
                       )}
                       {s === "manual" && (
                         <Badge className="bg-violet-500/15 text-violet-600 dark:text-violet-400 gap-1 text-[10px]" title={t.manual_coverage_note ?? "Покрыто вручную"}>

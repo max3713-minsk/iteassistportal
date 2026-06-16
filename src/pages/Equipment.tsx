@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter, Activity } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -18,6 +18,15 @@ import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
+
+const BACKUP_STATUS_LABEL: Record<string, { label: string; variant: any }> = {
+  ok: { label: "OK", variant: "success" },
+  stale: { label: "Устарел", variant: "warning" },
+  missing: { label: "Нет файла", variant: "destructive" },
+  checksum_mismatch: { label: "MD5 ✗", variant: "destructive" },
+  error: { label: "Ошибка", variant: "destructive" },
+};
+
 const EQUIPMENT_STATUSES = [
   { value: "active", label: "Активно" },
   { value: "maintenance", label: "На обслуживании" },
@@ -42,9 +51,22 @@ interface EquipForm {
   quantity: number;
   description: string;
   status: string;
+  backup_storage_id: string;
+  backup_path: string;
+  backup_extensions: string;
+  backup_max_age_hours: number;
+  backup_min_size_kb: number;
+  backup_md5_source: "sidecar" | "stored" | "none";
+  backup_md5_expected: string;
 }
 
-const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "", status: "active" };
+const empty: EquipForm = {
+  name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "",
+  quantity: 1, description: "", status: "active",
+  backup_storage_id: "", backup_path: "", backup_extensions: "",
+  backup_max_age_hours: 24, backup_min_size_kb: 1,
+  backup_md5_source: "sidecar", backup_md5_expected: "",
+};
 
 export default function Equipment() {
   const { isStaff } = useAuth();
@@ -91,6 +113,50 @@ export default function Equipment() {
       return data ?? [];
     },
   });
+
+  const { data: backupStorages = [] } = useQuery({
+    queryKey: ["backup-storages-options"],
+    queryFn: async () => {
+      const { data } = await supabase.from("backup_storage_connections" as any).select("id,name,enabled").order("name");
+      return (data ?? []) as any[];
+    },
+  });
+
+  const { data: lastBackupChecks = [] } = useQuery({
+    queryKey: ["last-backup-checks"],
+    queryFn: async () => {
+      const { data } = await supabase.from("equipment_backup_checks" as any)
+        .select("equipment_id,status,checked_at,message,file_path")
+        .order("checked_at", { ascending: false }).limit(500);
+      return (data ?? []) as any[];
+    },
+  });
+  const lastBackupByEq = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const c of lastBackupChecks) if (!map.has(c.equipment_id)) map.set(c.equipment_id, c);
+    return map;
+  }, [lastBackupChecks]);
+
+  const [runningCheck, setRunningCheck] = useState<string | null>(null);
+  const runBackupCheck = async (equipment_id: string) => {
+    setRunningCheck(equipment_id);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-storage-check", {
+        body: { action: "check_equipment", equipment_id, triggered_by: "manual" },
+      });
+      if (error) throw error;
+      const r = data?.results?.[0];
+      toast({
+        title: r ? `Бэкап: ${BACKUP_STATUS_LABEL[r.status]?.label ?? r.status}` : "Проверка завершена",
+        description: r?.message ?? r?.file_path ?? "",
+        variant: r?.status === "ok" ? "default" : "destructive",
+      });
+      qc.invalidateQueries({ queryKey: ["last-backup-checks"] });
+    } catch (e: any) {
+      toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
+    } finally { setRunningCheck(null); }
+  };
+
   const linkByEqId = useMemo(() => {
     const map = new Map<string, { host_name: string; zabbix_host_id: string }>();
     for (const l of hostLinks) map.set(l.equipment_id, l);
@@ -109,7 +175,16 @@ export default function Equipment() {
         quantity: f.quantity,
         description: f.description || null,
         status: f.status,
-      };
+        backup_storage_id: f.backup_storage_id || null,
+        backup_path: f.backup_path || null,
+        backup_extensions: f.backup_extensions
+          ? f.backup_extensions.split(",").map((s) => s.trim()).filter(Boolean)
+          : null,
+        backup_max_age_hours: f.backup_max_age_hours || null,
+        backup_min_size_kb: f.backup_min_size_kb || null,
+        backup_md5_source: f.backup_md5_source,
+        backup_md5_expected: f.backup_md5_expected || null,
+      } as any;
       if (editing) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", editing);
         if (error) throw error;
@@ -152,6 +227,13 @@ export default function Equipment() {
       quantity: eq.quantity ?? 1,
       description: eq.description ?? "",
       status: eq.status ?? "active",
+      backup_storage_id: eq.backup_storage_id ?? "",
+      backup_path: eq.backup_path ?? "",
+      backup_extensions: Array.isArray(eq.backup_extensions) ? eq.backup_extensions.join(", ") : "",
+      backup_max_age_hours: eq.backup_max_age_hours ?? 24,
+      backup_min_size_kb: eq.backup_min_size_kb ?? 1,
+      backup_md5_source: (eq.backup_md5_source as any) ?? "sidecar",
+      backup_md5_expected: eq.backup_md5_expected ?? "",
     });
     setEditing(eq.id);
     setOpen(true);
@@ -256,6 +338,78 @@ export default function Equipment() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <FolderArchive className="h-4 w-4 text-primary" /> Резервное копирование
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Хранилище</Label>
+                    <Select
+                      value={form.backup_storage_id || "none"}
+                      onValueChange={(v) => setForm({ ...form, backup_storage_id: v === "none" ? "" : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Не используется" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Не используется —</SelectItem>
+                        {backupStorages.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}{s.enabled ? "" : " (откл.)"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.backup_storage_id && (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Путь относительно базового</Label>
+                        <Input value={form.backup_path}
+                          onChange={(e) => setForm({ ...form, backup_path: e.target.value })}
+                          placeholder="cisco/{name}/" />
+                        <p className="text-xs text-muted-foreground">
+                          Подстановки: <code>{"{name}"}</code>, <code>{"{model}"}</code>, <code>{"{serial}"}</code>.
+                          Каталог (заканчивается на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Расширения</Label>
+                          <Input value={form.backup_extensions}
+                            onChange={(e) => setForm({ ...form, backup_extensions: e.target.value })}
+                            placeholder=".cfg, .tar.gz" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Возраст, ч</Label>
+                          <Input type="number" min={1} value={form.backup_max_age_hours}
+                            onChange={(e) => setForm({ ...form, backup_max_age_hours: Number(e.target.value) || 24 })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Мин. размер, КБ</Label>
+                          <Input type="number" min={0} value={form.backup_min_size_kb}
+                            onChange={(e) => setForm({ ...form, backup_min_size_kb: Number(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Проверка MD5</Label>
+                        <Select value={form.backup_md5_source}
+                          onValueChange={(v: any) => setForm({ ...form, backup_md5_source: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sidecar">Рядом лежит файл .md5</SelectItem>
+                            <SelectItem value="stored">Эталон сохранён в портале</SelectItem>
+                            <SelectItem value="none">Не проверять MD5</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {form.backup_md5_source === "stored" && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Эталонный MD5</Label>
+                          <Input value={form.backup_md5_expected}
+                            onChange={(e) => setForm({ ...form, backup_md5_expected: e.target.value })}
+                            placeholder="d41d8cd98f00b204e9800998ecf8427e" />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveMutation.mutate(form)} disabled={!form.name || !form.site_id || saveMutation.isPending}>
@@ -315,6 +469,7 @@ export default function Equipment() {
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
                 <TableHead>Мониторинг</TableHead>
+                <TableHead>Бэкап</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Здоровье</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
@@ -349,6 +504,39 @@ export default function Equipment() {
                         </div>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">Не подключён</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {eq.backup_storage_id ? (
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const lc = lastBackupByEq.get(eq.id);
+                            if (!lc) return <Badge variant="secondary">Не проверялся</Badge>;
+                            const cfg = BACKUP_STATUS_LABEL[lc.status] ?? { label: lc.status, variant: "outline" };
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant={cfg.variant} className="cursor-help">{cfg.label}</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <div className="text-xs">
+                                    <div>{new Date(lc.checked_at).toLocaleString("ru-RU")}</div>
+                                    {lc.file_path && <div className="text-muted-foreground truncate">{lc.file_path}</div>}
+                                    {lc.message && <div className="mt-1">{lc.message}</div>}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
+                          {isStaff && (
+                            <Button variant="ghost" size="icon" title="Проверить сейчас"
+                              onClick={() => runBackupCheck(eq.id)} disabled={runningCheck === eq.id}>
+                              {runningCheck === eq.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">—</Badge>
                       )}
                     </TableCell>
                     <TableCell>
