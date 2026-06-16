@@ -484,9 +484,15 @@ function NewThreadDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
     if (!user || selected.size === 0) return;
     setBusy(true);
     try {
+      const selectedUsers = users.filter((u) => selected.has(u.user_id));
+      const defaultTitle = selectedUsers
+        .map((u) => u.full_name || "Пользователь")
+        .join(", ")
+        .slice(0, 120);
+      const finalTitle = title.trim() || defaultTitle || null;
       const { data: t, error } = await supabase.from("chat_threads").insert({
         kind: selected.size > 1 ? "group" : "direct",
-        title: title.trim() || null,
+        title: finalTitle,
         created_by: user.id,
       } as any).select("id").single();
       if (error) throw error;
