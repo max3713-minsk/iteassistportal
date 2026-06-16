@@ -82,8 +82,8 @@ export default function Chat() {
       const ids = (parts ?? []).map((p: any) => p.user_id);
       if (!ids.length) return [];
       const { data: profs } = await supabase
-        .from("profiles").select("user_id, full_name, avatar_path" as any).in("user_id", ids);
-      return (profs ?? []) as ParticipantProfile[];
+        .from("profiles").select("user_id, full_name, avatar_path").in("user_id", ids);
+      return (profs ?? []) as unknown as ParticipantProfile[];
     },
   });
   const nameOf = (uid: string) => participants.find((p) => p.user_id === uid)?.full_name ?? "Пользователь";
