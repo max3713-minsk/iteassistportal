@@ -25,3 +25,4 @@
 - [Help Reference](mem://features/help-reference) — ToS, SLA times, Scope of work base
 - [Automated Protocols](mem://features/automated-protocols) — Maintenance schedule logic and protocol generation
 - [System Integrations](mem://architecture/integration) — Zabbix, Ansible, BelVPN Gate
+- [Env vars (Cloud vs Self-hosted)](mem://deployment/env-vars) — Какие переменные нужны только в docker-стенде и не должны попадать в облачный .env
