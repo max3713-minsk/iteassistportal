@@ -113,6 +113,50 @@ export default function Equipment() {
       return data ?? [];
     },
   });
+
+  const { data: backupStorages = [] } = useQuery({
+    queryKey: ["backup-storages-options"],
+    queryFn: async () => {
+      const { data } = await supabase.from("backup_storage_connections" as any).select("id,name,enabled").order("name");
+      return (data ?? []) as any[];
+    },
+  });
+
+  const { data: lastBackupChecks = [] } = useQuery({
+    queryKey: ["last-backup-checks"],
+    queryFn: async () => {
+      const { data } = await supabase.from("equipment_backup_checks" as any)
+        .select("equipment_id,status,checked_at,message,file_path")
+        .order("checked_at", { ascending: false }).limit(500);
+      return (data ?? []) as any[];
+    },
+  });
+  const lastBackupByEq = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const c of lastBackupChecks) if (!map.has(c.equipment_id)) map.set(c.equipment_id, c);
+    return map;
+  }, [lastBackupChecks]);
+
+  const [runningCheck, setRunningCheck] = useState<string | null>(null);
+  const runBackupCheck = async (equipment_id: string) => {
+    setRunningCheck(equipment_id);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-storage-check", {
+        body: { action: "check_equipment", equipment_id, triggered_by: "manual" },
+      });
+      if (error) throw error;
+      const r = data?.results?.[0];
+      toast({
+        title: r ? `Бэкап: ${BACKUP_STATUS_LABEL[r.status]?.label ?? r.status}` : "Проверка завершена",
+        description: r?.message ?? r?.file_path ?? "",
+        variant: r?.status === "ok" ? "default" : "destructive",
+      });
+      qc.invalidateQueries({ queryKey: ["last-backup-checks"] });
+    } catch (e: any) {
+      toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
+    } finally { setRunningCheck(null); }
+  };
+
   const linkByEqId = useMemo(() => {
     const map = new Map<string, { host_name: string; zabbix_host_id: string }>();
     for (const l of hostLinks) map.set(l.equipment_id, l);
