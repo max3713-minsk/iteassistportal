@@ -184,6 +184,63 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_storage_connections: {
+        Row: {
+          auth_method: string
+          base_path: string
+          created_at: string
+          enabled: boolean
+          host: string
+          id: string
+          last_checked_at: string | null
+          last_error: string | null
+          last_status: string | null
+          name: string
+          notes: string | null
+          password: string | null
+          port: number
+          private_key: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          auth_method?: string
+          base_path?: string
+          created_at?: string
+          enabled?: boolean
+          host: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_status?: string | null
+          name: string
+          notes?: string | null
+          password?: string | null
+          port?: number
+          private_key?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          auth_method?: string
+          base_path?: string
+          created_at?: string
+          enabled?: boolean
+          host?: string
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_status?: string | null
+          name?: string
+          notes?: string | null
+          password?: string | null
+          port?: number
+          private_key?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           attachments: Json
@@ -442,6 +499,13 @@ export type Database = {
       }
       equipment: {
         Row: {
+          backup_extensions: string[] | null
+          backup_max_age_hours: number | null
+          backup_md5_expected: string | null
+          backup_md5_source: string | null
+          backup_min_size_kb: number | null
+          backup_path: string | null
+          backup_storage_id: string | null
           category_id: string | null
           created_at: string
           description: string | null
@@ -459,6 +523,13 @@ export type Database = {
           warranty_until: string | null
         }
         Insert: {
+          backup_extensions?: string[] | null
+          backup_max_age_hours?: number | null
+          backup_md5_expected?: string | null
+          backup_md5_source?: string | null
+          backup_min_size_kb?: number | null
+          backup_path?: string | null
+          backup_storage_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -476,6 +547,13 @@ export type Database = {
           warranty_until?: string | null
         }
         Update: {
+          backup_extensions?: string[] | null
+          backup_max_age_hours?: number | null
+          backup_md5_expected?: string | null
+          backup_md5_source?: string | null
+          backup_min_size_kb?: number | null
+          backup_path?: string | null
+          backup_storage_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -493,6 +571,13 @@ export type Database = {
           warranty_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "equipment_backup_storage_id_fkey"
+            columns: ["backup_storage_id"]
+            isOneToOne: false
+            referencedRelation: "backup_storage_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "equipment_category_id_fkey"
             columns: ["category_id"]
@@ -512,6 +597,66 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_backup_checks: {
+        Row: {
+          checked_at: string
+          equipment_id: string
+          file_mtime: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          md5_actual: string | null
+          md5_expected: string | null
+          message: string | null
+          status: string
+          storage_id: string | null
+          triggered_by: string
+        }
+        Insert: {
+          checked_at?: string
+          equipment_id: string
+          file_mtime?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          md5_actual?: string | null
+          md5_expected?: string | null
+          message?: string | null
+          status: string
+          storage_id?: string | null
+          triggered_by?: string
+        }
+        Update: {
+          checked_at?: string
+          equipment_id?: string
+          file_mtime?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          md5_actual?: string | null
+          md5_expected?: string | null
+          message?: string | null
+          status?: string
+          storage_id?: string | null
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_backup_checks_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_backup_checks_storage_id_fkey"
+            columns: ["storage_id"]
+            isOneToOne: false
+            referencedRelation: "backup_storage_connections"
             referencedColumns: ["id"]
           },
         ]
