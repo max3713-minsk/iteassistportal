@@ -469,6 +469,7 @@ export default function Equipment() {
                 <TableHead className="hidden lg:table-cell">ОС</TableHead>
                 <TableHead>Кол-во</TableHead>
                 <TableHead>Мониторинг</TableHead>
+                <TableHead>Бэкап</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Здоровье</TableHead>
                 {isStaff && <TableHead className="w-24">Действия</TableHead>}
@@ -503,6 +504,39 @@ export default function Equipment() {
                         </div>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">Не подключён</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {eq.backup_storage_id ? (
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const lc = lastBackupByEq.get(eq.id);
+                            if (!lc) return <Badge variant="secondary">Не проверялся</Badge>;
+                            const cfg = BACKUP_STATUS_LABEL[lc.status] ?? { label: lc.status, variant: "outline" };
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant={cfg.variant} className="cursor-help">{cfg.label}</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <div className="text-xs">
+                                    <div>{new Date(lc.checked_at).toLocaleString("ru-RU")}</div>
+                                    {lc.file_path && <div className="text-muted-foreground truncate">{lc.file_path}</div>}
+                                    {lc.message && <div className="mt-1">{lc.message}</div>}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
+                          {isStaff && (
+                            <Button variant="ghost" size="icon" title="Проверить сейчас"
+                              onClick={() => runBackupCheck(eq.id)} disabled={runningCheck === eq.id}>
+                              {runningCheck === eq.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">—</Badge>
                       )}
                     </TableCell>
                     <TableCell>
