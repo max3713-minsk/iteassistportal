@@ -12,7 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AvatarHash } from "@/components/ui/avatar-hash";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CommentBody } from "@/components/tickets/CommentBody";
@@ -27,6 +29,7 @@ type Message = {
   parent_id?: string | null; attachments?: ChatAttachment[] | null;
 };
 type ProfileLite = { user_id: string; full_name: string | null };
+type ParticipantProfile = ProfileLite & { avatar_path?: string | null };
 
 export default function Chat() {
   const { threadId } = useParams<{ threadId?: string }>();
@@ -46,6 +49,10 @@ export default function Chat() {
   const lastTypingSent = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
 
   // Threads
   const { data: threads = [] } = useQuery<Thread[]>({
@@ -65,8 +72,8 @@ export default function Chat() {
     if (!threadId && threads.length > 0) navigate(`/chat/${threads[0].id}`, { replace: true });
   }, [threadId, threads, navigate]);
 
-  // Participants of current thread (for names)
-  const { data: participants = [] } = useQuery<ProfileLite[]>({
+  // Participants of current thread (for names + avatars)
+  const { data: participants = [] } = useQuery<ParticipantProfile[]>({
     queryKey: ["chat-thread-participants", threadId],
     enabled: !!threadId,
     queryFn: async () => {
@@ -75,11 +82,29 @@ export default function Chat() {
       const ids = (parts ?? []).map((p: any) => p.user_id);
       if (!ids.length) return [];
       const { data: profs } = await supabase
-        .from("profiles").select("user_id, full_name").in("user_id", ids);
-      return (profs ?? []) as ProfileLite[];
+        .from("profiles").select("user_id, full_name, avatar_path" as any).in("user_id", ids);
+      return (profs ?? []) as ParticipantProfile[];
     },
   });
   const nameOf = (uid: string) => participants.find((p) => p.user_id === uid)?.full_name ?? "Пользователь";
+
+  // Resolve signed avatar URLs for participants
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const entries: Record<string, string> = {};
+      for (const p of participants) {
+        if (!p.avatar_path) continue;
+        const { data } = await supabase.storage.from("avatars").createSignedUrl(p.avatar_path, 60 * 60);
+        if (data?.signedUrl) entries[p.user_id] = data.signedUrl;
+      }
+      if (!cancelled) setAvatarUrls(entries);
+    })();
+    return () => { cancelled = true; };
+  }, [participants]);
+
+  const currentThread = threads.find((t) => t.id === threadId);
+  const canManageThread = !!currentThread && currentThread.created_by === user?.id;
 
   // Messages
   const { data: messages = [] } = useQuery<Message[]>({
@@ -182,7 +207,7 @@ export default function Chat() {
     const { error } = await supabase.from("chat_messages").insert({
       thread_id: threadId, user_id: user.id, content: text,
       parent_id: reply?.id ?? null,
-      attachments: atts.length ? (atts as any) : null,
+      attachments: (atts as any) ?? [],
     } as any);
     if (error) toast({ title: "Не удалось отправить", description: error.message, variant: "destructive" });
     else {
@@ -212,6 +237,34 @@ export default function Chat() {
   };
 
   const insertEmoji = (emoji: any) => setDraft((d) => d + (emoji?.native ?? ""));
+
+  const openRename = () => {
+    setRenameDraft(currentThread?.title ?? "");
+    setRenameOpen(true);
+  };
+  const saveRename = async () => {
+    if (!threadId) return;
+    const { error } = await supabase.from("chat_threads")
+      .update({ title: renameDraft.trim() || null } as any).eq("id", threadId);
+    if (error) {
+      toast({ title: "Не удалось переименовать", description: error.message, variant: "destructive" });
+    } else {
+      setRenameOpen(false);
+      qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
+    }
+  };
+  const confirmDelete = async () => {
+    if (!threadId) return;
+    const { error } = await supabase.from("chat_threads").delete().eq("id", threadId);
+    if (error) {
+      toast({ title: "Не удалось удалить", description: error.message, variant: "destructive" });
+    } else {
+      setDeleteOpen(false);
+      toast({ title: "Диалог удалён" });
+      qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
+      navigate("/chat", { replace: true });
+    }
+  };
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length) setPendingFiles((p) => [...p, ...files]);
@@ -263,16 +316,32 @@ export default function Chat() {
               <div className="flex -space-x-2">
                 {participants.slice(0, 5).map((p) => (
                   <div key={p.user_id} className="relative">
-                    <AvatarHash name={p.full_name ?? "?"} size="sm" />
+                    <AvatarHash name={p.full_name ?? "?"} src={avatarUrls[p.user_id]} size="sm" />
                     {onlineIds.has(p.user_id) && (
                       <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
                     )}
                   </div>
                 ))}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {participants.length} участник(ов) · онлайн: {participants.filter((p) => onlineIds.has(p.user_id)).length}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{currentThread?.title || "Без названия"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {participants.length} участник(ов) · онлайн: {participants.filter((p) => onlineIds.has(p.user_id)).length}
+                </p>
               </div>
+              {canManageThread && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" title="Действия"><MoreVertical className="h-4 w-4" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={openRename}><Pencil className="h-3.5 w-3.5 mr-2" />Переименовать</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onSelect={() => setDeleteOpen(true)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />Удалить диалог
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((m) => {
@@ -280,7 +349,7 @@ export default function Chat() {
                 const parent = m.parent_id ? msgById.get(m.parent_id) : null;
                 return (
                   <div key={m.id} className={cn("group flex gap-2", mine && "flex-row-reverse")}>
-                    <AvatarHash name={nameOf(m.user_id)} size="sm" />
+                    <AvatarHash name={nameOf(m.user_id)} src={avatarUrls[m.user_id]} size="sm" />
                     <div className={cn(
                       "rounded-lg px-3 py-2 max-w-[70%]",
                       mine ? "bg-primary text-primary-foreground" : "bg-muted",
