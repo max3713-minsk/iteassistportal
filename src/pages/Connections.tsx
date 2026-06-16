@@ -1,10 +1,11 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plug, Database, GitBranch } from "lucide-react";
+import { Plug, Database, GitBranch, FolderArchive } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import ZabbixConnections from "@/pages/ZabbixConnections";
 import Integrations from "@/pages/Integrations";
+import BackupStorageManager from "@/components/connections/BackupStorageManager";
 
 /**
  * Unified "Подключения" page.
@@ -14,7 +15,11 @@ import Integrations from "@/pages/Integrations";
 export default function Connections() {
   const { hasRole } = useAuth();
   const [params, setParams] = useSearchParams();
-  const initial = params.get("tab") === "gitlab" || params.get("tab") === "seafile" ? "integrations" : "zabbix";
+  const tabParam = params.get("tab");
+  const initial =
+    tabParam === "backups" ? "backups"
+    : tabParam === "gitlab" || tabParam === "seafile" ? "integrations"
+    : "zabbix";
 
   if (!hasRole("admin")) {
     return (
@@ -49,12 +54,18 @@ export default function Connections() {
           <TabsTrigger value="integrations" className="gap-1.5">
             <GitBranch className="h-3.5 w-3.5" /> Внешние сервисы
           </TabsTrigger>
+          <TabsTrigger value="backups" className="gap-1.5">
+            <FolderArchive className="h-3.5 w-3.5" /> Хранилища бэкапов
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="zabbix" className="mt-4">
           <ZabbixConnections />
         </TabsContent>
         <TabsContent value="integrations" className="mt-4">
           <Integrations />
+        </TabsContent>
+        <TabsContent value="backups" className="mt-4">
+          <BackupStorageManager />
         </TabsContent>
       </Tabs>
     </div>
