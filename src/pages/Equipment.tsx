@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter, Activity } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -18,6 +18,15 @@ import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
+
+const BACKUP_STATUS_LABEL: Record<string, { label: string; variant: any }> = {
+  ok: { label: "OK", variant: "success" },
+  stale: { label: "Устарел", variant: "warning" },
+  missing: { label: "Нет файла", variant: "destructive" },
+  checksum_mismatch: { label: "MD5 ✗", variant: "destructive" },
+  error: { label: "Ошибка", variant: "destructive" },
+};
+
 const EQUIPMENT_STATUSES = [
   { value: "active", label: "Активно" },
   { value: "maintenance", label: "На обслуживании" },
@@ -42,9 +51,22 @@ interface EquipForm {
   quantity: number;
   description: string;
   status: string;
+  backup_storage_id: string;
+  backup_path: string;
+  backup_extensions: string;
+  backup_max_age_hours: number;
+  backup_min_size_kb: number;
+  backup_md5_source: "sidecar" | "stored" | "none";
+  backup_md5_expected: string;
 }
 
-const empty: EquipForm = { name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "", quantity: 1, description: "", status: "active" };
+const empty: EquipForm = {
+  name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "",
+  quantity: 1, description: "", status: "active",
+  backup_storage_id: "", backup_path: "", backup_extensions: "",
+  backup_max_age_hours: 24, backup_min_size_kb: 1,
+  backup_md5_source: "sidecar", backup_md5_expected: "",
+};
 
 export default function Equipment() {
   const { isStaff } = useAuth();
