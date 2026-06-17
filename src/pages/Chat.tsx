@@ -581,3 +581,86 @@ function NewThreadDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
     </Dialog>
   );
 }
+
+function AddParticipantsDialog({
+  open, onOpenChange, threadId, existingIds,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  threadId: string; existingIds: string[];
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [shareHistory, setShareHistory] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const { data: users = [] } = useQuery<ProfileLite[]>({
+    queryKey: ["chat-pickable-users-add", threadId, existingIds.join(",")],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles").select("user_id, full_name")
+        .eq("is_active", true).order("full_name");
+      return (data ?? []).filter(
+        (p: any) => p.user_id !== user?.id && !existingIds.includes(p.user_id),
+      ) as ProfileLite[];
+    },
+  });
+
+  const add = async () => {
+    if (!selected.size) return;
+    setBusy(true);
+    try {
+      const history_from = shareHistory ? null : new Date().toISOString();
+      const rows = Array.from(selected).map((uid) => ({
+        thread_id: threadId, user_id: uid, history_from,
+      }));
+      const { error } = await supabase.from("chat_thread_participants").insert(rows as any);
+      if (error) throw error;
+      toast({ title: "Участники добавлены" });
+      qc.invalidateQueries({ queryKey: ["chat-thread-participants", threadId] });
+      onOpenChange(false);
+      setSelected(new Set());
+      setShareHistory(true);
+    } catch (e: any) {
+      toast({ title: "Не удалось добавить", description: e.message, variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Добавить участников</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="max-h-72 overflow-y-auto border rounded-md">
+            {users.map((u) => (
+              <label key={u.user_id} className="flex items-center gap-2 px-3 py-2 border-b last:border-0 cursor-pointer hover:bg-muted/40">
+                <input type="checkbox" checked={selected.has(u.user_id)} onChange={(e) => {
+                  setSelected((prev) => { const n = new Set(prev); if (e.target.checked) n.add(u.user_id); else n.delete(u.user_id); return n; });
+                }} />
+                <span className="text-sm">{u.full_name || u.user_id.slice(0, 8)}</span>
+              </label>
+            ))}
+            {users.length === 0 && <p className="text-sm text-muted-foreground p-3">Все доступные пользователи уже добавлены.</p>}
+          </div>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="share-history" className="text-sm">Показать историю сообщений</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Если выключено — новые участники увидят только сообщения, отправленные после добавления.
+              </p>
+            </div>
+            <Switch id="share-history" checked={shareHistory} onCheckedChange={setShareHistory} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+          <Button onClick={add} disabled={busy || selected.size === 0}>
+            {busy && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}Добавить
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
