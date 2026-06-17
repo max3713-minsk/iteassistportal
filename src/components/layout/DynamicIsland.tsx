@@ -156,7 +156,7 @@ export function DynamicIsland() {
   const hasTasks = islandTasks.length > 0;
 
   return (
-    <div className="pointer-events-none sticky top-2 z-40 flex justify-end px-4 lg:px-6">
+    <div className="pointer-events-none sticky top-2 z-40 flex justify-center px-4 lg:px-6">
       <div
         className={cn(
           "pointer-events-auto flex items-stretch gap-0 rounded-full border border-border/60",
@@ -172,17 +172,17 @@ export function DynamicIsland() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 px-4 h-10 hover:bg-muted/40 transition-colors"
+              className="flex items-center gap-3 px-5 h-11 hover:bg-muted/40 transition-colors"
               aria-label="Текущее время"
             >
-              <span className="font-heading font-bold tabular-nums text-sm leading-none">
+              <span className="font-heading font-bold tabular-nums text-base leading-none">
                 {time}
               </span>
-              <span className="hidden md:inline-flex flex-col items-start leading-none">
-                <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
-                  {["ВС","ПН","ВТ","СР","ЧТ","ПТ","СБ"][now.getDay()]}
+              <span className="hidden md:inline-flex items-center gap-1.5 leading-none">
+                <span className="text-xs uppercase tracking-wide text-primary font-semibold">
+                  {WEEKDAYS[now.getDay()]}
                 </span>
-                <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {dateShort}
                 </span>
               </span>
