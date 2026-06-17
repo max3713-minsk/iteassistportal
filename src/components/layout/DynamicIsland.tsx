@@ -69,6 +69,7 @@ export function DynamicIsland() {
     return () => clearInterval(id);
   }, []);
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const dateShort = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}`;
   const dateLong = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 
   // --- zabbix status ---
@@ -116,7 +117,7 @@ export function DynamicIsland() {
   const [tickIdx, setTickIdx] = useState(0);
   useEffect(() => {
     if (ticker.length < 2) return;
-    const id = setInterval(() => setTickIdx((i) => (i + 1) % ticker.length), 5000);
+    const id = setInterval(() => setTickIdx((i) => (i + 1) % ticker.length), 7000);
     return () => clearInterval(id);
   }, [ticker.length]);
   useEffect(() => { setTickIdx(0); }, [ticker.length]);
@@ -161,7 +162,7 @@ export function DynamicIsland() {
           "pointer-events-auto flex items-stretch gap-0 rounded-full border border-border/60",
           "bg-background/70 backdrop-blur-xl shadow-lg shadow-black/20",
           "transition-[max-width,box-shadow,background] duration-500 ease-out overflow-hidden max-w-full",
-          burst ? "ring-2 ring-primary/60" : "",
+          burst ? "ring-2 ring-primary/70 shadow-primary/30 island-ambient" : "",
           hasTasks ? "ring-1 ring-primary/40" : "",
         )}
       >
@@ -177,8 +178,13 @@ export function DynamicIsland() {
               <span className="font-heading font-bold tabular-nums text-sm leading-none">
                 {time}
               </span>
-              <span className="hidden xl:inline text-[10px] uppercase tracking-wide text-primary font-semibold">
-                {["ВС","ПН","ВТ","СР","ЧТ","ПТ","СБ"][now.getDay()]}
+              <span className="hidden md:inline-flex flex-col items-start leading-none">
+                <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
+                  {["ВС","ПН","ВТ","СР","ЧТ","ПТ","СБ"][now.getDay()]}
+                </span>
+                <span className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
+                  {dateShort}
+                </span>
               </span>
             </button>
           </TooltipTrigger>
@@ -244,7 +250,7 @@ export function DynamicIsland() {
           className={cn(
             "flex items-center gap-2 px-3 h-10 hover:bg-muted/40 transition-colors min-w-0",
             "max-w-[140px] sm:max-w-[220px] md:max-w-[320px]",
-            burst && "bg-primary/10",
+            burst && "bg-primary/15 island-ambient-glow",
           )}
           title={current ? (current.title ?? "") : "Уведомления"}
         >
@@ -257,7 +263,7 @@ export function DynamicIsland() {
           {current ? (
             <span
               key={burst ? `b-${burst.id}` : `t-${current.id}-${tickIdx}`}
-              className="text-xs truncate animate-fade-in"
+              className="text-xs truncate animate-island-ticker"
             >
               {current.title || current.body || "Уведомление"}
             </span>
