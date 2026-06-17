@@ -12,9 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AvatarHash } from "@/components/ui/avatar-hash";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon, Pencil, Trash2, MoreVertical, UserPlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CommentBody } from "@/components/tickets/CommentBody";
@@ -52,6 +54,7 @@ export default function Chat() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
 
   // Threads
@@ -105,6 +108,7 @@ export default function Chat() {
 
   const currentThread = threads.find((t) => t.id === threadId);
   const canManageThread = !!currentThread && currentThread.created_by === user?.id;
+  const isParticipant = participants.some((p) => p.user_id === user?.id);
 
   // Messages
   const { data: messages = [] } = useQuery<Message[]>({
@@ -341,6 +345,11 @@ export default function Chat() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+              {isParticipant && (
+                <Button variant="ghost" size="icon" title="Добавить участников" onClick={() => setAddOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
               )}
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
