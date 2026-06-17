@@ -139,3 +139,28 @@
 @keyframes lovable-flow-dash {
   to { stroke-dashoffset: -28; }
 }
+
+/* ─── Dynamic Island: ambient glow + ticker rotate ─── */
+@keyframes island-ambient-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.0), 0 10px 30px -10px hsl(var(--primary) / 0.25); }
+  50%      { box-shadow: 0 0 28px 6px hsl(var(--primary) / 0.45), 0 10px 30px -8px hsl(var(--primary) / 0.55); }
+}
+.island-ambient {
+  animation: island-ambient-pulse 2.4s ease-in-out infinite;
+}
+@keyframes island-ambient-glow-bg {
+  0%, 100% { background-color: hsl(var(--primary) / 0.10); }
+  50%      { background-color: hsl(var(--primary) / 0.25); }
+}
+.island-ambient-glow {
+  animation: island-ambient-glow-bg 2.4s ease-in-out infinite;
+}
+@keyframes island-ticker-rotate {
+  0%   { opacity: 0; transform: translateY(8px); }
+  12%  { opacity: 1; transform: translateY(0); }
+  88%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+.animate-island-ticker {
+  animation: island-ticker-rotate 7s ease-in-out;
+}
