@@ -470,6 +470,15 @@ export default function Chat() {
 
       <NewThreadDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(id) => navigate(`/chat/${id}`)} />
 
+      {threadId && (
+        <AddParticipantsDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          threadId={threadId}
+          existingIds={participants.map((p) => p.user_id)}
+        />
+      )}
+
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Переименовать диалог</DialogTitle></DialogHeader>
