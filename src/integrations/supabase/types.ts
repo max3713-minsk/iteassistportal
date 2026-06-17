@@ -291,6 +291,7 @@ export type Database = {
       }
       chat_thread_participants: {
         Row: {
+          history_from: string | null
           joined_at: string
           last_read_at: string
           muted: boolean
@@ -298,6 +299,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          history_from?: string | null
           joined_at?: string
           last_read_at?: string
           muted?: boolean
@@ -305,6 +307,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          history_from?: string | null
           joined_at?: string
           last_read_at?: string
           muted?: boolean
