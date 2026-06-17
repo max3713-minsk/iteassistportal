@@ -12,9 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AvatarHash } from "@/components/ui/avatar-hash";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Plus, Send, MessageSquare, Loader2, Paperclip, Smile, Reply, X, FileText, Image as ImageIcon, Pencil, Trash2, MoreVertical, UserPlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CommentBody } from "@/components/tickets/CommentBody";
@@ -52,6 +54,7 @@ export default function Chat() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
 
   // Threads
@@ -105,6 +108,7 @@ export default function Chat() {
 
   const currentThread = threads.find((t) => t.id === threadId);
   const canManageThread = !!currentThread && currentThread.created_by === user?.id;
+  const isParticipant = participants.some((p) => p.user_id === user?.id);
 
   // Messages
   const { data: messages = [] } = useQuery<Message[]>({
@@ -342,6 +346,11 @@ export default function Chat() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+              {isParticipant && (
+                <Button variant="ghost" size="icon" title="Добавить участников" onClick={() => setAddOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((m) => {
@@ -461,6 +470,15 @@ export default function Chat() {
 
       <NewThreadDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(id) => navigate(`/chat/${id}`)} />
 
+      {threadId && (
+        <AddParticipantsDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          threadId={threadId}
+          existingIds={participants.map((p) => p.user_id)}
+        />
+      )}
+
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Переименовать диалог</DialogTitle></DialogHeader>
@@ -557,6 +575,89 @@ function NewThreadDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
           <Button onClick={create} disabled={busy || selected.size === 0}>
             {busy && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}Создать
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddParticipantsDialog({
+  open, onOpenChange, threadId, existingIds,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  threadId: string; existingIds: string[];
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [shareHistory, setShareHistory] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const { data: users = [] } = useQuery<ProfileLite[]>({
+    queryKey: ["chat-pickable-users-add", threadId, existingIds.join(",")],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles").select("user_id, full_name")
+        .eq("is_active", true).order("full_name");
+      return (data ?? []).filter(
+        (p: any) => p.user_id !== user?.id && !existingIds.includes(p.user_id),
+      ) as ProfileLite[];
+    },
+  });
+
+  const add = async () => {
+    if (!selected.size) return;
+    setBusy(true);
+    try {
+      const history_from = shareHistory ? null : new Date().toISOString();
+      const rows = Array.from(selected).map((uid) => ({
+        thread_id: threadId, user_id: uid, history_from,
+      }));
+      const { error } = await supabase.from("chat_thread_participants").insert(rows as any);
+      if (error) throw error;
+      toast({ title: "Участники добавлены" });
+      qc.invalidateQueries({ queryKey: ["chat-thread-participants", threadId] });
+      onOpenChange(false);
+      setSelected(new Set());
+      setShareHistory(true);
+    } catch (e: any) {
+      toast({ title: "Не удалось добавить", description: e.message, variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Добавить участников</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="max-h-72 overflow-y-auto border rounded-md">
+            {users.map((u) => (
+              <label key={u.user_id} className="flex items-center gap-2 px-3 py-2 border-b last:border-0 cursor-pointer hover:bg-muted/40">
+                <input type="checkbox" checked={selected.has(u.user_id)} onChange={(e) => {
+                  setSelected((prev) => { const n = new Set(prev); if (e.target.checked) n.add(u.user_id); else n.delete(u.user_id); return n; });
+                }} />
+                <span className="text-sm">{u.full_name || u.user_id.slice(0, 8)}</span>
+              </label>
+            ))}
+            {users.length === 0 && <p className="text-sm text-muted-foreground p-3">Все доступные пользователи уже добавлены.</p>}
+          </div>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="share-history" className="text-sm">Показать историю сообщений</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Если выключено — новые участники увидят только сообщения, отправленные после добавления.
+              </p>
+            </div>
+            <Switch id="share-history" checked={shareHistory} onCheckedChange={setShareHistory} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+          <Button onClick={add} disabled={busy || selected.size === 0}>
+            {busy && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}Добавить
           </Button>
         </DialogFooter>
       </DialogContent>
