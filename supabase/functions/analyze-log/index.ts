@@ -29,7 +29,7 @@ const SYSTEM_PROMPT = `Ты — инженер технической подде
 - Если строка уже на русском — translated = original.
 - Никаких markdown, только валидный JSON.`;
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -119,4 +119,4 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}

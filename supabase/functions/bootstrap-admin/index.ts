@@ -10,7 +10,7 @@ const BOOTSTRAP_EMAIL = "admin@iteng.local";
 const BOOTSTRAP_PASSWORD = "derby3713";
 const BOOTSTRAP_FULL_NAME = "Суперадминистратор";
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
-});
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {

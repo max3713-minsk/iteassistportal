@@ -4,6 +4,7 @@ volumes:
   db_data:
   storage_data:
   redis_data:
+  deno_cache:
 
 networks:
   app_net:
@@ -93,16 +94,20 @@ services:
       db:
         condition: service_healthy
     environment:
+      API_JWT_SECRET: ${JWT_SECRET}
+      PGRST_JWT_SECRET: "${JWT_SECRET}"
+
+      PGRST_DB_ANON_ROLE: "postgres"
       PORT: 4000
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: supabase_admin
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
-      DB_ENC_KEY: supabaserealtimesecret
+      DB_ENC_KEY: realtime_key_123
       FLY_ALLOC_ID: fly123
       FLY_APP_NAME: realtime
-      SECRET_KEY_BASE: ${JWT_SECRET}
+      SECRET_KEY_BASE: 2c14192f39cdd55f8738b75a9c60c5d055ab1b05118eb6d11695b5106a9a384248929430b1fb3e06b3ba4077ec001265dd8181f7fe7d668de4e95574f8277d08
       ERL_AFLAGS: -proto_dist inet_tcp
       ENABLE_TAILSCALE: "false"
       DNS_NODES: "''"
@@ -142,6 +147,8 @@ services:
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
     volumes:
       - ./supabase/kong.yml:/home/kong/kong.yml:ro
     ports:
@@ -149,8 +156,36 @@ services:
     networks:
       - app_net
 
+  functions:
+    image: supabase/edge-runtime:v1.67.4
+    container_name: app_functions
+    restart: unless-stopped
+
+    volumes:
+      - ./supabase/functions:/home/deno/functions:ro
+      - deno_cache:/root/.cache/deno
+
+    environment:
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      VERIFY_JWT: "false"
+
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/bootstrap-router
+      - --request-wait-timeout
+      - "120000" 
+    depends_on:
+      - kong
+
+    networks:
+      - app_net
+
   studio:
-    image: supabase/studio:20240205-6a669c4
+    image: supabase/studio:latest
     container_name: app_studio
     restart: unless-stopped
     depends_on:

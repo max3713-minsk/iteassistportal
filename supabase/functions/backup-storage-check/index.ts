@@ -131,7 +131,7 @@ async function checkOne(sftp: SftpClient, storage: Storage, eq: Equipment): Prom
     md5_actual: md5, md5_expected: md5Expected };
 }
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -229,4 +229,4 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-});
+}

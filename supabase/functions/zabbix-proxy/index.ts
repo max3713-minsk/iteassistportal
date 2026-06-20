@@ -290,7 +290,7 @@ function getActionDef(action: string, extraParams?: Record<string, unknown>): Ac
 }
 
 /* ─── Main handler ─── */
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -911,4 +911,4 @@ Deno.serve(async (req) => {
       },
     );
   }
-});
+}

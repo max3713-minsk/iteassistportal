@@ -93,7 +93,7 @@ async function lookupOne(
   return row;
 }
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const authHeader = req.headers.get("Authorization");
@@ -146,4 +146,4 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}

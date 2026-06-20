@@ -27,7 +27,7 @@ interface Ticket {
 const ACTIVE_STATUSES = ["open", "assigned", "in_progress", "waiting"];
 const DEFAULT_OFFSETS = [30, 20, 10, 5]; // minutes before deadline
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supa = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -145,4 +145,4 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify(summary), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+}

@@ -103,7 +103,7 @@ async function upload(baseUrl: string, token: string, repoId: string, parentDir:
   await upRes.json().catch(() => null);
 }
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const authHeader = req.headers.get("Authorization");
@@ -215,4 +215,4 @@ Deno.serve(async (req) => {
     console.error("seafile-upload-typed error:", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
-});
+}

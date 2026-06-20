@@ -10,7 +10,7 @@ const corsHeaders = {
  * Body: { country?: string ('BY'), year?: number, years?: number[] }
  * Manual workday transfers (day_type='workday') and manual entries are preserved.
  */
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -108,4 +108,4 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}

@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req) => {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     console.error("run-migration error:", e);
     return json({ error: e?.message ?? String(e) }, 500);
   }
-});
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
