@@ -2,7 +2,8 @@
 
 ## Core
 - Terminology: Always use "ЦОД" (never Площадки), "Панель управления" (never Дашборд), "Протоколы" (never Отчёты).
-- Tech: Supabase with RLS (Admin, Engineer, Customer). User creation via Edge Functions.
+- Tech: Self-hosted Supabase на 10.11.12.243 (БД `app_db`, Edge Runtime v1.67.4). RLS (Admin, Engineer, Customer). User creation via Edge Functions.
+- Edge Functions: каждая функция — `export default async function handler`, маршрутизация через `supabase/functions/bootstrap-router/index.ts` (статический импорт + запись в `routes`). НЕ использовать `Deno.serve()` в обычных функциях, НЕ использовать `pg_cron`.
 - Styling: Space Grotesk (headers), DM Sans (body). Dark theme bg `0 0% 9%`.
 - Status Colors: Red (Open/Overdue), Blue (Progress), Yellow (Waiting), Green (Done), Gray (Closed - highlight row).
 - Permissions: Only Customer can permanently close tickets. Admin required for User Management & Audit Log.
@@ -27,3 +28,4 @@
 - [System Integrations](mem://architecture/integration) — Zabbix, Ansible, BelVPN Gate
 - [Env vars (Cloud vs Self-hosted)](mem://deployment/env-vars) — Какие переменные нужны только в docker-стенде и не должны попадать в облачный .env
 - [Проверки бэкапов](mem://features/backup-checks) — SFTP-хранилища в подключениях, поля бэкапа на оборудовании, edge-функция, cron, покрытие регламента
+- [Self-hosted Supabase Architecture](mem://architecture/self-hosted) — Docker-стек, app_db, bootstrap-router, deploy workflow
