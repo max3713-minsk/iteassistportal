@@ -113,3 +113,23 @@ docker compose stop functions && docker compose rm -f functions && docker compos
 - Realtime WebSocket: `signature_error` — известная проблема self-hosted, REST API работает.
 - `app_studio` показывает `unhealthy` — норма, доступна через UI.
 - Миграции из Lovable применяются к `app_db`, не к `postgres`.
+- URL > 8KB (много UUID в query string) даёт 414 — на фронте бить запросы на батчи по 50–100.
+
+## Storage
+
+- Бакет `documents` публичный. Kong-маршрут `/storage/v1/object/public/` открыт без авторизации.
+- При создании нового публичного бакета добавлять политику:
+  ```sql
+  CREATE POLICY "Public read" ON storage.objects FOR SELECT TO public
+  USING (bucket_id = '<bucket>');
+  ```
+
+## Внешние ключи
+
+Все FK в `public` создавать только с `ON DELETE SET NULL` или `ON DELETE CASCADE` — иначе при удалении записей будет 409.
+
+## Точка отката (на 2026-06-20)
+
+- Коммит: `89f754a` (ветка `main`).
+- Бэкап БД: `/home/iteadmin/backup_app_db_20260620_1351.dump`.
+- Бэкап файлов: `/home/iteadmin/backup_project_20260620_1351.tar.gz`.
