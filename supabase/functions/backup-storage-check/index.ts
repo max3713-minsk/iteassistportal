@@ -88,7 +88,16 @@ async function checkOne(sftp: SftpClient, storage: Storage, eq: Equipment): Prom
 
   // Режим поиска: glob по шаблону имени, либо каталог (path/), либо точный файл.
   const useGlob = !!pattern;
-  const isDirHint = useGlob || !rawPath || target.endsWith("/");
+  let isDirHint = useGlob || !rawPath || target.endsWith("/");
+
+  // Если шаблон не задан и путь без / на конце — попробуем определить тип на сервере.
+  // Это спасает от ситуации, когда путь типа "/home/tftpconf" воспринимается как файл.
+  if (!isDirHint) {
+    try {
+      const kind = await sftp.exists(target); // false | '-' | 'd' | 'l'
+      if (kind === "d") isDirHint = true;
+    } catch { /* ignore, обработаем ниже */ }
+  }
 
   try {
     if (isDirHint) {
@@ -100,9 +109,10 @@ async function checkOne(sftp: SftpClient, storage: Storage, eq: Equipment): Prom
         .filter((f) => exts.length === 0 || exts.some((e) => f.name.toLowerCase().endsWith(e)))
         .sort((a, b) => b.modifyTime - a.modifyTime);
       if (matches.length === 0) {
+        const extInfo = exts.length ? ` (расширения: ${exts.join(", ")})` : "";
         const why = useGlob
-          ? `В каталоге ${target} нет файлов по шаблону "${expand(pattern, eq)}"`
-          : `В каталоге ${target} нет файлов с подходящим расширением`;
+          ? `В каталоге ${target} нет файлов по шаблону "${expand(pattern, eq)}"${extInfo}`
+          : `В каталоге ${target} нет файлов${extInfo}. Подсказка: задайте «Шаблон имени файла», например {name}_config_*.zip`;
         return { status: "missing", file_path: target, message: why };
       }
       const f = matches[0];
@@ -110,7 +120,7 @@ async function checkOne(sftp: SftpClient, storage: Storage, eq: Equipment): Prom
       stat = { size: f.size, modifyTime: f.modifyTime };
     } else {
       const exists = await sftp.exists(target);
-      if (!exists) return { status: "missing", file_path: target, message: "Файл не найден" };
+      if (!exists) return { status: "missing", file_path: target, message: `Файл не найден: ${target}. Если это каталог — добавьте «/» в конец пути или задайте шаблон имени файла.` };
       const s = await sftp.stat(target);
       stat = { size: s.size, modifyTime: s.modifyTime };
     }
