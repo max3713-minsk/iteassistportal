@@ -54,6 +54,7 @@ interface EquipForm {
   status: string;
   backup_storage_id: string;
   backup_path: string;
+  backup_filename_pattern: string;
   backup_extensions: string;
   backup_max_age_hours: number;
   backup_min_size_kb: number;
@@ -64,7 +65,7 @@ interface EquipForm {
 const empty: EquipForm = {
   name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "",
   quantity: 1, description: "", status: "active",
-  backup_storage_id: "", backup_path: "", backup_extensions: "",
+  backup_storage_id: "", backup_path: "", backup_filename_pattern: "", backup_extensions: "",
   backup_max_age_hours: 24, backup_min_size_kb: 1,
   backup_md5_source: "sidecar", backup_md5_expected: "",
 };
@@ -180,6 +181,7 @@ export default function Equipment() {
         status: f.status,
         backup_storage_id: f.backup_storage_id || null,
         backup_path: f.backup_path || null,
+        backup_filename_pattern: f.backup_filename_pattern || null,
         backup_extensions: f.backup_extensions
           ? f.backup_extensions.split(",").map((s) => s.trim()).filter(Boolean)
           : null,
@@ -232,6 +234,7 @@ export default function Equipment() {
       status: eq.status ?? "active",
       backup_storage_id: eq.backup_storage_id ?? "",
       backup_path: eq.backup_path ?? "",
+      backup_filename_pattern: eq.backup_filename_pattern ?? "",
       backup_extensions: Array.isArray(eq.backup_extensions) ? eq.backup_extensions.join(", ") : "",
       backup_max_age_hours: eq.backup_max_age_hours ?? 24,
       backup_min_size_kb: eq.backup_min_size_kb ?? 1,
@@ -379,10 +382,21 @@ export default function Equipment() {
                         <Label className="text-xs">Путь относительно базового</Label>
                         <Input value={form.backup_path}
                           onChange={(e) => setForm({ ...form, backup_path: e.target.value })}
-                          placeholder="cisco/{name}/" />
+                          placeholder="cisco/{name}/  или оставьте пустым для корня" />
                         <p className="text-xs text-muted-foreground">
                           Подстановки: <code>{"{name}"}</code>, <code>{"{model}"}</code>, <code>{"{serial}"}</code>.
-                          Каталог (заканчивается на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                          Пусто или каталог (на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Шаблон имени файла (glob)</Label>
+                        <Input value={form.backup_filename_pattern}
+                          onChange={(e) => setForm({ ...form, backup_filename_pattern: e.target.value })}
+                          placeholder="{name}_config_*.zip" />
+                        <p className="text-xs text-muted-foreground">
+                          Если задан — ищем в каталоге файл с именем по шаблону (<code>*</code>, <code>?</code>,
+                          подстановки <code>{"{name}"}</code>/<code>{"{model}"}</code>/<code>{"{serial}"}</code>).
+                          Берётся самый свежий совпавший файл.
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-2">

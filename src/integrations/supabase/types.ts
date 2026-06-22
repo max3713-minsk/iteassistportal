@@ -503,6 +503,7 @@ export type Database = {
       equipment: {
         Row: {
           backup_extensions: string[] | null
+          backup_filename_pattern: string | null
           backup_max_age_hours: number | null
           backup_md5_expected: string | null
           backup_md5_source: string | null
@@ -527,6 +528,7 @@ export type Database = {
         }
         Insert: {
           backup_extensions?: string[] | null
+          backup_filename_pattern?: string | null
           backup_max_age_hours?: number | null
           backup_md5_expected?: string | null
           backup_md5_source?: string | null
@@ -551,6 +553,7 @@ export type Database = {
         }
         Update: {
           backup_extensions?: string[] | null
+          backup_filename_pattern?: string | null
           backup_max_age_hours?: number | null
           backup_md5_expected?: string | null
           backup_md5_source?: string | null
