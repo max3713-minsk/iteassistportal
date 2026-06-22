@@ -54,6 +54,7 @@ interface EquipForm {
   status: string;
   backup_storage_id: string;
   backup_path: string;
+  backup_filename_pattern: string;
   backup_extensions: string;
   backup_max_age_hours: number;
   backup_min_size_kb: number;
@@ -64,7 +65,7 @@ interface EquipForm {
 const empty: EquipForm = {
   name: "", model: "", site_id: "", category_id: "", serial_number: "", os_info: "",
   quantity: 1, description: "", status: "active",
-  backup_storage_id: "", backup_path: "", backup_extensions: "",
+  backup_storage_id: "", backup_path: "", backup_filename_pattern: "", backup_extensions: "",
   backup_max_age_hours: 24, backup_min_size_kb: 1,
   backup_md5_source: "sidecar", backup_md5_expected: "",
 };
