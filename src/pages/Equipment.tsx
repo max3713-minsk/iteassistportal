@@ -181,6 +181,7 @@ export default function Equipment() {
         status: f.status,
         backup_storage_id: f.backup_storage_id || null,
         backup_path: f.backup_path || null,
+        backup_filename_pattern: f.backup_filename_pattern || null,
         backup_extensions: f.backup_extensions
           ? f.backup_extensions.split(",").map((s) => s.trim()).filter(Boolean)
           : null,
@@ -233,6 +234,7 @@ export default function Equipment() {
       status: eq.status ?? "active",
       backup_storage_id: eq.backup_storage_id ?? "",
       backup_path: eq.backup_path ?? "",
+      backup_filename_pattern: eq.backup_filename_pattern ?? "",
       backup_extensions: Array.isArray(eq.backup_extensions) ? eq.backup_extensions.join(", ") : "",
       backup_max_age_hours: eq.backup_max_age_hours ?? 24,
       backup_min_size_kb: eq.backup_min_size_kb ?? 1,
