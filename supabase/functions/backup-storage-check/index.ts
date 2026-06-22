@@ -23,6 +23,7 @@ type Equipment = {
   backup_min_size_kb: number | null;
   backup_md5_source: "sidecar" | "stored" | "none" | null;
   backup_md5_expected: string | null;
+  backup_filename_pattern: string | null;
 };
 
 type CheckResult = {
@@ -41,6 +42,13 @@ function joinPath(a: string, b: string): string {
   if (!b) return a;
   if (b.startsWith("/")) return b;
   return (a.endsWith("/") ? a : a + "/") + b;
+}
+function globToRegex(glob: string): RegExp {
+  // Экранируем спецсимволы regex, кроме * и ?, затем переводим * → .*, ? → .
+  const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp("^" + escaped + "$", "i");
 }
 function md5OfBuffer(buf: Buffer): string {
   return createHash("md5").update(buf).digest("hex");
@@ -61,24 +69,42 @@ async function connect(storage: Storage): Promise<SftpClient> {
 }
 
 async function checkOne(sftp: SftpClient, storage: Storage, eq: Equipment): Promise<CheckResult> {
-  if (!eq.backup_path) return { status: "error", message: "Не задан путь к бэкапу" };
   const exts = (eq.backup_extensions ?? []).map((e) => e.toLowerCase());
   const maxAgeH = eq.backup_max_age_hours ?? 24;
   const minSizeKb = eq.backup_min_size_kb ?? 1;
-  const target = joinPath(storage.base_path, expand(eq.backup_path, eq));
+  const rawPath = (eq.backup_path ?? "").trim();
+  const pattern = (eq.backup_filename_pattern ?? "").trim();
 
-  // Шаблон может указывать на каталог (заканчивается на '/') — берём свежайший подходящий файл.
+  if (!rawPath && !pattern) {
+    return { status: "error", message: "Не задан путь или шаблон имени файла" };
+  }
+
+  // Базовый каталог для поиска. Пустой путь / '/' = корень хранилища.
+  const expandedPath = rawPath ? expand(rawPath, eq) : "";
+  const target = expandedPath ? joinPath(storage.base_path, expandedPath) : storage.base_path;
+
   let filePath = target;
   let stat: { size: number; modifyTime: number } | null = null;
+
+  // Режим поиска: glob по шаблону имени, либо каталог (path/), либо точный файл.
+  const useGlob = !!pattern;
+  const isDirHint = useGlob || !rawPath || target.endsWith("/");
+
   try {
-    const isDirHint = target.endsWith("/");
     if (isDirHint) {
       const list = await sftp.list(target);
+      const re = useGlob ? globToRegex(expand(pattern, eq)) : null;
       const matches = list
         .filter((f) => f.type === "-")
+        .filter((f) => (re ? re.test(f.name) : true))
         .filter((f) => exts.length === 0 || exts.some((e) => f.name.toLowerCase().endsWith(e)))
         .sort((a, b) => b.modifyTime - a.modifyTime);
-      if (matches.length === 0) return { status: "missing", file_path: target, message: "В каталоге нет файлов с подходящим расширением" };
+      if (matches.length === 0) {
+        const why = useGlob
+          ? `В каталоге ${target} нет файлов по шаблону "${expand(pattern, eq)}"`
+          : `В каталоге ${target} нет файлов с подходящим расширением`;
+        return { status: "missing", file_path: target, message: why };
+      }
       const f = matches[0];
       filePath = joinPath(target, f.name);
       stat = { size: f.size, modifyTime: f.modifyTime };
@@ -167,8 +193,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Загружаем оборудование с привязкой
     const filter = action === "check_equipment" ? body.equipment_id : null;
-    let q = supabase.from("equipment").select("id,name,model,serial_number,backup_storage_id,backup_path,backup_extensions,backup_max_age_hours,backup_min_size_kb,backup_md5_source,backup_md5_expected")
-      .not("backup_storage_id", "is", null).not("backup_path", "is", null);
+  let q = supabase.from("equipment").select("id,name,model,serial_number,backup_storage_id,backup_path,backup_filename_pattern,backup_extensions,backup_max_age_hours,backup_min_size_kb,backup_md5_source,backup_md5_expected")
+      .not("backup_storage_id", "is", null)
+      .or("backup_path.not.is.null,backup_filename_pattern.not.is.null");
     if (filter) q = q.eq("id", filter);
     const { data: equipment, error: eqErr } = await q;
     if (eqErr) throw eqErr;
