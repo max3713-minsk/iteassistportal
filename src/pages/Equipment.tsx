@@ -86,7 +86,7 @@ export default function Equipment() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("equipment")
-        .select("*, sites(name), equipment_categories(name)")
+        .select("*, sites(name), equipment_categories(name, icon)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -601,6 +601,21 @@ export default function Equipment() {
           </Table>
         </Card>
       )}
+
+      <Dialog open={catsOpen} onOpenChange={setCatsOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Управление категориями оборудования</DialogTitle>
+            <DialogDescription>
+              Добавляйте, переименовывайте и удаляйте категории. При удалении категории
+              с привязанным оборудованием можно перенести его в другую категорию.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto">
+            <EquipmentCategoriesManager />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
