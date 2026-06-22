@@ -278,10 +278,16 @@ export default function Equipment() {
           )}
         </div>
         {isStaff && (
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Добавить</Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setCatsOpen(true)}>
+                <Tag className="h-4 w-4 mr-2" /> Категории
+              </Button>
+            )}
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />Добавить</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editing ? "Редактировать" : "Новое оборудование"}</DialogTitle>
