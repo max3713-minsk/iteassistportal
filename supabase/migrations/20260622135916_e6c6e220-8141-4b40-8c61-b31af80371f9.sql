@@ -1,0 +1,1 @@
+ALTER TABLE public.equipment ADD COLUMN IF NOT EXISTS backup_filename_pattern text;
