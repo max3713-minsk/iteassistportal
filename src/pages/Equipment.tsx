@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2 } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2, Tag } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -18,6 +18,7 @@ import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
+import EquipmentCategoriesManager, { CategoryIcon } from "@/components/help/EquipmentCategoriesManager";
 
 const BACKUP_STATUS_LABEL: Record<string, { label: string; variant: any }> = {
   ok: { label: "OK", variant: "success" },
@@ -69,7 +70,8 @@ const empty: EquipForm = {
 };
 
 export default function Equipment() {
-  const { isStaff } = useAuth();
+  const { isStaff, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -77,6 +79,7 @@ export default function Equipment() {
   const [form, setForm] = useState<EquipForm>(empty);
   const [filterSite, setFilterSite] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [catsOpen, setCatsOpen] = useState(false);
 
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ["equipment"],
