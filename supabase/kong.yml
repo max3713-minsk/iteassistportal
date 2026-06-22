@@ -3,10 +3,10 @@ _format_version: "1.1"
 consumers:
   - username: anon
     keyauth_credentials:
-      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MjcxMzY4LCJleHAiOjIwOTQ4NDczNjh9.QTifbclu1w8ghuhEyKh6FJQxST03Xt0YgYzF_PeH0zI
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgyMDUzMzk2LCJleHAiOjIwOTc0MTMzOTZ9.wZksq5HQrwty5XtjjQrpilhhrgvfmx-EWc0-hMo1-fE
   - username: service_role
     keyauth_credentials:
-      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NzkyNzEzNjgsImV4cCI6MjA5NDg0NzM2OH0.011gylCsokcQRAnwyBpbDk7-sgqGyhl1YcxI-UPRcJk
+      - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODIwNTMzOTYsImV4cCI6MjA5NzQxMzM5Nn0.N9fnizth2XtcIW_LTH4BoCdiLyx0Xkfzb2onC78HNRI
 
 acls:
   - consumer: anon
@@ -92,15 +92,6 @@ services:
           - /realtime/v1/
     plugins:
       - name: cors
-      - name: key-auth
-        config:
-          hide_credentials: false
-      - name: acl
-        config:
-          hide_groups_header: true
-          allow:
-            - anon
-            - admin
 
   - name: storage-v1-public
     url: http://storage:5000/object/public/

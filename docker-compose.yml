@@ -87,7 +87,7 @@ services:
       - app_net
 
   realtime:
-    image: supabase/realtime:v2.28.32
+    image: supabase/realtime:v2.25.50
     container_name: app_realtime
     restart: unless-stopped
     depends_on:
@@ -99,12 +99,13 @@ services:
 
       PGRST_DB_ANON_ROLE: "postgres"
       PORT: 4000
+      DB_ENC_KEY: realtime_key_321
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO realtime'
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: supabase_admin
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
-      DB_ENC_KEY: realtime_key_123
       FLY_ALLOC_ID: fly123
       FLY_APP_NAME: realtime
       SECRET_KEY_BASE: 2c14192f39cdd55f8738b75a9c60c5d055ab1b05118eb6d11695b5106a9a384248929430b1fb3e06b3ba4077ec001265dd8181f7fe7d668de4e95574f8277d08
