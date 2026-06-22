@@ -382,10 +382,21 @@ export default function Equipment() {
                         <Label className="text-xs">Путь относительно базового</Label>
                         <Input value={form.backup_path}
                           onChange={(e) => setForm({ ...form, backup_path: e.target.value })}
-                          placeholder="cisco/{name}/" />
+                          placeholder="cisco/{name}/  или оставьте пустым для корня" />
                         <p className="text-xs text-muted-foreground">
                           Подстановки: <code>{"{name}"}</code>, <code>{"{model}"}</code>, <code>{"{serial}"}</code>.
-                          Каталог (заканчивается на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                          Пусто или каталог (на /) — берётся свежайший файл; иначе — точный путь к файлу.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Шаблон имени файла (glob)</Label>
+                        <Input value={form.backup_filename_pattern}
+                          onChange={(e) => setForm({ ...form, backup_filename_pattern: e.target.value })}
+                          placeholder="{name}_config_*.zip" />
+                        <p className="text-xs text-muted-foreground">
+                          Если задан — ищем в каталоге файл с именем по шаблону (<code>*</code>, <code>?</code>,
+                          подстановки <code>{"{name}"}</code>/<code>{"{model}"}</code>/<code>{"{serial}"}</code>).
+                          Берётся самый свежий совпавший файл.
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
