@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2 } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2, Tag } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -18,6 +18,7 @@ import { HEALTH_GRADE_CONFIG } from "@/lib/health-score";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import EquipmentMonitoringMetrics from "@/components/monitoring/EquipmentMonitoringMetrics";
+import EquipmentCategoriesManager, { CategoryIcon } from "@/components/help/EquipmentCategoriesManager";
 
 const BACKUP_STATUS_LABEL: Record<string, { label: string; variant: any }> = {
   ok: { label: "OK", variant: "success" },
@@ -69,7 +70,8 @@ const empty: EquipForm = {
 };
 
 export default function Equipment() {
-  const { isStaff } = useAuth();
+  const { isStaff, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -77,13 +79,14 @@ export default function Equipment() {
   const [form, setForm] = useState<EquipForm>(empty);
   const [filterSite, setFilterSite] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [catsOpen, setCatsOpen] = useState(false);
 
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ["equipment"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("equipment")
-        .select("*, sites(name), equipment_categories(name)")
+        .select("*, sites(name), equipment_categories(name, icon)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -275,10 +278,16 @@ export default function Equipment() {
           )}
         </div>
         {isStaff && (
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Добавить</Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setCatsOpen(true)}>
+                <Tag className="h-4 w-4 mr-2" /> Категории
+              </Button>
+            )}
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />Добавить</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editing ? "Редактировать" : "Новое оборудование"}</DialogTitle>
@@ -307,7 +316,14 @@ export default function Equipment() {
                   <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
                     <SelectContent>
-                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {categories.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="inline-flex items-center gap-2">
+                            <CategoryIcon name={c.icon} className="h-3.5 w-3.5 text-muted-foreground" />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -418,6 +434,7 @@ export default function Equipment() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
@@ -485,7 +502,14 @@ export default function Equipment() {
                     <TableCell>
                       <Badge variant="secondary">{eq.sites?.name ?? "—"}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                      {eq.equipment_categories?.name ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CategoryIcon name={eq.equipment_categories?.icon} className="h-3.5 w-3.5" />
+                          {eq.equipment_categories.name}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
                     <TableCell>
@@ -577,6 +601,21 @@ export default function Equipment() {
           </Table>
         </Card>
       )}
+
+      <Dialog open={catsOpen} onOpenChange={setCatsOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Управление категориями оборудования</DialogTitle>
+            <DialogDescription>
+              Добавляйте, переименовывайте и удаляйте категории. При удалении категории
+              с привязанным оборудованием можно перенести его в другую категорию.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto">
+            <EquipmentCategoriesManager />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
