@@ -427,6 +427,7 @@ export default function Equipment() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
