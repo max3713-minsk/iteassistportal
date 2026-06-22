@@ -83,6 +83,16 @@ services:
             - anon
             - admin
 
+  - name: realtime-v1-api
+    url: http://realtime:4000/api
+    routes:
+      - name: realtime-v1-api-all
+        strip_path: true
+        paths:
+          - /realtime/v1/api/
+    plugins:
+      - name: cors
+
   - name: realtime-v1
     url: http://realtime:4000/socket
     routes:
