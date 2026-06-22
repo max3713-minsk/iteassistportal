@@ -316,7 +316,14 @@ export default function Equipment() {
                   <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
                     <SelectContent>
-                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {categories.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="inline-flex items-center gap-2">
+                            <CategoryIcon name={c.icon} className="h-3.5 w-3.5 text-muted-foreground" />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -495,7 +502,14 @@ export default function Equipment() {
                     <TableCell>
                       <Badge variant="secondary">{eq.sites?.name ?? "—"}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{eq.equipment_categories?.name ?? "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                      {eq.equipment_categories?.name ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CategoryIcon name={eq.equipment_categories?.icon} className="h-3.5 w-3.5" />
+                          {eq.equipment_categories.name}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{eq.os_info ?? "—"}</TableCell>
                     <TableCell>{eq.quantity}</TableCell>
                     <TableCell>
