@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ITEAgent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-2: #1f1f23;
+    --border: #27272a;
+    --border-strong: #3f3f46;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --primary: hsl(0, 85%, 50%);
+    --primary-hover: hsl(0, 85%, 45%);
+    --success: hsl(142, 70%, 45%);
+    --warning: hsl(38, 92%, 50%);
+    --danger: hsl(0, 85%, 50%);
+    --radius-card: 12px;
+    --radius-input: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; }
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: #0c0c0e;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .main { flex: 1; overflow-y: auto; padding: 32px 40px; }
+
+  /* Logo */
+  .logo {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--primary), #7a0d0d);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    color: #fff; font-size: 16px; letter-spacing: -0.5px;
+    box-shadow: 0 4px 12px rgba(220,38,38,0.25);
+  }
+  .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .logo-text .name {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 17px; letter-spacing: -0.3px;
+  }
+  .logo-text .ver { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Nav */
+  nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    color: var(--text-muted); font-weight: 500; font-size: 14px;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+  .nav-item.active { background: var(--surface-2); color: var(--text); }
+  .nav-item.active::before {
+    content: ''; width: 3px; height: 18px; background: var(--primary);
+    border-radius: 2px; margin-left: -8px; margin-right: 5px;
+  }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* Status badge */
+  .status-badge {
+    margin: 12px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-dim);
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  }
+  .status-dot.online {
+    background: var(--success);
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.15);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.offline { background: var(--danger); }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
+    50% { box-shadow: 0 0 0 6px rgba(34,197,94,0.05); }
+  }
+
+  /* Page */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .page-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .page-title { font-size: 26px; letter-spacing: -0.5px; }
+  .page-subtitle { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-dim); font-weight: 600; margin-bottom: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px; font-weight: 600; letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  .stat-sub { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Progress bar */
+  .progress {
+    margin-top: 14px; height: 6px; background: var(--surface-2);
+    border-radius: 999px; overflow: hidden;
+  }
+  .progress > span {
+    display: block; height: 100%; background: var(--primary);
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .progress > span.green { background: var(--success); }
+  .progress > span.yellow { background: var(--warning); }
+  .progress > span.red { background: var(--danger); }
+
+  /* Tables */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    text-align: left; padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-dim);
+    background: var(--surface-2);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td.num { font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+
+  .pill {
+    display: inline-block; padding: 3px 8px;
+    border-radius: 999px; font-size: 11px; font-weight: 600;
+    background: var(--surface-2); color: var(--text-muted);
+  }
+  .pill.green { background: rgba(34,197,94,0.12); color: hsl(142, 70%, 60%); }
+  .pill.yellow { background: rgba(234,179,8,0.12); color: hsl(38, 92%, 60%); }
+  .pill.red { background: rgba(220,38,38,0.12); color: hsl(0, 85%, 65%); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: var(--radius-input);
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer;
+    transition: all 0.15s; user-select: none;
+    background: var(--surface-2); color: var(--text);
+  }
+  .btn:hover { background: #2a2a30; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline { background: transparent; border-color: var(--border-strong); color: var(--text); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-danger { background: transparent; border: 1px solid hsl(0, 70%, 30%); color: hsl(0, 85%, 65%); padding: 6px 12px; font-size: 12px; }
+  .btn-danger:hover { background: rgba(220,38,38,0.1); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* Inputs */
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  .field .hint { font-size: 12px; color: var(--text-dim); }
+  input[type=text], input[type=number], input[type=url], input[type=password] {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-input); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
+  input[readonly] { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 14px 0; gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-info { flex: 1; }
+  .toggle-info .label { font-weight: 500; font-size: 14px; }
+  .toggle-info .desc { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    transition: 0.2s; border-radius: 999px;
+  }
+  .slider:before {
+    content: ""; position: absolute; height: 16px; width: 16px;
+    left: 2px; bottom: 2px; background: var(--text-muted);
+    transition: 0.2s; border-radius: 50%;
+  }
+  .switch input:checked + .slider { background: var(--primary); border-color: var(--primary); }
+  .switch input:checked + .slider:before { transform: translateX(18px); background: #fff; }
+
+  /* Settings sections */
+  .section { margin-bottom: 20px; }
+  .section h3 { font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+  /* Support cards */
+  .support-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 1100px) { .support-grid { grid-template-columns: repeat(2, 1fr); } }
+  .support-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-card); padding: 20px;
+    text-align: left; cursor: pointer;
+    transition: all 0.15s; color: var(--text);
+    display: flex; flex-direction: column; gap: 6px;
+    text-decoration: none;
+  }
+  .support-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .support-card .icon { font-size: 22px; margin-bottom: 4px; }
+  .support-card .title { font-weight: 600; font-size: 14px; }
+  .support-card .desc { font-size: 12px; color: var(--text-dim); }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 16px;
+  }
+  .toolbar input { max-width: 320px; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; min-width: 260px;
+    color: var(--text); font-size: 13px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn 0.25s ease;
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error { border-left: 3px solid var(--danger); }
+  .toast.info { border-left: 3px solid var(--text-muted); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 999;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-card); padding: 24px; min-width: 380px; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal h3 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* Skeleton */
+  .skeleton {
+    display: inline-block; height: 1em; min-width: 60px;
+    background: linear-gradient(90deg, var(--surface-2), #2a2a30, var(--surface-2));
+    background-size: 200% 100%; border-radius: 4px;
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  .empty { padding: 28px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">IT</div>
+      <div class="logo-text">
+        <span class="name">ITEAgent</span>
+        <span class="ver" id="agent-version">v0.1.0</span>
+      </div>
+    </div>
+    <nav id="nav">
+      <div class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Дашборд
+      </div>
+      <div class="nav-item" data-page="disks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        Диски
+      </div>
+      <div class="nav-item" data-page="network">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg>
+        Сеть
+      </div>
+      <div class="nav-item" data-page="processes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+        Процессы
+      </div>
+      <div class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Настройки
+      </div>
+      <div class="nav-item" data-page="support">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Поддержка
+      </div>
+    </nav>
+    <div class="status-badge">
+      <span class="status-dot" id="conn-dot"></span>
+      <span id="conn-text">Проверка...</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Дашборд</h1>
+          <div class="page-subtitle">Состояние агента и системы в реальном времени</div>
+        </div>
+        <button class="btn btn-sm" onclick="refreshAll()">Обновить</button>
+      </div>
+
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-title">CPU</div>
+          <div class="stat-value"><span id="cpu-val">—</span><span style="font-size:18px;color:var(--text-dim)">%</span></div>
+          <div class="progress"><span id="cpu-bar" style="width:0%"></span></div>
+          <div class="stat-sub" id="cpu-load">LA: —</div>
+        </div>
+        <div class="card">
+          <div class="card-title">RAM</div>
+          <div class="stat-value"><span id="ram-val">—</span><span style="font-size:18px;color:var(--text-dim)">%</span></div>
+          <div class="progress"><span id="ram-bar" style="width:0%"></span></div>
+          <div class="stat-sub" id="ram-sub">— МБ / — МБ</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Uptime</div>
+          <div class="stat-value" style="font-size:24px" id="uptime-val">—</div>
+          <div class="stat-sub" id="uptime-since">с момента запуска</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Портал</div>
+          <div class="stat-value" style="font-size:20px" id="portal-status">—</div>
+          <div class="stat-sub" id="portal-url-sub">—</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Датчик</th><th style="text-align:right">Температура</th></tr></thead>
+            <tbody id="temps-body"><tr><td colspan="2" class="empty">Загрузка…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+            <tbody id="sysinfo-body"><tr><td colspan="2" class="empty">Загрузка…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISKS -->
+    <section class="page" id="page-disks">
+      <div class="page-header">
+        <div><h1 class="page-title">Диски</h1>
+        <div class="page-subtitle">Использование дискового пространства</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Устройство</th><th>Точка монтирования</th><th>ФС</th>
+            <th style="text-align:right">Всего ГБ</th>
+            <th style="text-align:right">Использовано ГБ</th>
+            <th style="text-align:right">Свободно ГБ</th>
+            <th>%</th>
+          </tr></thead>
+          <tbody id="disks-body"><tr><td colspan="7" class="empty">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- NETWORK -->
+    <section class="page" id="page-network">
+      <div class="page-header">
+        <div><h1 class="page-title">Сеть</h1>
+        <div class="page-subtitle">Сетевые интерфейсы и трафик</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Интерфейс</th><th>IP-адреса</th><th>MAC</th>
+            <th style="text-align:right">Отправлено</th>
+            <th style="text-align:right">Получено</th>
+          </tr></thead>
+          <tbody id="network-body"><tr><td colspan="5" class="empty">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PROCESSES -->
+    <section class="page" id="page-processes">
+      <div class="page-header">
+        <div><h1 class="page-title">Процессы</h1>
+        <div class="page-subtitle">Активные процессы в системе</div></div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="proc-search" placeholder="Поиск по имени процесса…" oninput="renderProcesses()" />
+        <button class="btn" onclick="loadProcesses()">Обновить</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Имя процесса</th><th>PID</th>
+            <th style="text-align:right">CPU %</th>
+            <th style="text-align:right">RAM МБ</th>
+            <th>Путь</th><th></th>
+          </tr></thead>
+          <tbody id="proc-body"><tr><td colspan="6" class="empty">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" id="page-settings">
+      <div class="page-header">
+        <div><h1 class="page-title">Настройки</h1>
+        <div class="page-subtitle">Конфигурация подключения и поведения агента</div></div>
+      </div>
+
+      <div class="card section">
+        <h3>🔗 Подключение к порталу</h3>
+        <div class="field">
+          <label>URL портала</label>
+          <input type="url" id="cfg-portal_url" placeholder="https://portal.example.com" />
+        </div>
+        <div class="field">
+          <label>Токен агента</label>
+          <input type="password" id="cfg-agent_token" placeholder="••••••••••••••••" />
+        </div>
+        <div class="field">
+          <label>ID агента</label>
+          <input type="text" id="cfg-agent_id" readonly placeholder="заполняется автоматически" />
+        </div>
+        <div class="field">
+          <label>Прокси URL</label>
+          <input type="url" id="cfg-proxy_url" placeholder="http://proxy:3128" />
+          <span class="hint">Оставьте пустым, если прокси не используется</span>
+        </div>
+      </div>
+
+      <div class="card section">
+        <h3>⏱️ Интервалы</h3>
+        <div class="field">
+          <label>Отправка метрик, сек</label>
+          <input type="number" id="cfg-send_interval_sec" min="5" max="3600" value="60" />
+        </div>
+        <div class="field">
+          <label>Опрос команд, сек</label>
+          <input type="number" id="cfg-command_poll_sec" min="5" max="3600" value="30" />
+        </div>
+      </div>
+
+      <div class="card section">
+        <h3>🔒 Безопасность</h3>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="label">Авторегистрация</div>
+            <div class="desc">Агент автоматически зарегистрируется в портале</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfg-auto_register" /><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="label">Пропустить проверку TLS</div>
+            <div class="desc">Для самоподписанных сертификатов</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfg-insecure_tls" /><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:8px;">
+        <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить настройки</button>
+        <button class="btn btn-outline" onclick="testConnection()">🔌 Проверить соединение</button>
+      </div>
+    </section>
+
+    <!-- SUPPORT -->
+    <section class="page" id="page-support">
+      <div class="page-header">
+        <div><h1 class="page-title">Поддержка</h1>
+        <div class="page-subtitle">Свяжитесь с нами удобным способом</div></div>
+      </div>
+
+      <div class="support-grid">
+        <a class="support-card" id="sup-phone" href="tel:+375000000000">
+          <div class="icon">📱</div>
+          <div class="title">Позвонить</div>
+          <div class="desc">+375 (XX) XXX-XX-XX</div>
+        </a>
+        <a class="support-card" id="sup-email" href="#">
+          <div class="icon">✉️</div>
+          <div class="title">Email</div>
+          <div class="desc">support@iteng.by</div>
+        </a>
+        <a class="support-card" id="sup-portal" href="#" target="_blank" rel="noopener">
+          <div class="icon">🌐</div>
+          <div class="title">Портал</div>
+          <div class="desc">Открыть в браузере</div>
+        </a>
+        <div class="support-card" onclick="createTicket()" style="cursor:pointer">
+          <div class="icon">🎫</div>
+          <div class="title">Создать тикет</div>
+          <div class="desc">Автоматически с данными системы</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+          <tbody id="support-info-body"><tr><td colspan="2" class="empty">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Подтверждение</h3>
+    <p id="modal-text">Действие нельзя отменить.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" id="modal-confirm">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+'use strict';
+
+// ───── State
+const state = {
+  metrics: null,
+  sysinfo: null,
+  processes: [],
+  config: {},
+};
+
+// ───── Utils
+const $ = (id) => document.getElementById(id);
+const fmtBytes = (b) => {
+  if (b == null || isNaN(b)) return '—';
+  if (b < 1024) return b.toFixed(0) + ' Б';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' КБ';
+  if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' МБ';
+  return (b/1024/1024/1024).toFixed(2) + ' ГБ';
+};
+const fmtUptime = (s) => {
+  if (!s || s < 0) return '—';
+  const d = Math.floor(s/86400);
+  const h = Math.floor((s%86400)/3600);
+  const m = Math.floor((s%3600)/60);
+  const parts = [];
+  if (d) parts.push(d + ' д');
+  if (h) parts.push(h + ' ч');
+  parts.push(m + ' мин');
+  return parts.join(' ');
+};
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pctClass = (p) => p >= 85 ? 'red' : p >= 70 ? 'yellow' : 'green';
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('json') ? r.json() : r.text();
+}
+
+// ───── Toast
+function toast(msg, type = 'info', ms = 3500) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  $('toasts').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .25s'; setTimeout(() => t.remove(), 250); }, ms);
+}
+
+// ───── Modal
+function confirmDialog(title, text, onConfirm) {
+  $('modal-title').textContent = title;
+  $('modal-text').textContent = text;
+  $('modal').classList.add('open');
+  $('modal-confirm').onclick = () => { closeModal(); onConfirm(); };
+}
+function closeModal() { $('modal').classList.remove('open'); }
+
+// ───── Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    $('page-' + page).classList.add('active');
+    if (page === 'processes') loadProcesses();
+    if (page === 'settings') loadConfig();
+    if (page === 'support') renderSupport();
+  });
+});
+
+// ───── Metrics + Dashboard
+async function loadMetrics() {
+  try {
+    state.metrics = await api('GET', '/api/metrics');
+    renderDashboard();
+    renderDisks();
+    renderNetwork();
+    setConn(true);
+  } catch (e) {
+    setConn(false);
+  }
+}
+
+function setConn(online) {
+  $('conn-dot').className = 'status-dot ' + (online ? 'online' : 'offline');
+  $('conn-text').textContent = online ? 'Агент онлайн' : 'Агент оффлайн';
+}
+
+function renderDashboard() {
+  const m = state.metrics || {};
+  const cpu = +(m.cpu_usage_percent || 0).toFixed(1);
+  const ram = +(m.ram_usage_percent || 0).toFixed(1);
+  $('cpu-val').textContent = cpu;
+  $('cpu-bar').style.width = Math.min(100, cpu) + '%';
+  $('cpu-bar').className = pctClass(cpu);
+  if (m.load_avg) $('cpu-load').textContent = `LA: ${m.load_avg['1m']?.toFixed?.(2) ?? '—'} / ${m.load_avg['5m']?.toFixed?.(2) ?? '—'} / ${m.load_avg['15m']?.toFixed?.(2) ?? '—'}`;
+
+  $('ram-val').textContent = ram;
+  $('ram-bar').style.width = Math.min(100, ram) + '%';
+  $('ram-bar').className = pctClass(ram);
+  $('ram-sub').textContent = `${(m.ram_used_mb||0).toFixed(0)} МБ / ${(m.ram_total_mb||0).toFixed(0)} МБ`;
+
+  $('uptime-val').textContent = fmtUptime(m.uptime_seconds);
+
+  // Temps
+  const temps = m.temperatures || [];
+  $('temps-body').innerHTML = temps.length
+    ? temps.map(t => `<tr><td>${escapeHtml(t.sensor_key)}</td><td class="num" style="text-align:right;color:${t.value > 70 ? 'hsl(0,85%,65%)' : 'var(--text)'}">${(+t.value).toFixed(1)} °C</td></tr>`).join('')
+    : '<tr><td colspan="2" class="empty">Нет данных датчиков</td></tr>';
+
+  // Sysinfo
+  renderSysinfo();
+}
+
+function renderSysinfo() {
+  const s = state.sysinfo;
+  if (!s) { $('sysinfo-body').innerHTML = '<tr><td colspan="2" class="empty">Загрузка…</td></tr>'; return; }
+  const rows = [
+    ['ОС', `${escapeHtml(s.os_type || '')} ${escapeHtml(s.os_version || '')}`],
+    ['Архитектура', escapeHtml(s.arch)],
+    ['CPU', `${escapeHtml(s.cpu_model || '—')} (${s.cpu_cores || '—'} ядер)`],
+    ['RAM всего', `${(s.ram_total_mb || 0).toFixed(0)} МБ`],
+    ['Hostname', escapeHtml(s.hostname)],
+    ['Серийный номер', escapeHtml(s.serial_number || '—')],
+  ];
+  $('sysinfo-body').innerHTML = rows.map(([k, v]) => `<tr><td style="color:var(--text-muted)">${k}</td><td>${v}</td></tr>`).join('');
+
+  $('portal-status').innerHTML = state.config?.portal_url && state.config?.agent_token
+    ? '<span style="color:var(--success)">✅ Подключён</span>'
+    : '<span style="color:var(--warning)">⚠️ Не настроен</span>';
+  $('portal-url-sub').textContent = state.config?.portal_url || 'настройте в разделе «Настройки»';
+}
+
+function renderDisks() {
+  const disks = state.metrics?.disk_metrics || [];
+  $('disks-body').innerHTML = disks.length
+    ? disks.map(d => {
+        const p = +(d.usage_percent || 0).toFixed(1);
+        return `<tr>
+          <td class="mono">${escapeHtml(d.device || '—')}</td>
+          <td class="mono">${escapeHtml(d.mountpoint || '—')}</td>
+          <td>${escapeHtml(d.fstype || '—')}</td>
+          <td class="num" style="text-align:right">${(d.total_gb || 0).toFixed(1)}</td>
+          <td class="num" style="text-align:right">${(d.used_gb || 0).toFixed(1)}</td>
+          <td class="num" style="text-align:right">${(d.free_gb || 0).toFixed(1)}</td>
+          <td><span class="pill ${pctClass(p)}">${p}%</span></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="7" class="empty">Нет данных</td></tr>';
+}
+
+function renderNetwork() {
+  const ifs = state.metrics?.network_metrics || [];
+  $('network-body').innerHTML = ifs.length
+    ? ifs.map(n => `<tr>
+        <td><strong>${escapeHtml(n.interface || '—')}</strong></td>
+        <td>${(n.ip_addresses || []).map(escapeHtml).join(', ') || '—'}</td>
+        <td class="mono" style="color:var(--text-muted)">${escapeHtml(n.mac || '—')}</td>
+        <td class="num" style="text-align:right">${fmtBytes(n.bytes_sent)}</td>
+        <td class="num" style="text-align:right">${fmtBytes(n.bytes_recv)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="empty">Нет данных</td></tr>';
+}
+
+// ───── Processes
+async function loadProcesses() {
+  $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Загрузка…</td></tr>';
+  try {
+    state.processes = await api('GET', '/api/processes') || [];
+    renderProcesses();
+  } catch (e) {
+    $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Не удалось загрузить процессы</td></tr>';
+  }
+}
+function renderProcesses() {
+  const q = ($('proc-search').value || '').toLowerCase().trim();
+  const list = state.processes
+    .filter(p => !q || (p.name || '').toLowerCase().includes(q))
+    .sort((a, b) => (b.cpu_percent || 0) - (a.cpu_percent || 0));
+  if (!list.length) { $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>'; return; }
+  $('proc-body').innerHTML = list.map(p => `<tr>
+    <td><strong>${escapeHtml(p.name || '—')}</strong></td>
+    <td class="mono">${p.pid}</td>
+    <td class="num" style="text-align:right">${(p.cpu_percent || 0).toFixed(1)}</td>
+    <td class="num" style="text-align:right">${(p.ram_mb || 0).toFixed(1)}</td>
+    <td class="mono" style="color:var(--text-dim); max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${escapeHtml(p.exe_path || '')}">${escapeHtml(p.exe_path || '—')}</td>
+    <td style="text-align:right"><button class="btn btn-danger" onclick="killProcess(${p.pid}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Завершить</button></td>
+  </tr>`).join('');
+}
+function killProcess(pid, name) {
+  confirmDialog('Завершить процесс?', `Процесс «${name}» (PID ${pid}) будет принудительно завершён.`, async () => {
+    try {
+      await api('POST', '/api/kill-process', { pid });
+      toast(`Процесс ${name} (${pid}) завершён`, 'success');
+      setTimeout(loadProcesses, 400);
+    } catch (e) {
+      toast('Ошибка: не удалось завершить процесс', 'error');
+    }
+  });
+}
+
+// ───── Config
+async function loadConfig() {
+  try {
+    state.config = await api('GET', '/api/config') || {};
+    Object.keys(state.config).forEach(k => {
+      const el = $('cfg-' + k);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!state.config[k];
+      else el.value = state.config[k] ?? '';
+    });
+  } catch (e) {
+    toast('Не удалось загрузить конфигурацию', 'error');
+  }
+}
+async function saveConfig() {
+  const cfg = {
+    portal_url: $('cfg-portal_url').value.trim(),
+    agent_token: $('cfg-agent_token').value.trim(),
+    agent_id: $('cfg-agent_id').value.trim(),
+    proxy_url: $('cfg-proxy_url').value.trim(),
+    send_interval_sec: parseInt($('cfg-send_interval_sec').value, 10) || 60,
+    command_poll_sec: parseInt($('cfg-command_poll_sec').value, 10) || 30,
+    auto_register: $('cfg-auto_register').checked,
+    insecure_tls: $('cfg-insecure_tls').checked,
+  };
+  try {
+    await api('POST', '/api/config/save', cfg);
+    state.config = cfg;
+    toast('Настройки сохранены', 'success');
+    renderSysinfo();
+  } catch (e) {
+    toast('Ошибка сохранения настроек', 'error');
+  }
+}
+async function testConnection() {
+  toast('Проверка соединения…', 'info', 1500);
+  try {
+    const r = await api('POST', '/api/test-connection', {});
+    if (r && r.ok) toast('Соединение с порталом установлено', 'success');
+    else toast('Не удалось подключиться: ' + (r?.error || 'неизвестная ошибка'), 'error', 5000);
+  } catch (e) {
+    toast('Ошибка проверки соединения', 'error');
+  }
+}
+
+// ───── Support
+function renderSupport() {
+  const s = state.sysinfo || {};
+  const c = state.config || {};
+  const host = s.hostname || 'unknown';
+  $('sup-email').href = `mailto:support@iteng.by?subject=${encodeURIComponent('Поддержка ' + host)}`;
+  if (c.portal_url) $('sup-portal').href = c.portal_url;
+  const rows = [
+    ['Hostname', s.hostname || '—'],
+    ['ОС', `${s.os_type || ''} ${s.os_version || ''}`.trim() || '—'],
+    ['Архитектура', s.arch || '—'],
+    ['ID агента', c.agent_id || '—'],
+    ['Версия агента', $('agent-version').textContent],
+    ['URL портала', c.portal_url || '—'],
+  ];
+  $('support-info-body').innerHTML = rows.map(([k, v]) =>
+    `<tr><td style="color:var(--text-muted)">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v)}</td></tr>`
+  ).join('');
+}
+async function createTicket() {
+  try {
+    const r = await api('POST', '/api/create-ticket', {});
+    if (r && r.ok) toast('Тикет создан' + (r.ticket_id ? `: ${r.ticket_id}` : ''), 'success');
+    else toast('Не удалось создать тикет', 'error');
+  } catch (e) {
+    toast('Ошибка создания тикета', 'error');
+  }
+}
+
+// ───── Refresh
+async function loadSysinfo() {
+  try {
+    state.sysinfo = await api('GET', '/api/sysinfo');
+    renderSysinfo();
+  } catch (e) { /* leave skeleton */ }
+}
+function refreshAll() {
+  loadMetrics();
+  loadSysinfo();
+}
+
+// ───── Boot
+(async () => {
+  await loadConfig();
+  await loadSysinfo();
+  await loadMetrics();
+  setInterval(loadMetrics, 10000);
+})();
+</script>
+</body>
+</html>
