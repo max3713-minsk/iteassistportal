@@ -26,6 +26,8 @@ import SystemReset from "@/pages/SystemReset";
 import AdminMigrations from "@/pages/AdminMigrations";
 import Profile from "@/pages/Profile";
 import Chat from "@/pages/Chat";
+import Agents from "@/pages/Agents";
+import AgentDetail from "@/pages/AgentDetail";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +66,8 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/sites" element={<Navigate to="/organizations?tab=sites" replace />} />
               <Route path="/equipment" element={<Equipment />} />
+              <Route path="/agents" element={<Agents />} />
+              <Route path="/agents/:id" element={<AgentDetail />} />
               <Route path="/tickets" element={<Tickets />} />
               <Route path="/schedules" element={<Schedules />} />
               <Route path="/protocols" element={<Protocols />} />

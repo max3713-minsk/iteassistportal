@@ -14,6 +14,209 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_commands: {
+        Row: {
+          agent_id: string
+          command_type: string
+          created_at: string
+          executed_at: string | null
+          id: string
+          payload: Json | null
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          agent_id: string
+          command_type: string
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          agent_id?: string
+          command_type?: string
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          payload?: Json | null
+          result?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_commands_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_registrations"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
+      agent_metrics: {
+        Row: {
+          agent_id: string
+          collected_at: string
+          cpu_usage_percent: number | null
+          created_at: string
+          disk_metrics: Json | null
+          id: string
+          load_avg: Json | null
+          network_metrics: Json | null
+          ram_total_mb: number | null
+          ram_used_mb: number | null
+          services: Json | null
+          temperatures: Json | null
+          uptime_seconds: number | null
+        }
+        Insert: {
+          agent_id: string
+          collected_at?: string
+          cpu_usage_percent?: number | null
+          created_at?: string
+          disk_metrics?: Json | null
+          id?: string
+          load_avg?: Json | null
+          network_metrics?: Json | null
+          ram_total_mb?: number | null
+          ram_used_mb?: number | null
+          services?: Json | null
+          temperatures?: Json | null
+          uptime_seconds?: number | null
+        }
+        Update: {
+          agent_id?: string
+          collected_at?: string
+          cpu_usage_percent?: number | null
+          created_at?: string
+          disk_metrics?: Json | null
+          id?: string
+          load_avg?: Json | null
+          network_metrics?: Json | null
+          ram_total_mb?: number | null
+          ram_used_mb?: number | null
+          services?: Json | null
+          temperatures?: Json | null
+          uptime_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_metrics_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_registrations"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
+      agent_registrations: {
+        Row: {
+          agent_id: string
+          agent_version: string | null
+          arch: string | null
+          auto_registered: boolean
+          cpu_cores: number | null
+          cpu_model: string | null
+          created_at: string
+          equipment_id: string | null
+          hostname: string | null
+          id: string
+          ip_addresses: Json | null
+          is_active: boolean
+          last_seen_at: string | null
+          mac_addresses: Json | null
+          notes: string | null
+          organization_id: string | null
+          os_type: string | null
+          os_version: string | null
+          proxy_required: boolean
+          ram_total_mb: number | null
+          registered_at: string
+          serial_number: string | null
+          site_id: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          agent_version?: string | null
+          arch?: string | null
+          auto_registered?: boolean
+          cpu_cores?: number | null
+          cpu_model?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          hostname?: string | null
+          id?: string
+          ip_addresses?: Json | null
+          is_active?: boolean
+          last_seen_at?: string | null
+          mac_addresses?: Json | null
+          notes?: string | null
+          organization_id?: string | null
+          os_type?: string | null
+          os_version?: string | null
+          proxy_required?: boolean
+          ram_total_mb?: number | null
+          registered_at?: string
+          serial_number?: string | null
+          site_id?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_version?: string | null
+          arch?: string | null
+          auto_registered?: boolean
+          cpu_cores?: number | null
+          cpu_model?: string | null
+          created_at?: string
+          equipment_id?: string | null
+          hostname?: string | null
+          id?: string
+          ip_addresses?: Json | null
+          is_active?: boolean
+          last_seen_at?: string | null
+          mac_addresses?: Json | null
+          notes?: string | null
+          organization_id?: string | null
+          os_type?: string | null
+          os_version?: string | null
+          proxy_required?: boolean
+          ram_total_mb?: number | null
+          registered_at?: string
+          serial_number?: string | null
+          site_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_registrations_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_registrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_registrations_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alert_thresholds: {
         Row: {
           auto_create_ticket: boolean
