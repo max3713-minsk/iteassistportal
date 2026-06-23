@@ -25,7 +25,8 @@ export default function AgentDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { isAdmin } = useAuth() as any;
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const { data: agent } = useQuery({
     queryKey: ["agent", id],
