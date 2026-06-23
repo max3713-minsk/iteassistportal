@@ -9,316 +9,189 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #09090b;
-    --surface: #18181b;
-    --surface-2: #1f1f23;
-    --border: #27272a;
-    --border-strong: #3f3f46;
-    --text: #fafafa;
-    --text-muted: #a1a1aa;
-    --text-dim: #71717a;
-    --primary: hsl(0, 85%, 50%);
-    --primary-hover: hsl(0, 85%, 45%);
-    --success: hsl(142, 70%, 45%);
-    --warning: hsl(38, 92%, 50%);
-    --danger: hsl(0, 85%, 50%);
-    --radius-card: 12px;
-    --radius-input: 8px;
+    --bg:#09090b; --surface:#18181b; --surface-2:#1f1f23;
+    --border:#27272a; --border-strong:#3f3f46;
+    --text:#fafafa; --text-muted:#a1a1aa; --text-dim:#71717a;
+    --primary:hsl(0,85%,50%); --primary-hover:hsl(0,85%,45%);
+    --success:hsl(142,70%,45%); --warning:hsl(38,92%,50%); --danger:hsl(0,85%,50%);
+    --radius-card:12px; --radius-input:8px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-  }
-  h1, h2, h3, h4 { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; }
-  .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+  h1,h2,h3,h4{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600}
+  .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
 
-  /* Layout */
-  .app { display: flex; height: 100vh; }
-  .sidebar {
-    width: 240px; flex-shrink: 0;
-    background: #0c0c0e;
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-  }
-  .main { flex: 1; overflow-y: auto; padding: 32px 40px; }
+  .app{display:flex;height:100vh}
+  .sidebar{width:240px;flex-shrink:0;background:#0c0c0e;border-right:1px solid var(--border);display:flex;flex-direction:column}
+  .main{flex:1;overflow-y:auto;padding:32px 40px}
 
-  /* Logo */
-  .logo {
-    padding: 22px 20px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 12px;
-  }
-  .logo-mark {
-    width: 36px; height: 36px; border-radius: 9px;
-    object-fit: contain;
-    box-shadow: 0 4px 12px rgba(220,38,38,0.25);
-  }
-  .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
-  .logo-text .name {
-    font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-    font-size: 17px; letter-spacing: -0.3px;
-  }
-  .logo-text .ver { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .logo{padding:18px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+  .logo-mark{height:32px;width:auto;object-fit:contain}
+  .logo-text{display:flex;flex-direction:column;line-height:1.1}
+  .logo-text .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.3px}
+  .logo-text .ver{font-size:11px;color:var(--text-dim);margin-top:2px}
 
-  /* Nav */
-  nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; border-radius: 8px; cursor: pointer;
-    color: var(--text-muted); font-weight: 500; font-size: 14px;
-    transition: background 0.15s, color 0.15s;
-    user-select: none;
-  }
-  .nav-item:hover { background: var(--surface); color: var(--text); }
-  .nav-item.active { background: var(--surface-2); color: var(--text); }
-  .nav-item.active::before {
-    content: ''; width: 3px; height: 18px; background: var(--primary);
-    border-radius: 2px; margin-left: -8px; margin-right: 5px;
-  }
-  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:2px}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;cursor:pointer;color:var(--text-muted);font-weight:500;font-size:14px;transition:background .15s,color .15s;user-select:none}
+  .nav-item:hover{background:var(--surface);color:var(--text)}
+  .nav-item.active{background:var(--surface-2);color:var(--text)}
+  .nav-item.active::before{content:'';width:3px;height:18px;background:var(--primary);border-radius:2px;margin-left:-8px;margin-right:5px}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0}
 
-  /* Status badge */
-  .status-badge {
-    margin: 12px; padding: 12px 14px;
-    border: 1px solid var(--border); border-radius: 10px;
-    background: var(--surface);
-    display: flex; align-items: center; gap: 10px;
-    font-size: 13px;
-  }
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--text-dim);
-    box-shadow: 0 0 0 0 rgba(0,0,0,0);
-  }
-  .status-dot.online {
-    background: var(--success);
-    box-shadow: 0 0 0 4px rgba(34,197,94,0.15);
-    animation: pulse 2s infinite;
-  }
-  .status-dot.offline { background: var(--danger); }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
-    50% { box-shadow: 0 0 0 6px rgba(34,197,94,0.05); }
-  }
+  .status-badge{margin:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);display:flex;align-items:center;gap:10px;font-size:13px}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim)}
+  .status-dot.online{background:var(--success);box-shadow:0 0 0 4px rgba(34,197,94,.15);animation:pulse 2s infinite}
+  .status-dot.offline{background:var(--danger)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(34,197,94,.15)}50%{box-shadow:0 0 0 6px rgba(34,197,94,.05)}}
 
-  /* Page */
-  .page { display: none; }
-  .page.active { display: block; animation: fadeIn 0.2s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .page-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 28px;
-  }
-  .page-title { font-size: 26px; letter-spacing: -0.5px; }
-  .page-subtitle { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+  .page{display:none}
+  .page.active{display:block;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .page-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:28px;gap:16px}
+  .page-title{font-size:26px;letter-spacing:-0.5px}
+  .page-subtitle{color:var(--text-dim);font-size:13px;margin-top:4px}
 
-  /* Cards */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    padding: 20px;
-  }
-  .card-title {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px;
-    color: var(--text-dim); font-weight: 600; margin-bottom: 12px;
-    font-family: 'Space Grotesk', sans-serif;
-  }
-  .stat-value {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 32px; font-weight: 600; letter-spacing: -1px;
-    line-height: 1.1;
-  }
-  .stat-sub { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px}
+  .card-title{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);font-weight:600;margin-bottom:12px;font-family:'Space Grotesk',sans-serif}
+  .stat-value{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:600;letter-spacing:-1px;line-height:1.1}
+  .stat-sub{color:var(--text-dim);font-size:12px;margin-top:6px}
 
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-  @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
 
-  /* Progress bar */
-  .progress {
-    margin-top: 14px; height: 6px; background: var(--surface-2);
-    border-radius: 999px; overflow: hidden;
-  }
-  .progress > span {
-    display: block; height: 100%; background: var(--primary);
-    border-radius: 999px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .progress > span.green { background: var(--success); }
-  .progress > span.yellow { background: var(--warning); }
-  .progress > span.red { background: var(--danger); }
+  .progress{margin-top:14px;height:6px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+  .progress>span{display:block;height:100%;background:var(--primary);border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+  .progress>span.green{background:var(--success)}
+  .progress>span.yellow{background:var(--warning)}
+  .progress>span.red{background:var(--danger)}
 
-  /* Tables */
-  .table-wrap {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    overflow: hidden;
-    background: var(--surface);
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td {
-    text-align: left; padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  th {
-    font-family: 'Space Grotesk', sans-serif; font-weight: 600;
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
-    color: var(--text-dim);
-    background: var(--surface-2);
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  td.num { font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+  .table-wrap{border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--border)}
+  th{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);background:var(--surface-2)}
+  th.sortable{cursor:pointer;user-select:none}
+  th.sortable:hover{color:var(--text)}
+  th.sortable .sort-ind{opacity:.5;margin-left:4px;font-size:10px}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  td.num{font-family:'Space Grotesk',sans-serif;font-weight:500}
+  tfoot td{background:var(--surface-2);font-weight:600;color:var(--text-muted);font-size:12px}
 
-  .pill {
-    display: inline-block; padding: 3px 8px;
-    border-radius: 999px; font-size: 11px; font-weight: 600;
-    background: var(--surface-2); color: var(--text-muted);
-  }
-  .pill.green { background: rgba(34,197,94,0.12); color: hsl(142, 70%, 60%); }
-  .pill.yellow { background: rgba(234,179,8,0.12); color: hsl(38, 92%, 60%); }
-  .pill.red { background: rgba(220,38,38,0.12); color: hsl(0, 85%, 65%); }
+  .pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;background:var(--surface-2);color:var(--text-muted)}
+  .pill.green{background:rgba(34,197,94,.12);color:hsl(142,70%,60%)}
+  .pill.yellow{background:rgba(234,179,8,.12);color:hsl(38,92%,60%)}
+  .pill.red{background:rgba(220,38,38,.12);color:hsl(0,85%,65%)}
+  .pill.blue{background:rgba(59,130,246,.12);color:hsl(217,90%,65%)}
+  .pill.info{background:rgba(59,130,246,.12);color:hsl(217,90%,65%)}
+  .pill.ok{background:rgba(34,197,94,.12);color:hsl(142,70%,60%)}
+  .pill.warn{background:rgba(234,179,8,.12);color:hsl(38,92%,60%)}
+  .pill.error{background:rgba(220,38,38,.12);color:hsl(0,85%,65%)}
+  .iface-badge{cursor:pointer;margin-left:8px;font-size:10px;padding:2px 6px}
+  .iface-badge:hover{filter:brightness(1.2)}
 
-  /* Buttons */
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 16px; border-radius: var(--radius-input);
-    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
-    border: 1px solid transparent; cursor: pointer;
-    transition: all 0.15s; user-select: none;
-    background: var(--surface-2); color: var(--text);
-  }
-  .btn:hover { background: #2a2a30; }
-  .btn-primary { background: var(--primary); color: #fff; }
-  .btn-primary:hover { background: var(--primary-hover); }
-  .btn-outline { background: transparent; border-color: var(--border-strong); color: var(--text); }
-  .btn-outline:hover { background: var(--surface-2); }
-  .btn-danger { background: transparent; border: 1px solid hsl(0, 70%, 30%); color: hsl(0, 85%, 65%); padding: 6px 12px; font-size: 12px; }
-  .btn-danger:hover { background: rgba(220,38,38,0.1); }
-  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:var(--radius-input);font-family:'DM Sans',sans-serif;font-weight:500;font-size:13px;border:1px solid transparent;cursor:pointer;transition:all .15s;user-select:none;background:var(--surface-2);color:var(--text)}
+  .btn:hover{background:#2a2a30}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-hover)}
+  .btn-outline{background:transparent;border-color:var(--border-strong);color:var(--text)}
+  .btn-outline:hover{background:var(--surface-2)}
+  .btn-danger{background:transparent;border:1px solid hsl(0,70%,30%);color:hsl(0,85%,65%);padding:6px 12px;font-size:12px}
+  .btn-danger:hover{background:rgba(220,38,38,.1)}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .btn-ghost{background:transparent;border:1px solid var(--border);padding:6px 10px;font-size:12px}
+  .btn-group{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-input);overflow:hidden}
+  .btn-group .btn{border-radius:0;border:none;background:transparent}
+  .btn-group .btn.active{background:var(--surface-2);color:var(--text)}
 
-  /* Inputs */
-  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .field label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-  .field .hint { font-size: 12px; color: var(--text-dim); }
-  input[type=text], input[type=number], input[type=url], input[type=password] {
-    width: 100%; padding: 10px 12px;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-input); color: var(--text);
-    font-family: 'DM Sans', sans-serif; font-size: 13px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
-  input[readonly] { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:13px;color:var(--text-muted);font-weight:500;display:flex;align-items:center;gap:6px}
+  .field .hint{font-size:12px;color:var(--text-dim)}
+  input[type=text],input[type=number],input[type=url],input[type=password],select,textarea{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-input);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;transition:border-color .15s,box-shadow .15s}
+  textarea{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;resize:vertical;min-height:160px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+  input[readonly]{background:var(--surface-2);color:var(--text-muted);cursor:not-allowed}
+  input[type=range]{width:100%;accent-color:var(--primary)}
+  .slider-row{display:flex;align-items:center;gap:12px}
+  .slider-row input[type=range]{flex:1}
+  .slider-row input[type=number]{width:90px}
+  .help-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);font-size:11px;color:var(--text-muted);cursor:pointer;font-weight:600}
+  .help-icon:hover{color:var(--text);border-color:var(--primary)}
 
-  /* Toggle */
-  .toggle-row {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    padding: 14px 0; gap: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .toggle-row:last-child { border-bottom: none; }
-  .toggle-info { flex: 1; }
-  .toggle-info .label { font-weight: 500; font-size: 14px; }
-  .toggle-info .desc { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
-  .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute; cursor: pointer; inset: 0;
-    background: var(--surface-2); border: 1px solid var(--border-strong);
-    transition: 0.2s; border-radius: 999px;
-  }
-  .slider:before {
-    content: ""; position: absolute; height: 16px; width: 16px;
-    left: 2px; bottom: 2px; background: var(--text-muted);
-    transition: 0.2s; border-radius: 50%;
-  }
-  .switch input:checked + .slider { background: var(--primary); border-color: var(--primary); }
-  .switch input:checked + .slider:before { transform: translateX(18px); background: #fff; }
+  .toggle-row{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 0;gap:16px;border-bottom:1px solid var(--border)}
+  .toggle-row:last-child{border-bottom:none}
+  .toggle-info{flex:1}
+  .toggle-info .label{font-weight:500;font-size:14px}
+  .toggle-info .desc{font-size:12px;color:var(--text-dim);margin-top:3px}
+  .switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .switch-slider{position:absolute;cursor:pointer;inset:0;background:var(--surface-2);border:1px solid var(--border-strong);transition:.2s;border-radius:999px}
+  .switch-slider:before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:var(--text-muted);transition:.2s;border-radius:50%}
+  .switch input:checked + .switch-slider{background:var(--primary);border-color:var(--primary)}
+  .switch input:checked + .switch-slider:before{transform:translateX(18px);background:#fff}
 
-  /* Settings sections */
-  .section { margin-bottom: 20px; }
-  .section h3 { font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section{margin-bottom:20px}
+  .section h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
-  /* Support cards */
-  .support-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-  @media (max-width: 1100px) { .support-grid { grid-template-columns: repeat(2, 1fr); } }
-  .support-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-card); padding: 20px;
-    text-align: left; cursor: pointer;
-    transition: all 0.15s; color: var(--text);
-    display: flex; flex-direction: column; gap: 6px;
-    text-decoration: none;
-  }
-  .support-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
-  .support-card .icon { font-size: 22px; margin-bottom: 4px; }
-  .support-card .title { font-weight: 600; font-size: 14px; }
-  .support-card .desc { font-size: 12px; color: var(--text-dim); }
+  .support-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+  @media(max-width:1280px){.support-grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:800px){.support-grid{grid-template-columns:repeat(2,1fr)}}
+  .support-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text);display:flex;flex-direction:column;gap:6px;text-decoration:none}
+  .support-card:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+  .support-card .icon{width:28px;height:28px;color:var(--primary);margin-bottom:6px}
+  .support-card .icon svg{width:100%;height:100%}
+  .support-card .title{font-weight:600;font-size:14px}
+  .support-card .desc{font-size:12px;color:var(--text-dim)}
 
-  /* Toolbar */
-  .toolbar {
-    display: flex; gap: 10px; align-items: center;
-    margin-bottom: 16px;
-  }
-  .toolbar input { max-width: 320px; }
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar input[type=text]{max-width:320px}
 
-  /* Toast */
-  .toast-container {
-    position: fixed; bottom: 20px; right: 20px; z-index: 1000;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .toast {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 16px; min-width: 260px;
-    color: var(--text); font-size: 13px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    display: flex; align-items: center; gap: 10px;
-    animation: slideIn 0.25s ease;
-  }
-  .toast.success { border-left: 3px solid var(--success); }
-  .toast.error { border-left: 3px solid var(--danger); }
-  .toast.info { border-left: 3px solid var(--text-muted); }
-  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .toast-container{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:260px;color:var(--text);font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px;animation:slideIn .25s ease}
+  .toast.success{border-left:3px solid var(--success)}
+  .toast.error{border-left:3px solid var(--danger)}
+  .toast.info{border-left:3px solid var(--text-muted)}
+  @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
 
-  /* Modal */
-  .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-    display: none; align-items: center; justify-content: center; z-index: 999;
-  }
-  .modal-backdrop.open { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-card); padding: 24px; min-width: 380px; max-width: 480px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  }
-  .modal h3 { font-size: 18px; margin-bottom: 8px; }
-  .modal p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:999;padding:20px}
+  .modal-backdrop.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:24px;min-width:380px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .modal h3{font-size:18px;margin-bottom:12px}
+  .modal p{color:var(--text-muted);font-size:13px;margin-bottom:16px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .modal.danger h3{color:hsl(0,85%,65%)}
+  .modal pre{background:var(--bg);padding:12px;border-radius:8px;font-size:12px;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;font-family:'JetBrains Mono',monospace}
 
-  /* Skeleton */
-  .skeleton {
-    display: inline-block; height: 1em; min-width: 60px;
-    background: linear-gradient(90deg, var(--surface-2), #2a2a30, var(--surface-2));
-    background-size: 200% 100%; border-radius: 4px;
-    animation: shimmer 1.4s infinite;
-  }
-  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .dropdown{position:relative;display:inline-block}
+  .dropdown-menu{position:absolute;right:0;top:calc(100% + 4px);min-width:200px;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:50;padding:4px;display:none}
+  .dropdown-menu.open{display:block}
+  .dropdown-item{padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .dropdown-item:hover{background:var(--surface-2)}
+  .dropdown-item.danger{color:hsl(0,85%,65%)}
+  .dropdown-divider{height:1px;background:var(--border);margin:4px 0}
+  .submenu{position:relative}
+  .submenu-panel{position:absolute;left:100%;top:0;min-width:180px;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:4px;display:none}
+  .submenu:hover .submenu-panel{display:block}
 
-  .empty { padding: 28px; text-align: center; color: var(--text-dim); font-size: 13px; }
+  .disks-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+  .disk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:18px;display:flex;align-items:center;gap:16px}
+  .disk-chart{position:relative;width:84px;height:84px;flex-shrink:0}
+  .disk-chart svg{transform:rotate(-90deg)}
+  .disk-chart .disk-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px}
+  .disk-info{flex:1;min-width:0}
+  .disk-letter{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;letter-spacing:-.5px}
+  .disk-fs{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .disk-meta{font-size:11px;color:var(--text-muted);margin-top:6px}
 
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid var(--bg); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+  .skeleton{display:inline-block;height:1em;min-width:60px;background:linear-gradient(90deg,var(--surface-2),#2a2a30,var(--surface-2));background-size:200% 100%;border-radius:4px;animation:shimmer 1.4s infinite}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  .empty{padding:28px;text-align:center;color:var(--text-dim);font-size:13px}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-strong)}
 </style>
 </head>
 <body>
@@ -327,9 +200,9 @@
     <div class="logo">
       <!-- === ВСТАВЬТЕ BASE64 ЛОГОТИП СЮДА === -->
       <img class="logo-mark" alt="ITE" src="data:image/png;base64,/* === ЗАМЕНИТЕ ЭТОТ base64 НА СВОЙ === */" />
-      <!-- === КОНЕЦ МЕСТА ДЛЯ, лОГОТИПА === -->
+      <!-- === КОНЕЦ МЕСТА ДЛЯ ЛОГОТИПА === -->
       <div class="logo-text">
-        <span class="name">ITEAgent</span>
+        <span class="name">IteAgent</span>
         <span class="ver" id="agent-version">v0.1.0</span>
       </div>
     </div>
@@ -415,6 +288,18 @@
           </table>
         </div>
       </div>
+
+      <div class="page-header" style="margin-top:28px;margin-bottom:14px">
+        <div><h2 style="font-size:18px">Журнал событий</h2>
+        <div class="page-subtitle">Последние 20 записей</div></div>
+        <button class="btn btn-sm btn-outline" onclick="clearLog()">Очистить журнал</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:130px">Время</th><th style="width:90px">Тип</th><th>Сообщение</th></tr></thead>
+          <tbody id="log-body"><tr><td colspan="3" class="empty">Нет событий</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- DISKS -->
@@ -423,6 +308,7 @@
         <div><h1 class="page-title">Диски</h1>
         <div class="page-subtitle">Использование дискового пространства</div></div>
       </div>
+      <div class="disks-cards" id="disks-cards"></div>
       <div class="table-wrap">
         <table>
           <thead><tr>
@@ -442,13 +328,15 @@
       <div class="page-header">
         <div><h1 class="page-title">Сеть</h1>
         <div class="page-subtitle">Сетевые интерфейсы и трафик</div></div>
+        <button class="btn btn-primary btn-sm" onclick="openNetTool()">Сетевые операции</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Интерфейс</th><th>IP-адреса</th><th>MAC</th>
-            <th style="text-align:right">Отправлено</th>
-            <th style="text-align:right">Получено</th>
+            <th class="sortable" onclick="sortNet('name')">Интерфейс <span class="sort-ind" id="sn-name"></span></th>
+            <th>IP-адреса</th><th>MAC</th>
+            <th class="sortable" style="text-align:right" onclick="sortNet('sent')">Отправлено <span class="sort-ind" id="sn-sent"></span></th>
+            <th class="sortable" style="text-align:right" onclick="sortNet('recv')">Получено <span class="sort-ind" id="sn-recv"></span></th>
           </tr></thead>
           <tbody id="network-body"><tr><td colspan="5" class="empty">Загрузка…</td></tr></tbody>
         </table>
@@ -463,17 +351,24 @@
       </div>
       <div class="toolbar">
         <input type="text" id="proc-search" placeholder="Поиск по имени процесса…" oninput="renderProcesses()" />
-        <button class="btn" onclick="loadProcesses()">Обновить</button>
+        <div class="btn-group" id="proc-filter">
+          <button class="btn btn-sm active" data-filter="all">Все</button>
+          <button class="btn btn-sm" data-filter="user">Пользовательские</button>
+          <button class="btn btn-sm" data-filter="system">Системные</button>
+        </div>
+        <button class="btn btn-sm" onclick="loadProcesses()">Обновить</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Имя процесса</th><th>PID</th>
-            <th style="text-align:right">CPU %</th>
-            <th style="text-align:right">RAM МБ</th>
-            <th>Путь</th><th></th>
+            <th class="sortable" onclick="sortProc('name')">Имя <span class="sort-ind" id="sp-name"></span></th>
+            <th class="sortable" onclick="sortProc('pid')">PID <span class="sort-ind" id="sp-pid"></span></th>
+            <th class="sortable" style="text-align:right" onclick="sortProc('cpu')">CPU % <span class="sort-ind" id="sp-cpu"></span></th>
+            <th class="sortable" style="text-align:right" onclick="sortProc('ram')">RAM МБ <span class="sort-ind" id="sp-ram"></span></th>
+            <th>Путь</th><th style="width:50px"></th>
           </tr></thead>
           <tbody id="proc-body"><tr><td colspan="6" class="empty">Загрузка…</td></tr></tbody>
+          <tfoot><tr><td colspan="6" id="proc-totals">—</td></tr></tfoot>
         </table>
       </div>
     </section>
@@ -486,13 +381,13 @@
       </div>
 
       <div class="card section">
-        <h3>🔗 Подключение к порталу</h3>
+        <h3>Подключение к порталу</h3>
         <div class="field">
           <label>URL портала</label>
           <input type="url" id="cfg-portal_url" placeholder="https://portal.example.com" />
         </div>
         <div class="field">
-          <label>Токен агента</label>
+          <label>Токен агента <span class="help-icon" onclick="showTokenHelp()" title="Справка">?</span></label>
           <input type="password" id="cfg-agent_token" placeholder="••••••••••••••••" />
         </div>
         <div class="field">
@@ -507,10 +402,13 @@
       </div>
 
       <div class="card section">
-        <h3>⏱️ Интервалы</h3>
+        <h3>Интервалы</h3>
         <div class="field">
-          <label>Отправка метрик, сек</label>
-          <input type="number" id="cfg-send_interval_sec" min="5" max="3600" value="60" />
+          <label>Отправка метрик, сек <span id="cfg-send_interval_label" style="color:var(--text-dim);font-weight:400">60 с</span></label>
+          <div class="slider-row">
+            <input type="range" id="cfg-send_interval_range" min="10" max="3600" value="60" />
+            <input type="number" id="cfg-send_interval_sec" min="10" max="3600" value="60" />
+          </div>
         </div>
         <div class="field">
           <label>Опрос команд, сек</label>
@@ -519,26 +417,26 @@
       </div>
 
       <div class="card section">
-        <h3>🔒 Безопасность</h3>
+        <h3>Безопасность</h3>
         <div class="toggle-row">
           <div class="toggle-info">
             <div class="label">Авторегистрация</div>
             <div class="desc">Агент автоматически зарегистрируется в портале</div>
           </div>
-          <label class="switch"><input type="checkbox" id="cfg-auto_register" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" id="cfg-auto_register" /><span class="switch-slider"></span></label>
         </div>
         <div class="toggle-row">
           <div class="toggle-info">
             <div class="label">Пропустить проверку TLS</div>
             <div class="desc">Для самоподписанных сертификатов</div>
           </div>
-          <label class="switch"><input type="checkbox" id="cfg-insecure_tls" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" id="cfg-insecure_tls" /><span class="switch-slider"></span></label>
         </div>
       </div>
 
-      <div style="display:flex; gap:10px; margin-top:8px;">
-        <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить настройки</button>
-        <button class="btn btn-outline" onclick="testConnection()">🔌 Проверить соединение</button>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn btn-primary" onclick="saveConfig()">Сохранить настройки</button>
+        <button class="btn btn-outline" onclick="testConnection()">Проверить соединение</button>
       </div>
     </section>
 
@@ -551,24 +449,29 @@
 
       <div class="support-grid">
         <a class="support-card" id="sup-phone" href="tel:+375000000000">
-          <div class="icon">📱</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg></div>
           <div class="title">Позвонить</div>
           <div class="desc">+375 (XX) XXX-XX-XX</div>
         </a>
         <a class="support-card" id="sup-email" href="#">
-          <div class="icon">✉️</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></div>
           <div class="title">Email</div>
           <div class="desc">support@iteng.by</div>
         </a>
         <a class="support-card" id="sup-portal" href="#" target="_blank" rel="noopener">
-          <div class="icon">🌐</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3v6H4a1 1 0 0 1-1-1v-5zM18 14h3v5a1 1 0 0 1-1 1h-2v-6z"/><path d="M3 14a9 9 0 0 1 18 0"/><path d="M21 14v2a4 4 0 0 1-4 4h-2"/></svg></div>
           <div class="title">Портал</div>
           <div class="desc">Открыть в браузере</div>
         </a>
-        <div class="support-card" onclick="createTicket()" style="cursor:pointer">
-          <div class="icon">🎫</div>
+        <div class="support-card" onclick="createTicket()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg></div>
           <div class="title">Создать тикет</div>
           <div class="desc">Автоматически с данными системы</div>
+        </div>
+        <div class="support-card" onclick="showQR()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14h1M14 20h3M17 17h4v4"/></svg></div>
+          <div class="title">QR-код</div>
+          <div class="desc">Открыть портал на мобильном</div>
         </div>
       </div>
 
@@ -582,9 +485,9 @@
   </main>
 </div>
 
-<!-- Modal -->
+<!-- Generic confirm modal -->
 <div class="modal-backdrop" id="modal">
-  <div class="modal">
+  <div class="modal" id="modal-box">
     <h3 id="modal-title">Подтверждение</h3>
     <p id="modal-text">Действие нельзя отменить.</p>
     <div class="modal-actions">
@@ -594,20 +497,83 @@
   </div>
 </div>
 
+<!-- Info modal (single OK button) -->
+<div class="modal-backdrop" id="info-modal">
+  <div class="modal">
+    <h3 id="info-title">Информация</h3>
+    <div id="info-body" style="color:var(--text-muted);font-size:13px;white-space:pre-line;line-height:1.6"></div>
+    <div id="info-extra"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeInfo()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Network tool modal -->
+<div class="modal-backdrop" id="nettool-modal">
+  <div class="modal" style="max-width:600px">
+    <h3>Сетевые операции</h3>
+    <div class="field">
+      <label>Операция</label>
+      <select id="nt-tool">
+        <option value="ping">Ping</option>
+        <option value="traceroute">Traceroute</option>
+        <option value="nslookup">NSLookup</option>
+        <option value="portcheck">Port Check</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Цель (IP или hostname)</label>
+      <input type="text" id="nt-target" placeholder="example.com" />
+    </div>
+    <div class="field" id="nt-port-field" style="display:none">
+      <label>Порт</label>
+      <input type="number" id="nt-port" min="1" max="65535" value="443" />
+    </div>
+    <div class="field">
+      <label>Результат</label>
+      <textarea id="nt-result" readonly placeholder="Здесь появится результат…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeNetTool()">Закрыть</button>
+      <button class="btn btn-primary" id="nt-run" onclick="runNetTool()">Выполнить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Interface badge picker -->
+<div class="modal-backdrop" id="badge-modal">
+  <div class="modal" style="max-width:380px">
+    <h3>Тип интерфейса</h3>
+    <p id="badge-iface">—</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-sm" onclick="setIfaceBadge('VPN')">VPN</button>
+      <button class="btn btn-sm" onclick="setIfaceBadge('Wi-Fi')">Wi-Fi</button>
+      <button class="btn btn-sm" onclick="setIfaceBadge('BT')">BT</button>
+      <button class="btn btn-sm" onclick="setIfaceBadge('ETH')">ETH</button>
+      <button class="btn btn-sm btn-outline" onclick="setIfaceBadge(null)">Сбросить</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeBadge()">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <script>
 'use strict';
 
-// ───── State
 const state = {
-  metrics: null,
-  sysinfo: null,
-  processes: [],
-  config: {},
+  metrics: null, sysinfo: null, processes: [], config: {},
+  netSort: { key: 'traffic', dir: 'desc' },
+  procSort: { key: 'cpu', dir: 'desc' },
+  procFilter: 'all',
+  log: [],
+  ifaceBadges: {},
+  badgeTarget: null,
 };
 
-// ───── Utils
 const $ = (id) => document.getElementById(id);
 const fmtBytes = (b) => {
   if (b == null || isNaN(b)) return '—';
@@ -618,9 +584,7 @@ const fmtBytes = (b) => {
 };
 const fmtUptime = (s) => {
   if (!s || s < 0) return '—';
-  const d = Math.floor(s/86400);
-  const h = Math.floor((s%86400)/3600);
-  const m = Math.floor((s%3600)/60);
+  const d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60);
   const parts = [];
   if (d) parts.push(d + ' д');
   if (h) parts.push(h + ' ч');
@@ -629,6 +593,7 @@ const fmtUptime = (s) => {
 };
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pctClass = (p) => p >= 85 ? 'red' : p >= 70 ? 'yellow' : 'green';
+const pctColor = (p) => p >= 85 ? 'hsl(0,85%,55%)' : p >= 70 ? 'hsl(38,92%,55%)' : 'hsl(142,70%,50%)';
 
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -639,23 +604,52 @@ async function api(method, path, body) {
   return ct.includes('json') ? r.json() : r.text();
 }
 
+// ───── Log
+function logEvent(type, msg) {
+  state.log.unshift({ time: new Date(), type, msg });
+  if (state.log.length > 20) state.log.length = 20;
+  renderLog();
+}
+function renderLog() {
+  if (!state.log.length) { $('log-body').innerHTML = '<tr><td colspan="3" class="empty">Нет событий</td></tr>'; return; }
+  $('log-body').innerHTML = state.log.map(e => {
+    const t = e.time.toLocaleTimeString('ru-RU');
+    const cls = ({ INFO:'info', OK:'ok', WARN:'warn', ERROR:'error' })[e.type] || 'info';
+    return `<tr><td class="mono" style="color:var(--text-dim)">${t}</td><td><span class="pill ${cls}">${e.type}</span></td><td>${escapeHtml(e.msg)}</td></tr>`;
+  }).join('');
+}
+function clearLog() { state.log = []; renderLog(); }
+
 // ───── Toast
-function toast(msg, type = 'info', ms = 3500) {
+function toast(msg, type='info', ms=3500) {
   const t = document.createElement('div');
   t.className = 'toast ' + type;
   t.textContent = msg;
   $('toasts').appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .25s'; setTimeout(() => t.remove(), 250); }, ms);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .25s'; setTimeout(()=>t.remove(),250); }, ms);
 }
 
-// ───── Modal
-function confirmDialog(title, text, onConfirm) {
+// ───── Modals
+function confirmDialog(title, text, onConfirm, opts={}) {
   $('modal-title').textContent = title;
   $('modal-text').textContent = text;
+  const box = $('modal-box');
+  box.classList.toggle('danger', !!opts.danger);
+  const btn = $('modal-confirm');
+  btn.className = 'btn ' + (opts.danger ? 'btn-primary' : 'btn-primary');
+  btn.textContent = opts.confirmText || 'Подтвердить';
   $('modal').classList.add('open');
-  $('modal-confirm').onclick = () => { closeModal(); onConfirm(); };
+  btn.onclick = () => { closeModal(); onConfirm(); };
 }
 function closeModal() { $('modal').classList.remove('open'); }
+
+function infoDialog(title, text, extraHtml='') {
+  $('info-title').textContent = title;
+  $('info-body').textContent = text;
+  $('info-extra').innerHTML = extraHtml;
+  $('info-modal').classList.add('open');
+}
+function closeInfo() { $('info-modal').classList.remove('open'); }
 
 // ───── Navigation
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -671,6 +665,11 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
+function setConn(online, errMsg) {
+  $('conn-dot').className = 'status-dot ' + (online ? 'online' : 'offline');
+  $('conn-text').textContent = online ? 'Агент онлайн' : 'Агент оффлайн';
+}
+
 // ───── Metrics + Dashboard
 async function loadMetrics() {
   try {
@@ -679,14 +678,12 @@ async function loadMetrics() {
     renderDisks();
     renderNetwork();
     setConn(true);
+    const m = state.metrics || {};
+    logEvent('OK', `Метрики получены (CPU: ${(m.cpu_usage_percent||0).toFixed(1)}%, RAM: ${(m.ram_usage_percent||0).toFixed(1)}%)`);
   } catch (e) {
     setConn(false);
+    logEvent('ERROR', 'Ошибка получения метрик');
   }
-}
-
-function setConn(online) {
-  $('conn-dot').className = 'status-dot ' + (online ? 'online' : 'offline');
-  $('conn-text').textContent = online ? 'Агент онлайн' : 'Агент оффлайн';
 }
 
 function renderDashboard() {
@@ -697,21 +694,17 @@ function renderDashboard() {
   $('cpu-bar').style.width = Math.min(100, cpu) + '%';
   $('cpu-bar').className = pctClass(cpu);
   if (m.load_avg) $('cpu-load').textContent = `LA: ${m.load_avg['1m']?.toFixed?.(2) ?? '—'} / ${m.load_avg['5m']?.toFixed?.(2) ?? '—'} / ${m.load_avg['15m']?.toFixed?.(2) ?? '—'}`;
-
   $('ram-val').textContent = ram;
   $('ram-bar').style.width = Math.min(100, ram) + '%';
   $('ram-bar').className = pctClass(ram);
   $('ram-sub').textContent = `${(m.ram_used_mb||0).toFixed(0)} МБ / ${(m.ram_total_mb||0).toFixed(0)} МБ`;
-
   $('uptime-val').textContent = fmtUptime(m.uptime_seconds);
 
-  // Temps
   const temps = m.temperatures || [];
   $('temps-body').innerHTML = temps.length
-    ? temps.map(t => `<tr><td>${escapeHtml(t.sensor_key)}</td><td class="num" style="text-align:right;color:${t.value > 70 ? 'hsl(0,85%,65%)' : 'var(--text)'}">${(+t.value).toFixed(1)} °C</td></tr>`).join('')
+    ? temps.map(t => `<tr><td>${escapeHtml(t.sensor_key)}</td><td class="num" style="text-align:right;color:${t.value>70?'hsl(0,85%,65%)':'var(--text)'}">${(+t.value).toFixed(1)} °C</td></tr>`).join('')
     : '<tr><td colspan="2" class="empty">Нет данных датчиков</td></tr>';
 
-  // Sysinfo
   renderSysinfo();
 }
 
@@ -726,43 +719,152 @@ function renderSysinfo() {
     ['Hostname', escapeHtml(s.hostname)],
     ['Серийный номер', escapeHtml(s.serial_number || '—')],
   ];
-  $('sysinfo-body').innerHTML = rows.map(([k, v]) => `<tr><td style="color:var(--text-muted)">${k}</td><td>${v}</td></tr>`).join('');
-
+  $('sysinfo-body').innerHTML = rows.map(([k,v])=>`<tr><td style="color:var(--text-muted)">${k}</td><td>${v}</td></tr>`).join('');
   $('portal-status').innerHTML = state.config?.portal_url && state.config?.agent_token
-    ? '<span style="color:var(--success)">✅ Подключён</span>'
-    : '<span style="color:var(--warning)">⚠️ Не настроен</span>';
+    ? '<span style="color:var(--success)">Подключён</span>'
+    : '<span style="color:var(--warning)">Не настроен</span>';
   $('portal-url-sub').textContent = state.config?.portal_url || 'настройте в разделе «Настройки»';
 }
 
+// ───── Disks
 function renderDisks() {
   const disks = state.metrics?.disk_metrics || [];
-  $('disks-body').innerHTML = disks.length
-    ? disks.map(d => {
-        const p = +(d.usage_percent || 0).toFixed(1);
-        return `<tr>
-          <td class="mono">${escapeHtml(d.device || '—')}</td>
-          <td class="mono">${escapeHtml(d.mountpoint || '—')}</td>
-          <td>${escapeHtml(d.fstype || '—')}</td>
-          <td class="num" style="text-align:right">${(d.total_gb || 0).toFixed(1)}</td>
-          <td class="num" style="text-align:right">${(d.used_gb || 0).toFixed(1)}</td>
-          <td class="num" style="text-align:right">${(d.free_gb || 0).toFixed(1)}</td>
-          <td><span class="pill ${pctClass(p)}">${p}%</span></td>
-        </tr>`;
-      }).join('')
-    : '<tr><td colspan="7" class="empty">Нет данных</td></tr>';
+  if (!disks.length) {
+    $('disks-cards').innerHTML = '';
+    $('disks-body').innerHTML = '<tr><td colspan="7" class="empty">Нет данных</td></tr>';
+    return;
+  }
+  // Cards
+  $('disks-cards').innerHTML = disks.map(d => {
+    const p = +(d.used_percent || 0).toFixed(1);
+    const r = 36, c = 2 * Math.PI * r;
+    const off = c * (1 - Math.min(1, p/100));
+    const letter = (d.mount_point || d.device || '—').split('\\')[0].replace(':','') + (d.mount_point?.includes(':') ? ':' : '');
+    return `<div class="disk-card">
+      <div class="disk-chart">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="${r}" stroke="var(--surface-2)" stroke-width="8" fill="none"/>
+          <circle cx="42" cy="42" r="${r}" stroke="${pctColor(p)}" stroke-width="8" fill="none"
+            stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" stroke-linecap="round"/>
+        </svg>
+        <div class="disk-pct">${p}%</div>
+      </div>
+      <div class="disk-info">
+        <div class="disk-letter">${escapeHtml(letter)}</div>
+        <div class="disk-fs">${escapeHtml(d.fs_type || '—')}</div>
+        <div class="disk-meta">${(d.used_gb||0).toFixed(1)} ГБ / ${(d.total_gb||0).toFixed(1)} ГБ</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('disks-body').innerHTML = disks.map(d => {
+    const p = +(d.used_percent || 0).toFixed(1);
+    return `<tr>
+      <td class="mono">${escapeHtml(d.device || '—')}</td>
+      <td class="mono">${escapeHtml(d.mount_point || '—')}</td>
+      <td>${escapeHtml(d.fs_type || '—')}</td>
+      <td class="num" style="text-align:right">${(d.total_gb||0).toFixed(1)}</td>
+      <td class="num" style="text-align:right">${(d.used_gb||0).toFixed(1)}</td>
+      <td class="num" style="text-align:right">${(d.free_gb||0).toFixed(1)}</td>
+      <td><span class="pill ${pctClass(p)}">${p}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ───── Network
+function autoBadge(name) {
+  const n = (name || '').toLowerCase();
+  if (/vpn|nord|openvpn|wireguard|lynx/.test(n)) return 'VPN';
+  if (/wireless|wi-fi|wifi|wlan|беспроводн/.test(n)) return 'Wi-Fi';
+  if (/bluetooth/.test(n)) return 'BT';
+  return 'ETH';
+}
+const BADGE_CLS = { VPN:'red', 'Wi-Fi':'blue', BT:'yellow', ETH:'green' };
+
+function sortNet(key) {
+  if (state.netSort.key === key) state.netSort.dir = state.netSort.dir === 'asc' ? 'desc' : 'asc';
+  else { state.netSort.key = key; state.netSort.dir = key === 'name' ? 'asc' : 'desc'; }
+  renderNetwork();
 }
 
 function renderNetwork() {
-  const ifs = state.metrics?.network_metrics || [];
+  const all = state.metrics?.network_metrics || [];
+  let ifs = all.filter(n => {
+    if ((n.bytes_sent || 0) > 0 || (n.bytes_recv || 0) > 0) return true;
+    const ips = n.ip_addresses || [];
+    return ips.some(ip => !ip.startsWith('fe80::') && !ip.startsWith('169.254.'));
+  });
+  const { key, dir } = state.netSort;
+  const sign = dir === 'asc' ? 1 : -1;
+  ifs.sort((a, b) => {
+    let av, bv;
+    if (key === 'name') { av = (a.interface||'').toLowerCase(); bv = (b.interface||'').toLowerCase(); return av < bv ? -sign : av > bv ? sign : 0; }
+    if (key === 'sent') { av = a.bytes_sent||0; bv = b.bytes_sent||0; }
+    else if (key === 'recv') { av = a.bytes_recv||0; bv = b.bytes_recv||0; }
+    else { av = (a.bytes_sent||0)+(a.bytes_recv||0); bv = (b.bytes_sent||0)+(b.bytes_recv||0); }
+    return (av - bv) * sign;
+  });
+
+  ['name','sent','recv'].forEach(k => {
+    const el = $('sn-' + k);
+    if (el) el.textContent = state.netSort.key === k ? (state.netSort.dir === 'asc' ? '↑' : '↓') : '';
+  });
+
   $('network-body').innerHTML = ifs.length
-    ? ifs.map(n => `<tr>
-        <td><strong>${escapeHtml(n.interface || '—')}</strong></td>
-        <td>${(n.ip_addresses || []).map(escapeHtml).join(', ') || '—'}</td>
-        <td class="mono" style="color:var(--text-muted)">${escapeHtml(n.mac || '—')}</td>
-        <td class="num" style="text-align:right">${fmtBytes(n.bytes_sent)}</td>
-        <td class="num" style="text-align:right">${fmtBytes(n.bytes_recv)}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="5" class="empty">Нет данных</td></tr>';
+    ? ifs.map(n => {
+        const name = n.interface || '—';
+        const badge = state.ifaceBadges[name] || autoBadge(name);
+        return `<tr>
+          <td><strong>${escapeHtml(name)}</strong><span class="pill iface-badge ${BADGE_CLS[badge]||'blue'}" onclick="openBadgePicker('${escapeHtml(name).replace(/'/g,"\\'")}')">${badge}</span></td>
+          <td>${(n.ip_addresses||[]).map(escapeHtml).join(', ') || '—'}</td>
+          <td class="mono" style="color:var(--text-muted)">${escapeHtml(n.mac || '—')}</td>
+          <td class="num" style="text-align:right">${fmtBytes(n.bytes_sent)}</td>
+          <td class="num" style="text-align:right">${fmtBytes(n.bytes_recv)}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="5" class="empty">Нет активных интерфейсов</td></tr>';
+}
+
+function openBadgePicker(name) {
+  state.badgeTarget = name;
+  $('badge-iface').textContent = name;
+  $('badge-modal').classList.add('open');
+}
+function closeBadge() { $('badge-modal').classList.remove('open'); state.badgeTarget = null; }
+function setIfaceBadge(type) {
+  if (!state.badgeTarget) return;
+  if (type === null) delete state.ifaceBadges[state.badgeTarget];
+  else state.ifaceBadges[state.badgeTarget] = type;
+  localStorage.setItem('iface_badges', JSON.stringify(state.ifaceBadges));
+  closeBadge();
+  renderNetwork();
+}
+
+// ───── Network tool
+function openNetTool() {
+  $('nt-result').value = '';
+  $('nettool-modal').classList.add('open');
+  updateNetToolFields();
+}
+function closeNetTool() { $('nettool-modal').classList.remove('open'); }
+function updateNetToolFields() {
+  $('nt-port-field').style.display = $('nt-tool').value === 'portcheck' ? '' : 'none';
+}
+async function runNetTool() {
+  const tool = $('nt-tool').value;
+  const target = $('nt-target').value.trim();
+  const port = parseInt($('nt-port').value, 10) || 0;
+  if (!target) { toast('Укажите цель', 'error'); return; }
+  $('nt-result').value = 'Выполнение…';
+  $('nt-run').disabled = true;
+  try {
+    const r = await api('POST', '/api/network-tool', { tool, target, port });
+    $('nt-result').value = (r && (r.output || r.result)) || JSON.stringify(r, null, 2);
+  } catch (e) {
+    $('nt-result').value = 'Ошибка: ' + e.message;
+  } finally {
+    $('nt-run').disabled = false;
+  }
 }
 
 // ───── Processes
@@ -775,31 +877,115 @@ async function loadProcesses() {
     $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Не удалось загрузить процессы</td></tr>';
   }
 }
+function isSystemProc(p) {
+  const path = (p.exe_path || '').toLowerCase();
+  return path.includes('system32') || path.includes('syswow64') || path.startsWith('/usr/') || path.startsWith('/sbin/') || path.startsWith('/bin/');
+}
+function sortProc(key) {
+  if (state.procSort.key === key) state.procSort.dir = state.procSort.dir === 'asc' ? 'desc' : 'asc';
+  else { state.procSort.key = key; state.procSort.dir = key === 'name' ? 'asc' : 'desc'; }
+  renderProcesses();
+}
+document.querySelectorAll('#proc-filter .btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#proc-filter .btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.procFilter = b.dataset.filter;
+    renderProcesses();
+  });
+});
 function renderProcesses() {
   const q = ($('proc-search').value || '').toLowerCase().trim();
-  const list = state.processes
-    .filter(p => !q || (p.name || '').toLowerCase().includes(q))
-    .sort((a, b) => (b.cpu_percent || 0) - (a.cpu_percent || 0));
-  if (!list.length) { $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>'; return; }
-  $('proc-body').innerHTML = list.map(p => `<tr>
-    <td><strong>${escapeHtml(p.name || '—')}</strong></td>
-    <td class="mono">${p.pid}</td>
-    <td class="num" style="text-align:right">${(p.cpu_percent || 0).toFixed(1)}</td>
-    <td class="num" style="text-align:right">${(p.ram_mb || 0).toFixed(1)}</td>
-    <td class="mono" style="color:var(--text-dim); max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${escapeHtml(p.exe_path || '')}">${escapeHtml(p.exe_path || '—')}</td>
-    <td style="text-align:right"><button class="btn btn-danger" onclick="killProcess(${p.pid}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">Завершить</button></td>
-  </tr>`).join('');
-}
-function killProcess(pid, name) {
-  confirmDialog('Завершить процесс?', `Процесс «${name}» (PID ${pid}) будет принудительно завершён.`, async () => {
-    try {
-      await api('POST', '/api/kill-process', { pid });
-      toast(`Процесс ${name} (${pid}) завершён`, 'success');
-      setTimeout(loadProcesses, 400);
-    } catch (e) {
-      toast('Ошибка: не удалось завершить процесс', 'error');
-    }
+  let list = state.processes.filter(p => !q || (p.name||'').toLowerCase().includes(q));
+  if (state.procFilter === 'user') list = list.filter(p => !isSystemProc(p));
+  else if (state.procFilter === 'system') list = list.filter(isSystemProc);
+
+  const { key, dir } = state.procSort;
+  const sign = dir === 'asc' ? 1 : -1;
+  list.sort((a, b) => {
+    let av, bv;
+    if (key === 'name') { av=(a.name||'').toLowerCase(); bv=(b.name||'').toLowerCase(); return av < bv ? -sign : av > bv ? sign : 0; }
+    if (key === 'pid') { av=a.pid||0; bv=b.pid||0; }
+    else if (key === 'ram') { av=a.ram_mb||0; bv=b.ram_mb||0; }
+    else { av=a.cpu_percent||0; bv=b.cpu_percent||0; }
+    return (av - bv) * sign;
   });
+
+  ['name','pid','cpu','ram'].forEach(k => {
+    const el = $('sp-' + k);
+    if (el) el.textContent = state.procSort.key === k ? (state.procSort.dir === 'asc' ? '↑' : '↓') : '';
+  });
+
+  if (!list.length) { $('proc-body').innerHTML = '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>'; }
+  else {
+    $('proc-body').innerHTML = list.map(p => {
+      const safeName = escapeHtml(p.name||'—');
+      return `<tr>
+        <td><strong>${safeName}</strong></td>
+        <td class="mono">${p.pid}</td>
+        <td class="num" style="text-align:right">${(p.cpu_percent||0).toFixed(1)}</td>
+        <td class="num" style="text-align:right">${(p.ram_mb||0).toFixed(1)}</td>
+        <td class="mono" style="color:var(--text-dim);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(p.exe_path||'')}">${escapeHtml(p.exe_path||'—')}</td>
+        <td style="text-align:right">
+          <div class="dropdown">
+            <button class="btn btn-ghost" onclick="toggleProcMenu(event, ${p.pid})">⋯</button>
+            <div class="dropdown-menu" id="pm-${p.pid}">
+              <div class="dropdown-item" onclick="procAction('kill',${p.pid},'${safeName.replace(/'/g,"\\'")}')">Завершить</div>
+              <div class="dropdown-item danger" onclick="procAction('force',${p.pid},'${safeName.replace(/'/g,"\\'")}')">Принудительно завершить</div>
+              <div class="dropdown-item" onclick="procAction('location',${p.pid},'${safeName.replace(/'/g,"\\'")}')">Открыть расположение</div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item submenu">
+                Приоритет ▸
+                <div class="submenu-panel">
+                  <div class="dropdown-item" onclick="procAction('prio:low',${p.pid})">Низкий</div>
+                  <div class="dropdown-item" onclick="procAction('prio:normal',${p.pid})">Обычный</div>
+                  <div class="dropdown-item" onclick="procAction('prio:high',${p.pid})">Высокий</div>
+                  <div class="dropdown-item" onclick="procAction('prio:realtime',${p.pid})">Реального времени</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  const procs = list.length;
+  const threads = list.reduce((s,p)=>s+(p.threads||p.num_threads||0),0);
+  const ramMb = list.reduce((s,p)=>s+(p.ram_mb||0),0);
+  $('proc-totals').textContent = `Процессов: ${procs} | Потоков: ${threads} | RAM: ${ramMb.toFixed(0)} МБ`;
+}
+
+function toggleProcMenu(ev, pid) {
+  ev.stopPropagation();
+  document.querySelectorAll('.dropdown-menu.open').forEach(m => { if (m.id !== 'pm-'+pid) m.classList.remove('open'); });
+  $('pm-'+pid).classList.toggle('open');
+}
+document.addEventListener('click', () => document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open')));
+
+async function procAction(action, pid, name) {
+  const proc = state.processes.find(p => p.pid === pid);
+  if (action === 'kill') {
+    confirmDialog('Завершить процесс?', `Процесс «${name}» (PID ${pid}) будет завершён.`, async () => {
+      try { await api('POST', '/api/kill-process', { pid, force: false }); toast(`${name} (${pid}) завершён`, 'success'); setTimeout(loadProcesses, 400); }
+      catch (e) { toast('Ошибка завершения', 'error'); }
+    });
+  } else if (action === 'force') {
+    confirmDialog('Принудительное завершение', `ВНИМАНИЕ! Процесс «${name}» (PID ${pid}) будет принудительно убит. Несохранённые данные будут потеряны.`, async () => {
+      try { await api('POST', '/api/kill-process', { pid, force: true }); toast(`${name} (${pid}) принудительно завершён`, 'success'); setTimeout(loadProcesses, 400); }
+      catch (e) { toast('Ошибка завершения', 'error'); }
+    }, { danger: true, confirmText: 'Убить' });
+  } else if (action === 'location') {
+    const path = proc?.exe_path || '—';
+    infoDialog('Расположение процесса', '', `<pre>${escapeHtml(path)}</pre><div class="modal-actions" style="margin-top:8px"><button class="btn btn-outline btn-sm" onclick="copyText('${escapeHtml(path).replace(/'/g,"\\'")}')">Копировать путь</button></div>`);
+  } else if (action.startsWith('prio:')) {
+    const prio = action.split(':')[1];
+    try { await api('POST', '/api/set-priority', { pid, priority: prio }); toast(`Приоритет PID ${pid} → ${prio}`, 'success'); }
+    catch (e) { toast('Ошибка смены приоритета', 'error'); }
+  }
+}
+function copyText(t) {
+  navigator.clipboard?.writeText(t).then(()=>toast('Скопировано', 'success'), ()=>toast('Не удалось скопировать', 'error'));
 }
 
 // ───── Config
@@ -812,9 +998,14 @@ async function loadConfig() {
       if (el.type === 'checkbox') el.checked = !!state.config[k];
       else el.value = state.config[k] ?? '';
     });
-  } catch (e) {
-    toast('Не удалось загрузить конфигурацию', 'error');
-  }
+    syncSendInterval(state.config.send_interval_sec || 60);
+  } catch (e) { toast('Не удалось загрузить конфигурацию', 'error'); }
+}
+function syncSendInterval(v) {
+  v = Math.max(10, Math.min(3600, parseInt(v,10) || 60));
+  $('cfg-send_interval_range').value = v;
+  $('cfg-send_interval_sec').value = v;
+  $('cfg-send_interval_label').textContent = v + ' с';
 }
 async function saveConfig() {
   const cfg = {
@@ -831,20 +1022,28 @@ async function saveConfig() {
     await api('POST', '/api/config/save', cfg);
     state.config = cfg;
     toast('Настройки сохранены', 'success');
+    logEvent('OK', 'Настройки сохранены');
     renderSysinfo();
   } catch (e) {
     toast('Ошибка сохранения настроек', 'error');
+    logEvent('ERROR', 'Ошибка сохранения настроек');
   }
 }
 async function testConnection() {
   toast('Проверка соединения…', 'info', 1500);
   try {
     const r = await api('POST', '/api/test-connection', {});
-    if (r && r.ok) toast('Соединение с порталом установлено', 'success');
-    else toast('Не удалось подключиться: ' + (r?.error || 'неизвестная ошибка'), 'error', 5000);
+    if (r && r.ok) { toast('Соединение с порталом установлено', 'success'); logEvent('OK', 'Портал доступен'); }
+    else { const err = r?.error || 'неизвестная ошибка'; toast('Не удалось подключиться: ' + err, 'error', 5000); logEvent('ERROR', 'Портал недоступен: ' + err); }
   } catch (e) {
     toast('Ошибка проверки соединения', 'error');
+    logEvent('ERROR', 'Портал недоступен: ' + e.message);
   }
+}
+
+function showTokenHelp() {
+  infoDialog('Токен агента',
+    'Токен агента — уникальный ключ для идентификации этого сервера в портале ИнноТех Инжиниринг.\n\nКак получить токен:\n\n1. Откройте портал поддержки\n2. Перейдите в раздел «Агенты»\n3. Нажмите «Добавить агент»\n4. Скопируйте сгенерированный токен\n5. Вставьте его в поле «Токен агента» и нажмите «Сохранить»\n\nПри включённой авторегистрации токен заполняется автоматически после первого запуска.');
 }
 
 // ───── Support
@@ -862,34 +1061,38 @@ function renderSupport() {
     ['Версия агента', $('agent-version').textContent],
     ['URL портала', c.portal_url || '—'],
   ];
-  $('support-info-body').innerHTML = rows.map(([k, v]) =>
-    `<tr><td style="color:var(--text-muted)">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v)}</td></tr>`
-  ).join('');
+  $('support-info-body').innerHTML = rows.map(([k,v])=>`<tr><td style="color:var(--text-muted)">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v)}</td></tr>`).join('');
 }
 async function createTicket() {
   try {
     const r = await api('POST', '/api/create-ticket', {});
     if (r && r.ok) toast('Тикет создан' + (r.ticket_id ? `: ${r.ticket_id}` : ''), 'success');
     else toast('Не удалось создать тикет', 'error');
-  } catch (e) {
-    toast('Ошибка создания тикета', 'error');
-  }
+  } catch (e) { toast('Ошибка создания тикета', 'error'); }
+}
+async function showQR() {
+  try {
+    const svg = await api('GET', '/api/qr');
+    infoDialog('Открыть портал на мобильном', '', `<div style="display:flex;justify-content:center;padding:12px;background:#fff;border-radius:8px;margin-top:8px">${typeof svg === 'string' ? svg : ''}</div>`);
+  } catch (e) { toast('Не удалось получить QR-код', 'error'); }
 }
 
 // ───── Refresh
 async function loadSysinfo() {
-  try {
-    state.sysinfo = await api('GET', '/api/sysinfo');
-    renderSysinfo();
-  } catch (e) { /* leave skeleton */ }
+  try { state.sysinfo = await api('GET', '/api/sysinfo'); renderSysinfo(); } catch (e) {}
 }
-function refreshAll() {
-  loadMetrics();
-  loadSysinfo();
-}
+function refreshAll() { loadMetrics(); loadSysinfo(); }
+
+// ───── Wiring
+$('cfg-send_interval_range').addEventListener('input', e => syncSendInterval(e.target.value));
+$('cfg-send_interval_sec').addEventListener('input', e => syncSendInterval(e.target.value));
+$('nt-tool').addEventListener('change', updateNetToolFields);
+
+try { state.ifaceBadges = JSON.parse(localStorage.getItem('iface_badges') || '{}'); } catch(e) {}
 
 // ───── Boot
 (async () => {
+  logEvent('INFO', 'Агент запущен');
   await loadConfig();
   await loadSysinfo();
   await loadMetrics();
