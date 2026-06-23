@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut, UserCircle,
+  LayoutDashboard, Server, CalendarCheck, Ticket, Users, LogOut, UserCircle, MonitorSmartphone,
   ClipboardList, FileArchive, ScrollText, HelpCircle, Activity, Bell, Briefcase,
   Plug, ChevronDown, ChevronRight, Network, ShieldAlert, DoorOpen, ListChecks, Database,
   MessageSquare, PanelLeftClose, PanelLeftOpen,
@@ -45,6 +45,7 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     title: "Объекты",
     items: [
       { to: "/equipment", icon: Server, label: "Оборудование", roles: [], moduleKey: "equipment" },
+      { to: "/agents", icon: MonitorSmartphone, label: "Агенты", roles: [], moduleKey: "equipment" },
     ],
   },
   {
