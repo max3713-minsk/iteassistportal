@@ -15,6 +15,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { AgentProcesses } from "@/components/agent/AgentProcesses";
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false;
