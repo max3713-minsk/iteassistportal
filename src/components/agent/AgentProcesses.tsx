@@ -39,6 +39,7 @@ type SortKey = "name" | "pid" | "cpu_percent" | "ram_mb" | "username" | "categor
 
 export function AgentProcesses({ agentId }: { agentId: string }) {
   const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<Category | "all">("all");
   const [sortKey, setSortKey] = useState<SortKey>("ram_mb");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -75,6 +76,7 @@ export function AgentProcesses({ agentId }: { agentId: string }) {
     const q = search.trim().toLowerCase();
     let rows = processes;
     if (q) rows = rows.filter((p) => (p.name || "").toLowerCase().includes(q));
+    if (catFilter !== "all") rows = rows.filter((p) => (p.category || "user") === catFilter);
     const dir = sortDir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const av = a[sortKey] as any;
@@ -85,7 +87,7 @@ export function AgentProcesses({ agentId }: { agentId: string }) {
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
       return String(av).localeCompare(String(bv), "ru") * dir;
     });
-  }, [processes, search, sortKey, sortDir]);
+  }, [processes, search, catFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -152,6 +154,27 @@ export function AgentProcesses({ agentId }: { agentId: string }) {
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
+
+            <div className="flex flex-wrap gap-2">
+              {(["all", "critical", "system", "service", "user"] as const).map((k) => {
+                const active = catFilter === k;
+                const label =
+                  k === "all" ? `Все (${processes.length})` : `${CATEGORY_META[k].label} (${counts[k]})`;
+                const cls = k === "all"
+                  ? "border-border text-foreground"
+                  : CATEGORY_META[k].badge;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setCatFilter(k)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition ${cls} ${active ? "ring-2 ring-ring/60" : "opacity-70 hover:opacity-100"}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
 
             {filteredSorted.length === 0 ? (
               <div className="text-sm text-muted-foreground py-6 text-center">
