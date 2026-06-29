@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +28,12 @@ interface Props {
   hostsLoading: boolean;
   onCreateTicket: (problem: any) => void;
   isStaff: boolean;
+  agents?: any[];
 }
 
 type SortKey = "name" | "ip" | "group" | "availability" | "problems";
 
-export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateTicket, isStaff }: Props) {
+export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateTicket, isStaff, agents = [] }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -106,6 +108,25 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
       />
     );
   }
+
+  const q = search.trim().toLowerCase();
+  const filteredAgents = q
+    ? agents.filter((a: any) =>
+        (a.hostname || "").toLowerCase().includes(q) ||
+        (a.agent_id || "").toLowerCase().includes(q)
+      )
+    : agents;
+
+  const pickAgentIp = (ips: any): string => {
+    if (!Array.isArray(ips)) return "—";
+    const ip = ips.find((x: any) => typeof x === "string" && !x.startsWith("169.254.") && !x.startsWith("fe80:"));
+    return ip || "—";
+  };
+
+  const isAgentOnline = (lastSeen: string | null) => {
+    if (!lastSeen) return false;
+    return Date.now() - new Date(lastSeen).getTime() < 3 * 60 * 1000;
+  };
 
   return (
     <div className="space-y-4">
