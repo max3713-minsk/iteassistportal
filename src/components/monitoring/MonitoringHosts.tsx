@@ -175,13 +175,73 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
       ) : hostsArr.length === 0 ? (
+        filteredAgents.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Нет данных о хостах. Проверьте подключение к Zabbix.
+            </CardContent>
+          </Card>
+        ) : null
+      ) : null}
+
+      {!hostsLoading && filteredAgents.length > 0 && (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Нет данных о хостах. Проверьте подключение к Zabbix.
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Агенты IteAgent ({filteredAgents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Имя</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead>ОС</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Источник</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAgents.map((a: any) => {
+                  const online = isAgentOnline(a.last_seen_at);
+                  return (
+                    <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link to={`/agents/${a.id}`} className="block">
+                          <div className="font-medium text-primary hover:underline">{a.hostname || a.agent_id}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">{a.agent_id}</div>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {pickAgentIp(a.ip_addresses)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {[a.os_type, a.os_version].filter(Boolean).join(" ") || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {online ? (
+                          <Badge variant="success">Онлайн</Badge>
+                        ) : (
+                          <Badge variant="secondary">Оффлайн</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-blue-600 text-white hover:bg-blue-600/80 border-transparent">Агент</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-      ) : (
-        Object.entries(groupedHosts).map(([type, hostList]) => {
+      )}
+
+      {!hostsLoading && hostsArr.length > 0 && (
+        <>
+        {Object.entries(groupedHosts).map(([type, hostList]) => {
           const cfg = groupTypeConfig[type] || groupTypeConfig.other;
           const Icon = cfg.icon;
           return (
@@ -266,7 +326,8 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
               </CardContent>
             </Card>
           );
-        })
+        })}
+        </>
       )}
 
       <HostDetailDialog
