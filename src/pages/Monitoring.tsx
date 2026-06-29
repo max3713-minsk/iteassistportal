@@ -69,6 +69,20 @@ export default function Monitoring() {
 
   const { data: isZabbixConfigured = false } = useZabbixConfigured();
 
+  // IteAgent agents (separate group, NOT Zabbix)
+  const { data: agents = [] } = useQuery({
+    queryKey: ["monitoring-agents"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_registrations")
+        .select("id, agent_id, hostname, os_type, os_version, ip_addresses, cpu_cores, ram_total_mb, last_seen_at, is_active")
+        .order("last_seen_at", { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 60000,
+  });
+
   // Zabbix data
   const { data: hosts = [], isLoading: hostsLoading, error: hostsError, refetch: refetchHosts } = useZabbixData("getHosts", isZabbixConfigured);
   const { data: problems = [], isLoading: problemsLoading, refetch: refetchProblems } = useZabbixData("getProblems", isZabbixConfigured);
@@ -209,6 +223,7 @@ export default function Monitoring() {
             hostsLoading={hostsLoading}
             onCreateTicket={createTicketFromProblem}
             isStaff={isStaff}
+            agents={agents}
           />
         </TabsContent>
 
