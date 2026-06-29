@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ArrowLeft, Settings2, RefreshCw, Loader2 } from "lucide-react";
+import { Search, ArrowLeft, Settings2, RefreshCw, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import HostItemsView from "./HostItemsView";
 import HostDetailDialog from "./HostDetailDialog";
@@ -27,11 +28,12 @@ interface Props {
   hostsLoading: boolean;
   onCreateTicket: (problem: any) => void;
   isStaff: boolean;
+  agents?: any[];
 }
 
 type SortKey = "name" | "ip" | "group" | "availability" | "problems";
 
-export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateTicket, isStaff }: Props) {
+export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateTicket, isStaff, agents = [] }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -107,6 +109,25 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
     );
   }
 
+  const q = search.trim().toLowerCase();
+  const filteredAgents = q
+    ? agents.filter((a: any) =>
+        (a.hostname || "").toLowerCase().includes(q) ||
+        (a.agent_id || "").toLowerCase().includes(q)
+      )
+    : agents;
+
+  const pickAgentIp = (ips: any): string => {
+    if (!Array.isArray(ips)) return "—";
+    const ip = ips.find((x: any) => typeof x === "string" && !x.startsWith("169.254.") && !x.startsWith("fe80:"));
+    return ip || "—";
+  };
+
+  const isAgentOnline = (lastSeen: string | null) => {
+    if (!lastSeen) return false;
+    return Date.now() - new Date(lastSeen).getTime() < 3 * 60 * 1000;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-3 flex-wrap items-center">
@@ -154,13 +175,73 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
       ) : hostsArr.length === 0 ? (
+        filteredAgents.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Нет данных о хостах. Проверьте подключение к Zabbix.
+            </CardContent>
+          </Card>
+        ) : null
+      ) : null}
+
+      {!hostsLoading && filteredAgents.length > 0 && (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Нет данных о хостах. Проверьте подключение к Zabbix.
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Агенты IteAgent ({filteredAgents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Имя</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead>ОС</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Источник</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAgents.map((a: any) => {
+                  const online = isAgentOnline(a.last_seen_at);
+                  return (
+                    <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link to={`/agents/${a.id}`} className="block">
+                          <div className="font-medium text-primary hover:underline">{a.hostname || a.agent_id}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">{a.agent_id}</div>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {pickAgentIp(a.ip_addresses)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {[a.os_type, a.os_version].filter(Boolean).join(" ") || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {online ? (
+                          <Badge variant="success">Онлайн</Badge>
+                        ) : (
+                          <Badge variant="secondary">Оффлайн</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-blue-600 text-white hover:bg-blue-600/80 border-transparent">Агент</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-      ) : (
-        Object.entries(groupedHosts).map(([type, hostList]) => {
+      )}
+
+      {!hostsLoading && hostsArr.length > 0 && (
+        <>
+        {Object.entries(groupedHosts).map(([type, hostList]) => {
           const cfg = groupTypeConfig[type] || groupTypeConfig.other;
           const Icon = cfg.icon;
           return (
@@ -245,7 +326,8 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
               </CardContent>
             </Card>
           );
-        })
+        })}
+        </>
       )}
 
       <HostDetailDialog
