@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ArrowLeft, Settings2, RefreshCw, Loader2 } from "lucide-react";
+import { Search, ArrowLeft, Settings2, RefreshCw, Loader2, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import HostItemsView from "./HostItemsView";
 import HostDetailDialog from "./HostDetailDialog";
