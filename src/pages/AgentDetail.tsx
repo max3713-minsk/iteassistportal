@@ -101,7 +101,44 @@ export default function AgentDetail() {
 
   const online = isOnline(agent.last_seen_at);
   const disks: any[] = Array.isArray(latest?.disk_metrics) ? latest.disk_metrics : [];
-  const networks: any[] = Array.isArray(latest?.network_metrics) ? latest.network_metrics : [];
+  const networksRaw: any[] = Array.isArray(latest?.network_metrics) ? latest.network_metrics : [];
+
+  const pickIp = (n: any): string | null => {
+    const ips: string[] = Array.isArray(n?.ip_addresses)
+      ? n.ip_addresses
+      : Array.isArray(n?.ips)
+      ? n.ips
+      : n?.ip
+      ? [n.ip]
+      : [];
+    const good = ips.find(
+      (ip) => ip && !ip.toLowerCase().startsWith("fe80") && !ip.startsWith("169.254"),
+    );
+    return good ?? null;
+  };
+
+  const fmtBytes = (v: any): string => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return "0 Б";
+    const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+    let i = 0;
+    let val = n;
+    while (val >= 1024 && i < units.length - 1) {
+      val /= 1024;
+      i++;
+    }
+    return `${val.toFixed(val >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  const networks = networksRaw
+    .map((n) => ({
+      ...n,
+      _ip: pickIp(n),
+      _rx: Number(n?.bytes_recv ?? n?.rx_bytes ?? n?.rx ?? 0) || 0,
+      _tx: Number(n?.bytes_sent ?? n?.tx_bytes ?? n?.tx ?? 0) || 0,
+    }))
+    .filter((n) => n._ip || n._rx > 0 || n._tx > 0)
+    .sort((a, b) => b._rx + b._tx - (a._rx + a._tx));
 
   return (
     <div className="space-y-6">
@@ -205,16 +242,26 @@ export default function AgentDetail() {
               </TableRow></TableHeader>
               <TableBody>
                 {disks.map((d: any, i: number) => {
-                  const total = d.total_gb ?? d.total ?? 0;
-                  const free = d.free_gb ?? d.free ?? 0;
-                  const usedPct = total ? Math.round(((total - free) / total) * 100) : 0;
+                  const total = Number(d.total_gb ?? d.total ?? 0) || 0;
+                  const free = Number(d.free_gb ?? d.free ?? 0) || 0;
+                  const usedPct = Number.isFinite(Number(d.used_percent))
+                    ? Math.round(Number(d.used_percent))
+                    : total
+                    ? Math.round(((total - free) / total) * 100)
+                    : 0;
+                  const mount = d.mount_point || d.mount || d.device || d.path || d.name || "—";
                   return (
                     <TableRow key={i}>
-                      <TableCell className="font-mono">{d.mount || d.path || d.name || "—"}</TableCell>
-                      <TableCell>{total} ГБ</TableCell>
-                      <TableCell>{free} ГБ</TableCell>
+                      <TableCell className="font-mono">{mount}</TableCell>
+                      <TableCell>{total.toFixed(1)} ГБ</TableCell>
+                      <TableCell>{free.toFixed(1)} ГБ</TableCell>
                       <TableCell>
-                        <Badge variant={usedPct > 90 ? "destructive" : usedPct > 75 ? "secondary" : "default"}>{usedPct}%</Badge>
+                        <Badge
+                          variant={usedPct >= 90 ? "destructive" : "default"}
+                          className={usedPct >= 75 && usedPct < 90 ? "bg-orange-500 hover:bg-orange-500 text-white" : ""}
+                        >
+                          {usedPct}%
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -229,7 +276,7 @@ export default function AgentDetail() {
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Network className="h-4 w-4" /> Сетевые интерфейсы</CardTitle></CardHeader>
         <CardContent>
           {networks.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Нет данных</div>
+            <div className="text-sm text-muted-foreground">Нет активных интерфейсов</div>
           ) : (
             <Table>
               <TableHeader><TableRow>
@@ -239,10 +286,10 @@ export default function AgentDetail() {
               <TableBody>
                 {networks.map((n: any, i: number) => (
                   <TableRow key={i}>
-                    <TableCell className="font-mono">{n.name || n.iface || "—"}</TableCell>
-                    <TableCell className="font-mono">{n.ip || (Array.isArray(n.ips) ? n.ips.join(", ") : "—")}</TableCell>
-                    <TableCell>{n.rx_bytes ?? n.rx ?? "—"}</TableCell>
-                    <TableCell>{n.tx_bytes ?? n.tx ?? "—"}</TableCell>
+                    <TableCell className="font-mono">{n.interface || n.name || n.iface || "—"}</TableCell>
+                    <TableCell className="font-mono">{n._ip || "—"}</TableCell>
+                    <TableCell>{fmtBytes(n._rx)}</TableCell>
+                    <TableCell>{fmtBytes(n._tx)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
