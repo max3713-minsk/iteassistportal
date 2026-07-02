@@ -16,6 +16,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgentProcesses } from "@/components/agent/AgentProcesses";
+import { AgentInventory } from "@/components/agent/AgentInventory";
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false;
@@ -323,6 +324,8 @@ export default function AgentDetail() {
       </Card>
 
       {agent.agent_id && <AgentProcesses agentId={agent.agent_id} />}
+
+      {agent.agent_id && <AgentInventory agentId={agent.agent_id} />}
     </div>
   );
 }
