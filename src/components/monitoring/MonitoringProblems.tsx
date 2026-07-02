@@ -274,8 +274,7 @@ export default function MonitoringProblems({
       <div className="flex gap-3 flex-wrap items-center">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
           <TabsList>
-            <TabsTrigger value="active">Активные проблемы</TabsTrigger>
-            <TabsTrigger value="history">Активные триггеры</TabsTrigger>
+            <TabsTrigger value="active">Активные проблемы и триггеры</TabsTrigger>
             {isStaff && (
               <TabsTrigger value="disabled">
                 <BellOff className="h-3.5 w-3.5 mr-1" /> Отключённые
