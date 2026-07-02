@@ -324,6 +324,8 @@ export default function AgentDetail() {
       </Card>
 
       {agent.agent_id && <AgentProcesses agentId={agent.agent_id} />}
+
+      {agent.agent_id && <AgentInventory agentId={agent.agent_id} />}
     </div>
   );
 }
