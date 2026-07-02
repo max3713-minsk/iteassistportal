@@ -338,15 +338,15 @@ export default function MonitoringProblems({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Активные проблемы ({filteredProblems.length})
+              Активные проблемы и триггеры ({mergedActive.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {problemsLoading ? (
+            {problemsLoading || alertsLoading ? (
               <div className="space-y-3 py-4">
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
               </div>
-            ) : filteredProblems.length === 0 ? (
+            ) : mergedActive.length === 0 ? (
               <div className="text-center py-8">
                 <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
                 <p className="text-muted-foreground">Активных проблем нет</p>
@@ -358,15 +358,19 @@ export default function MonitoringProblems({
                     {isStaff && (
                       <TableHead className="w-8">
                         <Checkbox
-                          checked={filteredProblems.length > 0 && filteredProblems.every((p: any) => selected.has(p.eventid))}
+                          checked={
+                            mergedActive.filter((r) => r.eventid).length > 0 &&
+                            mergedActive.filter((r) => r.eventid).every((r) => selected.has(r.eventid!))
+                          }
                           onCheckedChange={(c) => {
-                            if (c) setSelected(new Set(filteredProblems.map((p: any) => p.eventid)));
+                            if (c) setSelected(new Set(mergedActive.filter((r) => r.eventid).map((r) => r.eventid!)));
                             else clearSel();
                           }}
                         />
                       </TableHead>
                     )}
                     <TableHead>Категория</TableHead>
+                    <TableHead>Хост</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Серьёзность</TableHead>
                     <TableHead>Метка</TableHead>
@@ -377,39 +381,53 @@ export default function MonitoringProblems({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProblems.map((p: any) => {
-                    const incident = priorityToIncident(p.severity);
-                    const isAcknowledged = p.acknowledged === "1" || (p.acknowledges && p.acknowledges.length > 0);
-                    const isDismissed = dismissedSet.has(p.eventid);
+                  {mergedActive.map((r) => {
+                    const incident = priorityToIncident(r.severity);
+                    const isAcknowledged = !!r.acknowledged;
+                    const isDismissed = r.eventid ? dismissedSet.has(r.eventid) : false;
+                    const rowKey = r.eventid || `t-${r.triggerid}`;
+                    const ticketPayload = r.raw || {
+                      name: r.name,
+                      description: r.name,
+                      severity: r.severity,
+                      priority: r.severity,
+                      lastchange: r.clock,
+                      clock: r.clock,
+                      triggerid: r.triggerid,
+                      hosts: [{ name: r.host, hostid: r.hostid }],
+                    };
                     return (
-                      <TableRow key={p.eventid} className={isDismissed ? "opacity-50" : undefined}>
+                      <TableRow key={rowKey} className={isDismissed ? "opacity-50" : undefined}>
                         {isStaff && (
                           <TableCell>
-                            <Checkbox
-                              checked={selected.has(p.eventid)}
-                              onCheckedChange={() => toggleSel(p.eventid)}
-                            />
+                            {r.eventid ? (
+                              <Checkbox
+                                checked={selected.has(r.eventid)}
+                                onCheckedChange={() => toggleSel(r.eventid!)}
+                              />
+                            ) : null}
                           </TableCell>
                         )}
                         <TableCell>
                           <span className={`text-xs font-medium ${incident.color}`}>{incident.label}</span>
                         </TableCell>
-                        <TableCell className="max-w-[300px]">{p.name}</TableCell>
+                        <TableCell className="font-medium">{r.host}</TableCell>
+                        <TableCell className="max-w-[300px]">{r.name}</TableCell>
                         <TableCell>
-                          <Badge variant={priorityColor(p.severity) as any}>{priorityLabel(p.severity)}</Badge>
+                          <Badge variant={priorityColor(r.severity) as any}>{priorityLabel(r.severity)}</Badge>
                         </TableCell>
                         <TableCell>
                           <ProblemFlagBadge
-                            eventid={p.eventid}
-                            triggerid={p.objectid}
-                            host={p.hosts?.[0]?.name || null}
+                            eventid={r.eventid || undefined}
+                            triggerid={r.triggerid}
+                            host={r.host || null}
                             canEdit={isStaff}
                           />
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {new Date(parseInt(p.clock) * 1000).toLocaleString("ru-RU")}
+                          {r.clock ? new Date(parseInt(r.clock) * 1000).toLocaleString("ru-RU") : "—"}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{duration(p.clock)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.clock ? duration(r.clock) : "—"}</TableCell>
                         <TableCell>
                           {isAcknowledged ? (
                             <Badge variant="outline" className="text-green-600">
@@ -421,34 +439,34 @@ export default function MonitoringProblems({
                         </TableCell>
                         {isStaff && (
                           <TableCell className="text-right space-x-1">
-                            {!isAcknowledged && (
-                              <Button size="sm" variant="ghost" title="Подтвердить" onClick={() => onAcknowledge(p.eventid)}>
+                            {!isAcknowledged && r.eventid && (
+                              <Button size="sm" variant="ghost" title="Подтвердить" onClick={() => onAcknowledge(r.eventid!)}>
                                 <Check className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(p)}>
+                            <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(ticketPayload)}>
                               <MessageSquarePlus className="h-4 w-4" />
                             </Button>
-                            {isAdmin && (
+                            {isAdmin && r.eventid && (
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 title="Закрыть событие (admin)"
-                                onClick={() => closeMutation.mutate(p.eventid)}
+                                onClick={() => closeMutation.mutate(r.eventid!)}
                                 disabled={closeMutation.isPending}
                                 className="text-destructive hover:text-destructive"
                               >
                                 {closeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                               </Button>
                             )}
-                            {isAdmin && p.objectid && (
+                            {isAdmin && r.triggerid && (
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 title="Отключить триггер в Zabbix (admin)"
                                 onClick={() => {
-                                  if (window.confirm(`Отключить триггер «${p.name}» в Zabbix? Он перестанет генерировать события до повторного включения.`)) {
-                                    disableTriggerMutation.mutate(p.objectid);
+                                  if (window.confirm(`Отключить триггер «${r.name}» в Zabbix? Он перестанет генерировать события до повторного включения.`)) {
+                                    disableTriggerMutation.mutate({ triggerid: r.triggerid, eventid: r.eventid });
                                   }
                                 }}
                                 disabled={disableTriggerMutation.isPending}
@@ -462,86 +480,6 @@ export default function MonitoringProblems({
                       </TableRow>
                     );
                   })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      {viewMode === "history" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Активные триггеры ({filteredAlerts.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {alertsLoading ? (
-              <div className="space-y-3 py-4">
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : filteredAlerts.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                <p className="text-muted-foreground">Активных алертов нет</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Хост</TableHead>
-                    <TableHead>Описание</TableHead>
-                    <TableHead>Приоритет</TableHead>
-                    <TableHead>Метка</TableHead>
-                    <TableHead>Время изменения</TableHead>
-                    <TableHead>Длительность</TableHead>
-                    {isStaff && <TableHead className="text-right">Действия</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAlerts.map((a: any) => (
-                    <TableRow key={a.triggerid}>
-                      <TableCell className="font-medium">{a.hosts?.[0]?.name || "—"}</TableCell>
-                      <TableCell className="max-w-[300px]">{a.description}</TableCell>
-                      <TableCell>
-                        <Badge variant={priorityColor(a.priority) as any}>{priorityLabel(a.priority)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <ProblemFlagBadge
-                          triggerid={a.triggerid}
-                          host={a.hosts?.[0]?.name || null}
-                          canEdit={isStaff}
-                        />
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(parseInt(a.lastchange) * 1000).toLocaleString("ru-RU")}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{duration(a.lastchange)}</TableCell>
-                      {isStaff && (
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="ghost" title="Создать заявку" onClick={() => onCreateTicket(a)}>
-                            <MessageSquarePlus className="h-4 w-4" />
-                          </Button>
-                          {isAdmin && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Отключить триггер в Zabbix (admin)"
-                              onClick={() => {
-                                if (window.confirm(`Отключить триггер «${a.description}» в Zabbix?`)) {
-                                  disableTriggerMutation.mutate(a.triggerid);
-                                }
-                              }}
-                              disabled={disableTriggerMutation.isPending}
-                              className="text-orange-500 hover:text-orange-500"
-                            >
-                              <BellOff className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             )}
