@@ -40,7 +40,7 @@ export default function MonitoringProblems({
   const qc = useQueryClient();
   const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter || "all");
   const [hostFilter, setHostFilter] = useState("");
-  const [viewMode, setViewMode] = useState<"active" | "history" | "disabled">("active");
+  const [viewMode, setViewMode] = useState<"active" | "disabled">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showDismissed, setShowDismissed] = useState(false);
 
@@ -64,6 +64,15 @@ export default function MonitoringProblems({
       if (data?.error) throw new Error(data.error);
       return data;
     },
+    onMutate: async (triggerid: string) => {
+      // Optimistic: remove from disabled list immediately
+      await qc.cancelQueries({ queryKey: ["zabbix", "getDisabledTriggers"] });
+      const prev = qc.getQueryData<any[]>(["zabbix", "getDisabledTriggers"]);
+      qc.setQueryData<any[]>(["zabbix", "getDisabledTriggers"], (old) =>
+        Array.isArray(old) ? old.filter((t: any) => t.triggerid !== triggerid) : old,
+      );
+      return { prev };
+    },
     onSuccess: async (_d, triggerid) => {
       await logAudit({ action: "Включение триггера Zabbix", module: "monitoring", details: `triggerid=${triggerid}` });
       toast({ title: "Триггер снова включён" });
@@ -72,7 +81,10 @@ export default function MonitoringProblems({
       qc.invalidateQueries({ queryKey: ["zabbix", "getAlerts"] });
       refetchDisabled();
     },
-    onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
+    onError: (e: Error, _triggerid, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(["zabbix", "getDisabledTriggers"], ctx.prev);
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    },
   });
 
   const problemsArr = Array.isArray(problems) ? problems : [];
@@ -90,33 +102,63 @@ export default function MonitoringProblems({
   });
   const dismissedSet = useMemo(() => new Set(dismissed), [dismissed]);
 
-  const filteredProblems = useMemo(() => {
-    let list = problemsArr;
-    if (!showDismissed) list = list.filter((p: any) => !dismissedSet.has(p.eventid));
+  // Merge problems + active triggers (alerts) into a single list keyed by triggerid.
+  // Problems have richer data (eventid, acknowledge state); alerts fill gaps where
+  // Zabbix has an active trigger but no open problem event.
+  const mergedActive = useMemo(() => {
+    const byTrigger = new Map<string, any>();
+    for (const a of alertsArr) {
+      const tid = a.triggerid;
+      if (!tid) continue;
+      byTrigger.set(tid, {
+        triggerid: tid,
+        eventid: null,
+        host: a.hosts?.[0]?.name || "—",
+        hostid: a.hosts?.[0]?.hostid || null,
+        name: a.description,
+        severity: a.priority,
+        clock: a.lastchange,
+        acknowledged: false,
+        source: "trigger" as const,
+      });
+    }
+    for (const p of problemsArr) {
+      const tid = p.objectid;
+      const existing = tid ? byTrigger.get(tid) : null;
+      const hostName = p.hosts?.[0]?.name || existing?.host || "—";
+      const hostId = p.hosts?.[0]?.hostid || existing?.hostid || null;
+      const row = {
+        triggerid: tid,
+        eventid: p.eventid,
+        host: hostName,
+        hostid: hostId,
+        name: p.name,
+        severity: p.severity,
+        clock: p.clock,
+        acknowledged: p.acknowledged === "1" || (p.acknowledges && p.acknowledges.length > 0),
+        raw: p,
+        source: "problem" as const,
+      };
+      if (tid) byTrigger.set(tid, row);
+      else byTrigger.set(`ev-${p.eventid}`, row);
+    }
+    let list = Array.from(byTrigger.values());
+    if (!showDismissed) {
+      list = list.filter((r) => !r.eventid || !dismissedSet.has(r.eventid));
+    }
     if (priorityFilter !== "all") {
-      list = list.filter((p: any) => p.severity === priorityFilter);
+      list = list.filter((r) => String(r.severity) === priorityFilter);
     }
     if (hostFilter) {
       const q = hostFilter.toLowerCase();
-      list = list.filter((p: any) => (p.name || "").toLowerCase().includes(q));
-    }
-    return list;
-  }, [problemsArr, priorityFilter, hostFilter, dismissedSet, showDismissed]);
-
-  const filteredAlerts = useMemo(() => {
-    let list = alertsArr;
-    if (priorityFilter !== "all") {
-      list = list.filter((a: any) => a.priority === priorityFilter);
-    }
-    if (hostFilter) {
-      const q = hostFilter.toLowerCase();
-      list = list.filter((a: any) =>
-        (a.description || "").toLowerCase().includes(q) ||
-        (a.hosts?.[0]?.name || "").toLowerCase().includes(q)
+      list = list.filter((r) =>
+        (r.name || "").toLowerCase().includes(q) ||
+        (r.host || "").toLowerCase().includes(q),
       );
     }
+    list.sort((a, b) => parseInt(b.clock || "0") - parseInt(a.clock || "0"));
     return list;
-  }, [alertsArr, priorityFilter, hostFilter]);
+  }, [problemsArr, alertsArr, priorityFilter, hostFilter, dismissedSet, showDismissed]);
 
   const closeMutation = useMutation({
     mutationFn: async (eventid: string) => {
@@ -140,15 +182,25 @@ export default function MonitoringProblems({
   });
 
   const disableTriggerMutation = useMutation({
-    mutationFn: async (triggerid: string) => {
+    mutationFn: async ({ triggerid, eventid }: { triggerid: string; eventid?: string | null }) => {
       const { data, error } = await invokeZabbix({
         body: { action: "setTriggerStatus", params: { triggerids: [triggerid], disabled: true } },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      // Also close linked event so the row leaves the active list immediately.
+      if (eventid) {
+        try {
+          await invokeZabbix({
+            body: { action: "closeEvent", params: { eventids: [eventid] } },
+          });
+        } catch (_) {
+          // Non-fatal: trigger is disabled; event will roll off shortly.
+        }
+      }
       return data;
     },
-    onSuccess: async (_data, triggerid) => {
+    onSuccess: async (_data, { triggerid }) => {
       await logAudit({
         action: "Отключение триггера Zabbix",
         module: "monitoring",
@@ -157,6 +209,7 @@ export default function MonitoringProblems({
       toast({ title: "Триггер отключён в Zabbix" });
       qc.invalidateQueries({ queryKey: ["zabbix", "getProblems"] });
       qc.invalidateQueries({ queryKey: ["zabbix", "getAlerts"] });
+      qc.invalidateQueries({ queryKey: ["zabbix", "getDisabledTriggers"] });
     },
     onError: (e: Error) => toast({ title: "Ошибка", description: e.message, variant: "destructive" }),
   });
