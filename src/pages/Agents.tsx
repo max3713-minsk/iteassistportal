@@ -10,6 +10,39 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Cpu, HardDrive, RefreshCw, Search, Ticket as TicketIcon, MonitorSmartphone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+const CURRENT_AGENT_VERSION = "0.2.0";
+
+function AgentVersionBadge({ version }: { version?: string | null }) {
+  if (!version) {
+    return <Badge variant="secondary" className="font-mono text-[10px]">неизвестно</Badge>;
+  }
+  const outdated = version !== CURRENT_AGENT_VERSION;
+  const badge = (
+    <Badge
+      className={
+        "font-mono text-[10px] " +
+        (outdated
+          ? "bg-orange-500 hover:bg-orange-500 text-white border-transparent"
+          : "bg-green-600 hover:bg-green-600 text-white border-transparent")
+      }
+    >
+      v{version}
+    </Badge>
+  );
+  if (!outdated) return badge;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild><span>{badge}</span></TooltipTrigger>
+        <TooltipContent>Доступно обновление (актуальная v{CURRENT_AGENT_VERSION})</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+export { AgentVersionBadge, CURRENT_AGENT_VERSION };
 
 type AgentRow = {
   id: string;
@@ -140,16 +173,17 @@ export default function Agents() {
                 <TableHead>CPU</TableHead>
                 <TableHead>RAM</TableHead>
                 <TableHead>Оборудование</TableHead>
+                <TableHead>Версия</TableHead>
                 <TableHead>Последняя активность</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Загрузка...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Загрузка...</TableCell></TableRow>
               )}
               {!isLoading && filtered.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Агенты не зарегистрированы</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Агенты не зарегистрированы</TableCell></TableRow>
               )}
               {filtered.map((a) => {
                 const online = isOnline(a.last_seen_at);
@@ -186,6 +220,7 @@ export default function Agents() {
                         <Link to={`/equipment`} className="hover:underline">{a.equipment.name}</Link>
                       ) : <span className="text-muted-foreground">не привязан</span>}
                     </TableCell>
+                    <TableCell><AgentVersionBadge version={a.agent_version} /></TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {a.last_seen_at
                         ? formatDistanceToNow(new Date(a.last_seen_at), { addSuffix: true, locale: ru })
