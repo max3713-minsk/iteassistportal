@@ -20,6 +20,7 @@ import {
   priorityColor, priorityLabel, duration,
 } from "./monitoringUtils";
 import { formatItemValue, isStale, ageLabel } from "./formatMetric";
+import { AgentVersionBadge } from "@/pages/Agents";
 
 interface Props {
   hosts: any[];
