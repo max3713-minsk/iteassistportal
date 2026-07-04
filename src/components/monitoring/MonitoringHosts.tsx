@@ -212,6 +212,7 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
                         <Link to={`/agents/${a.id}`} className="block">
                           <div className="font-medium text-primary hover:underline">{a.hostname || a.agent_id}</div>
                           <div className="font-mono text-[10px] text-muted-foreground">{a.agent_id}</div>
+                          <div className="mt-0.5"><AgentVersionBadge version={a.agent_version} /></div>
                         </Link>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
