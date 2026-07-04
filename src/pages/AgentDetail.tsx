@@ -17,6 +17,8 @@ import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgentProcesses } from "@/components/agent/AgentProcesses";
 import { AgentInventory } from "@/components/agent/AgentInventory";
+import { AgentEvents } from "@/components/agent/AgentEvents";
+import { AgentVersionBadge } from "@/pages/Agents";
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false;
@@ -151,7 +153,10 @@ export default function AgentDetail() {
 
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{agent.hostname || agent.agent_id}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight">{agent.hostname || agent.agent_id}</h1>
+            <AgentVersionBadge version={agent.agent_version} />
+          </div>
           <p className="text-sm text-muted-foreground font-mono">{agent.agent_id}</p>
         </div>
         <Badge variant={online ? "default" : "secondary"} className={online ? "bg-green-600 hover:bg-green-600" : ""}>
@@ -326,6 +331,8 @@ export default function AgentDetail() {
       {agent.agent_id && <AgentProcesses agentId={agent.agent_id} />}
 
       {agent.agent_id && <AgentInventory agentId={agent.agent_id} />}
+
+      {agent.agent_id && <AgentEvents agentId={agent.agent_id} />}
     </div>
   );
 }
