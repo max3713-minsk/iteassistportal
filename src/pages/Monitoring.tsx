@@ -207,7 +207,7 @@ export default function Monitoring() {
           <TabsTrigger value="tz">Покрытие регламента</TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1">
             <ScrollText className="h-3.5 w-3.5" />
-            Логи и ИИ
+            Анализ логов оборудования
           </TabsTrigger>
           <TabsTrigger value="catalog" className="flex items-center gap-1">
             <Boxes className="h-3.5 w-3.5" />
