@@ -107,6 +107,9 @@ export default function MonitoringLogs() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+      <div className="lg:col-span-2 rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        Здесь анализируются файлы логов, выгруженные с сетевого оборудования вручную. События серверов с установленным агентом смотрите в карточке агента.
+      </div>
       {/* Sidebar: оборудование с пунктами «анализ логов» */}
       <Card className="self-start">
         <CardHeader className="pb-3">
@@ -178,7 +181,7 @@ export default function MonitoringLogs() {
             <CardContent className="py-16 text-center text-sm text-muted-foreground">
               <ScrollText className="h-10 w-10 mx-auto mb-3 opacity-30" />
               Выберите оборудование слева, чтобы загрузить логи и посмотреть историю анализа.
-              <p className="mt-2 text-xs">Источники: ручная загрузка файла, SSH/SCP (скоро), Ansible-плейбук (скоро), vCenter / vmkernel.log.</p>
+              <p className="mt-2 text-xs">Загрузите файл лога с оборудования — ИИ проанализирует его и выделит ошибки. Результат привязывается к пункту регламента.</p>
             </CardContent>
           </Card>
         ) : (
@@ -210,7 +213,7 @@ export default function MonitoringLogs() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Анализ привязывается к выбранному пункту регламента — затем виден в карточке протокола и в истории ниже. Можно выгрузить лог и без привязки.
+                  Загрузите файл лога с оборудования — ИИ проанализирует его и выделит ошибки. Результат привязывается к пункту регламента. Можно выгрузить лог и без привязки.
                 </p>
               </CardContent>
             </Card>
