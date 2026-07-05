@@ -107,6 +107,9 @@ export default function MonitoringLogs() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+      <div className="lg:col-span-2 rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        Здесь анализируются файлы логов, выгруженные с сетевого оборудования вручную. События серверов с установленным агентом смотрите в карточке агента.
+      </div>
       {/* Sidebar: оборудование с пунктами «анализ логов» */}
       <Card className="self-start">
         <CardHeader className="pb-3">
