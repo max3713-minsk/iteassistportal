@@ -201,7 +201,6 @@ export default function Monitoring() {
           <TabsTrigger value="heatmap">Тепловая карта</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
-          <TabsTrigger value="tz">Покрытие регламента</TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1">
             <ScrollText className="h-3.5 w-3.5" />
             Анализ логов оборудования
@@ -255,20 +254,6 @@ export default function Monitoring() {
             scripts={scripts}
             isZabbixConfigured={isZabbixConfigured}
           />
-        </TabsContent>
-
-        <TabsContent value="tz">
-          <div className="space-y-6">
-            <WorkScopeCoverage />
-            <Accordion type="single" collapsible>
-              <AccordionItem value="legacy">
-                <AccordionTrigger className="text-sm">Старое представление: пункты ТЗ</AccordionTrigger>
-                <AccordionContent>
-                  <TZCoverage />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
         </TabsContent>
 
         <TabsContent value="logs">
