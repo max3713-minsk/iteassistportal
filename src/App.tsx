@@ -28,6 +28,7 @@ import Profile from "@/pages/Profile";
 import Chat from "@/pages/Chat";
 import Agents from "@/pages/Agents";
 import AgentDetail from "@/pages/AgentDetail";
+import OAuthConsent from "@/pages/OAuthConsent";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
           <ZabbixConnectionProvider>
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route element={<ProtectedRoutes />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/sites" element={<Navigate to="/organizations?tab=sites" replace />} />
