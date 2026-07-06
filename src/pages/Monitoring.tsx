@@ -18,11 +18,8 @@ import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
 import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
-import TZCoverage from "@/components/monitoring/TZCoverage";
 import ProblemsHeatmap from "@/components/monitoring/ProblemsHeatmap";
 import MonitoringLogs from "@/components/monitoring/MonitoringLogs";
-import WorkScopeCoverage from "@/components/monitoring/WorkScopeCoverage";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
