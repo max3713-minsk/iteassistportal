@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,9 @@ export default function Auth() {
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const nextTarget = nextParam && nextParam.startsWith("/") ? nextParam : "/";
 
   useEffect(() => {
     // Check whether system is empty and offers initial superadmin setup.
@@ -54,7 +57,8 @@ export default function Auth() {
     if (error) {
       toast({ title: "Ошибка входа", description: error.message, variant: "destructive" });
     } else {
-      navigate("/");
+      // Full navigation so the OAuth consent route re-reads the session.
+      window.location.href = nextTarget;
     }
     setLoading(false);
   };
@@ -67,7 +71,7 @@ export default function Auth() {
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: window.location.origin + nextTarget,
       },
     });
     if (error) {
