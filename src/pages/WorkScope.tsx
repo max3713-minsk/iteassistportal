@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { ListChecks, Tag, Lightbulb } from "lucide-react";
+import { ListChecks, Tag, Lightbulb, BarChart3 } from "lucide-react";
 import WorkScopeManager from "@/components/help/WorkScopeManager";
 import EquipmentCategoriesManager from "@/components/help/EquipmentCategoriesManager";
+import WorkScopeCoverage from "@/components/monitoring/WorkScopeCoverage";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function WorkScope() {
@@ -35,6 +36,9 @@ export default function WorkScope() {
           <TabsTrigger value="cats" className="gap-1.5">
             <Tag className="h-3.5 w-3.5" /> Категории
           </TabsTrigger>
+          <TabsTrigger value="coverage" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" /> Покрытие работ
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scope" className="space-y-4 mt-4">
@@ -58,6 +62,10 @@ export default function WorkScope() {
 
         <TabsContent value="cats" className="space-y-4 mt-4">
           <EquipmentCategoriesManager />
+        </TabsContent>
+
+        <TabsContent value="coverage" className="space-y-4 mt-4">
+          <WorkScopeCoverage />
         </TabsContent>
       </Tabs>
     </div>

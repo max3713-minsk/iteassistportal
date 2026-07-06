@@ -18,11 +18,8 @@ import MonitoringGraphs from "@/components/monitoring/MonitoringGraphs";
 import MonitoringAutomation from "@/components/monitoring/MonitoringAutomation";
 import HostManagement from "@/components/monitoring/HostManagement";
 import TemplateLibrary from "@/components/monitoring/TemplateLibrary";
-import TZCoverage from "@/components/monitoring/TZCoverage";
 import ProblemsHeatmap from "@/components/monitoring/ProblemsHeatmap";
 import MonitoringLogs from "@/components/monitoring/MonitoringLogs";
-import WorkScopeCoverage from "@/components/monitoring/WorkScopeCoverage";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 /* ─── Zabbix configured check ─── */
 function useZabbixConfigured() {
@@ -204,7 +201,6 @@ export default function Monitoring() {
           <TabsTrigger value="heatmap">Тепловая карта</TabsTrigger>
           <TabsTrigger value="graphs">Графики</TabsTrigger>
           <TabsTrigger value="automation">Автоматизация</TabsTrigger>
-          <TabsTrigger value="tz">Покрытие регламента</TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1">
             <ScrollText className="h-3.5 w-3.5" />
             Анализ логов оборудования
@@ -258,20 +254,6 @@ export default function Monitoring() {
             scripts={scripts}
             isZabbixConfigured={isZabbixConfigured}
           />
-        </TabsContent>
-
-        <TabsContent value="tz">
-          <div className="space-y-6">
-            <WorkScopeCoverage />
-            <Accordion type="single" collapsible>
-              <AccordionItem value="legacy">
-                <AccordionTrigger className="text-sm">Старое представление: пункты ТЗ</AccordionTrigger>
-                <AccordionContent>
-                  <TZCoverage />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
         </TabsContent>
 
         <TabsContent value="logs">
