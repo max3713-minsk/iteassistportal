@@ -36,7 +36,6 @@ const sections: { id: string; title: string; adminOnly?: boolean; items: NavItem
     items: [
       { to: "/", icon: LayoutDashboard, label: "Панель управления", roles: [], moduleKey: "dashboard" },
       { to: "/tickets", icon: Ticket, label: "Заявки", roles: [], moduleKey: "tickets", badgeKey: "tickets" },
-      { to: "/chat", icon: MessageSquare, label: "Чат", roles: [], moduleKey: "tickets", badgeKey: "chat" },
       { to: "/notifications", icon: Bell, label: "Уведомления", roles: [], moduleKey: "notifications", badgeKey: "notifications" },
     ],
   },

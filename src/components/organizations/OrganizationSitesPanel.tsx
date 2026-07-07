@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, MapPin, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Building2, Server, ExternalLink } from "lucide-react";
 import { ConfirmDialog } from "@/components/users/ConfirmDialog";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface SiteForm {
   name: string;
@@ -46,6 +48,19 @@ export default function OrganizationSitesPanel() {
         .order("name");
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const { data: equipCounts = {} } = useQuery({
+    queryKey: ["sites-equipment-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipment").select("site_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        if (r.site_id) counts[r.site_id] = (counts[r.site_id] ?? 0) + 1;
+      });
+      return counts;
     },
   });
 
@@ -171,6 +186,7 @@ export default function OrganizationSitesPanel() {
                   <TableHead>Организация</TableHead>
                   <TableHead>Город</TableHead>
                   <TableHead className="hidden md:table-cell">Адрес</TableHead>
+                  <TableHead>Оборудование</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,6 +202,19 @@ export default function OrganizationSitesPanel() {
                       </span>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{s.address ?? "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="gap-1">
+                          <Server className="h-3 w-3" />
+                          {equipCounts[s.id] ?? 0}
+                        </Badge>
+                        <Button asChild variant="ghost" size="sm" className="h-7 px-2">
+                          <Link to={`/equipment?site=${s.id}`}>
+                            Открыть <ExternalLink className="h-3 w-3 ml-1" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
