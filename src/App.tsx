@@ -25,7 +25,6 @@ import InfrastructureMaps from "@/pages/InfrastructureMaps";
 import SystemReset from "@/pages/SystemReset";
 import AdminMigrations from "@/pages/AdminMigrations";
 import Profile from "@/pages/Profile";
-import Chat from "@/pages/Chat";
 import Agents from "@/pages/Agents";
 import AgentDetail from "@/pages/AgentDetail";
 import OAuthConsent from "@/pages/OAuthConsent";
@@ -91,8 +90,8 @@ const App = () => (
               <Route path="/admin/migrations" element={<AdminMigrations />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/help" element={<HelpReference />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/chat/:threadId" element={<Chat />} />
+              <Route path="/chat" element={<Navigate to="/" replace />} />
+              <Route path="/chat/:threadId" element={<Navigate to="/" replace />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
