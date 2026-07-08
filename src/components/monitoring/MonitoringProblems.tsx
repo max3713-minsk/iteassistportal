@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { invokeZabbix } from "@/lib/zabbix-invoke";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,14 +10,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye, BellOff, Bell } from "lucide-react";
+import { Search, CheckCircle2, MessageSquarePlus, Check, X, Loader2, Trash2, Eye, BellOff, Bell, ArrowUp, ArrowDown, ArrowUpDown, Download, Layers } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/lib/audit";
 import { priorityColor, priorityLabel, priorityToIncident, duration } from "./monitoringUtils";
 import { ProblemFlagBadge } from "./ProblemFlagBadge";
 import { invokeZabbix as invokeZbx } from "@/lib/zabbix-invoke";
+
+const LS_KEY = "monitoring.problems.filters.v2";
+type SortBy = "time" | "severity" | "host" | "source";
+type SortDir = "asc" | "desc";
+
+const SEVERITY_ORDER: Array<{ value: string; label: string; short: string; cls: string }> = [
+  { value: "5", label: "Катастрофа",   short: "Кат.",  cls: "bg-red-600/15 text-red-600 border-red-600/30" },
+  { value: "4", label: "Высокий",      short: "Выс.",  cls: "bg-orange-600/15 text-orange-600 border-orange-600/30" },
+  { value: "3", label: "Средний",      short: "Ср.",   cls: "bg-yellow-500/15 text-yellow-600 border-yellow-500/30" },
+  { value: "2", label: "Предупр.",     short: "Пред.", cls: "bg-amber-500/10 text-amber-600 border-amber-500/25" },
+  { value: "1", label: "Информация",   short: "Инф.",  cls: "bg-sky-500/10 text-sky-600 border-sky-500/25" },
+  { value: "0", label: "Не классиф.",  short: "н/к",   cls: "bg-muted text-muted-foreground border-border" },
+];
+
+function loadLS(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; }
+}
+function saveLS(v: Record<string, any>) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch { /* noop */ }
+}
+function csvEscape(v: any): string {
+  const s = v == null ? "" : String(v);
+  if (/[",;\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
 
 interface Props {
   problems: any[];
@@ -38,11 +65,31 @@ export default function MonitoringProblems({
   const { hasRole, user } = useAuth();
   const isAdmin = hasRole("admin");
   const qc = useQueryClient();
-  const [priorityFilter, setPriorityFilter] = useState(initialPriorityFilter || "all");
-  const [hostFilter, setHostFilter] = useState("");
+  const persisted = loadLS();
+  const [priorityFilter, setPriorityFilter] = useState<string>(initialPriorityFilter || persisted.priorityFilter || "all");
+  const [hostFilter, setHostFilter] = useState<string>(persisted.hostFilter || "");
   const [viewMode, setViewMode] = useState<"active" | "disabled">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [showDismissed, setShowDismissed] = useState(false);
+  const [showDismissed, setShowDismissed] = useState<boolean>(!!persisted.showDismissed);
+  const [onlyUnack, setOnlyUnack] = useState<boolean>(!!persisted.onlyUnack);
+  const [groupByHost, setGroupByHost] = useState<boolean>(!!persisted.groupByHost);
+  const [sortBy, setSortBy] = useState<SortBy>((persisted.sortBy as SortBy) || "time");
+  const [sortDir, setSortDir] = useState<SortDir>((persisted.sortDir as SortDir) || "desc");
+
+  useEffect(() => {
+    saveLS({ priorityFilter, hostFilter, showDismissed, onlyUnack, groupByHost, sortBy, sortDir });
+  }, [priorityFilter, hostFilter, showDismissed, onlyUnack, groupByHost, sortBy, sortDir]);
+
+  const toggleSort = (col: SortBy) => {
+    if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortBy(col); setSortDir(col === "host" || col === "source" ? "asc" : "desc"); }
+  };
+  const SortIcon = ({ col }: { col: SortBy }) => {
+    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-40" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="h-3 w-3 inline ml-1" />
+      : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  };
 
   const { data: disabledTriggers = [], isLoading: disabledLoading, refetch: refetchDisabled } = useQuery({
     queryKey: ["zabbix", "getDisabledTriggers"],
@@ -105,7 +152,9 @@ export default function MonitoringProblems({
   // Merge problems + active triggers (alerts) into a single list keyed by triggerid.
   // Problems have richer data (eventid, acknowledge state); alerts fill gaps where
   // Zabbix has an active trigger but no open problem event.
-  const mergedActive = useMemo(() => {
+  // pre-priority list — used for severity counters (so numbers reflect all matches
+  // regardless of active priority chip, but respect host filter + dismissed toggle).
+  const mergedRaw = useMemo(() => {
     const byTrigger = new Map<string, any>();
     for (const a of alertsArr) {
       const tid = a.triggerid;
@@ -146,9 +195,6 @@ export default function MonitoringProblems({
     if (!showDismissed) {
       list = list.filter((r) => !r.eventid || !dismissedSet.has(r.eventid));
     }
-    if (priorityFilter !== "all") {
-      list = list.filter((r) => String(r.severity) === priorityFilter);
-    }
     if (hostFilter) {
       const q = hostFilter.toLowerCase();
       list = list.filter((r) =>
@@ -156,9 +202,68 @@ export default function MonitoringProblems({
         (r.host || "").toLowerCase().includes(q),
       );
     }
-    list.sort((a, b) => parseInt(b.clock || "0") - parseInt(a.clock || "0"));
     return list;
-  }, [problemsArr, alertsArr, priorityFilter, hostFilter, dismissedSet, showDismissed]);
+  }, [problemsArr, alertsArr, hostFilter, dismissedSet, showDismissed]);
+
+  const severityCounts = useMemo(() => {
+    const c: Record<string, number> = { "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+    for (const r of mergedRaw) {
+      const s = String(parseInt(r.severity || "0"));
+      if (c[s] !== undefined) c[s]++;
+    }
+    return c;
+  }, [mergedRaw]);
+
+  const mergedActive = useMemo(() => {
+    let list = mergedRaw;
+    if (priorityFilter !== "all") list = list.filter((r) => String(r.severity) === priorityFilter);
+    if (onlyUnack) list = list.filter((r) => !r.acknowledged);
+    const dir = sortDir === "asc" ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "time") cmp = parseInt(a.clock || "0") - parseInt(b.clock || "0");
+      else if (sortBy === "severity") cmp = parseInt(a.severity || "0") - parseInt(b.severity || "0");
+      else if (sortBy === "host") cmp = (a.host || "").localeCompare(b.host || "", "ru");
+      else if (sortBy === "source") cmp = (a.source || "").localeCompare(b.source || "");
+      if (cmp === 0) cmp = parseInt(a.clock || "0") - parseInt(b.clock || "0");
+      return dir * cmp;
+    });
+    return list;
+  }, [mergedRaw, priorityFilter, onlyUnack, sortBy, sortDir]);
+
+  const groupedActive = useMemo(() => {
+    if (!groupByHost) return null;
+    const map = new Map<string, any[]>();
+    for (const r of mergedActive) {
+      const key = r.host || "—";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
+  }, [mergedActive, groupByHost]);
+
+  const exportCsv = () => {
+    const header = ["Хост", "Описание", "Серьёзность", "Источник", "Время", "Длительность", "Подтверждено", "eventid", "triggerid"];
+    const rows = mergedActive.map((r) => [
+      r.host,
+      r.name,
+      priorityLabel(r.severity),
+      r.source === "problem" ? "Проблема" : "Триггер",
+      r.clock ? new Date(parseInt(r.clock) * 1000).toLocaleString("ru-RU") : "",
+      r.clock ? duration(r.clock) : "",
+      r.acknowledged ? "да" : "нет",
+      r.eventid || "",
+      r.triggerid || "",
+    ]);
+    const csv = [header, ...rows].map((row) => row.map(csvEscape).join(";")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `problems_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const closeMutation = useMutation({
     mutationFn: async (eventid: string) => {
@@ -314,7 +419,52 @@ export default function MonitoringProblems({
             Вернуть все
           </Button>
         )}
+        {viewMode === "active" && (
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={mergedActive.length === 0} title="Экспорт текущего списка">
+            <Download className="h-4 w-4 mr-1" />CSV
+          </Button>
+        )}
       </div>
+
+      {viewMode === "active" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={priorityFilter === "all" ? "default" : "outline"}
+            className="h-7 px-2"
+            onClick={() => setPriorityFilter("all")}
+          >
+            Все <span className="ml-1.5 opacity-80">{mergedRaw.length}</span>
+          </Button>
+          {SEVERITY_ORDER.map((s) => {
+            const active = priorityFilter === s.value;
+            const count = severityCounts[s.value] || 0;
+            return (
+              <Button
+                key={s.value}
+                size="sm"
+                variant="outline"
+                className={`h-7 px-2 border ${s.cls} ${active ? "ring-2 ring-offset-1 ring-current" : "opacity-90"}`}
+                onClick={() => setPriorityFilter(active ? "all" : s.value)}
+                title={s.label}
+              >
+                {s.short} <span className="ml-1.5 font-semibold">{count}</span>
+              </Button>
+            );
+          })}
+          <div className="mx-2 h-5 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <Switch id="only-unack" checked={onlyUnack} onCheckedChange={setOnlyUnack} />
+            <Label htmlFor="only-unack" className="text-xs cursor-pointer">Только неподтверждённые</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="group-host" checked={groupByHost} onCheckedChange={setGroupByHost} />
+            <Label htmlFor="group-host" className="text-xs cursor-pointer flex items-center gap-1">
+              <Layers className="h-3 w-3" />Группировать по хосту
+            </Label>
+          </div>
+        </div>
+      )}
 
       {isStaff && selected.size > 0 && viewMode === "active" && (
         <div className="sticky top-2 z-10 flex items-center gap-2 rounded-md border bg-background/95 backdrop-blur p-2 shadow-sm">
@@ -370,35 +520,37 @@ export default function MonitoringProblems({
                       </TableHead>
                     )}
                     <TableHead>Категория</TableHead>
-                    <TableHead>Хост</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("host")}>Хост<SortIcon col="host" /></TableHead>
                     <TableHead>Описание</TableHead>
-                    <TableHead>Серьёзность</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("severity")}>Серьёзность<SortIcon col="severity" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("source")}>Источник<SortIcon col="source" /></TableHead>
                     <TableHead>Метка</TableHead>
-                    <TableHead>Время</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("time")}>Время<SortIcon col="time" /></TableHead>
                     <TableHead>Длительность</TableHead>
                     <TableHead>Подтверждено</TableHead>
                     {isStaff && <TableHead className="text-right">Действия</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mergedActive.map((r) => {
-                    const incident = priorityToIncident(r.severity);
-                    const isAcknowledged = !!r.acknowledged;
-                    const isDismissed = r.eventid ? dismissedSet.has(r.eventid) : false;
-                    const rowKey = r.eventid || `t-${r.triggerid}`;
-                    const ticketPayload = r.raw || {
-                      name: r.name,
-                      description: r.name,
-                      severity: r.severity,
-                      priority: r.severity,
-                      lastchange: r.clock,
-                      clock: r.clock,
-                      triggerid: r.triggerid,
-                      hosts: [{ name: r.host, hostid: r.hostid }],
-                    };
-                    return (
-                      <TableRow key={rowKey} className={isDismissed ? "opacity-50" : undefined}>
-                        {isStaff && (
+                  {(() => {
+                    const renderRow = (r: any) => {
+                      const incident = priorityToIncident(r.severity);
+                      const isAcknowledged = !!r.acknowledged;
+                      const isDismissed = r.eventid ? dismissedSet.has(r.eventid) : false;
+                      const rowKey = r.eventid || `t-${r.triggerid}`;
+                      const ticketPayload = r.raw || {
+                        name: r.name,
+                        description: r.name,
+                        severity: r.severity,
+                        priority: r.severity,
+                        lastchange: r.clock,
+                        clock: r.clock,
+                        triggerid: r.triggerid,
+                        hosts: [{ name: r.host, hostid: r.hostid }],
+                      };
+                      return (
+                        <TableRow key={rowKey} className={isDismissed ? "opacity-50" : undefined}>
+                          {isStaff && (
                           <TableCell>
                             {r.eventid ? (
                               <Checkbox
@@ -411,11 +563,25 @@ export default function MonitoringProblems({
                         <TableCell>
                           <span className={`text-xs font-medium ${incident.color}`}>{incident.label}</span>
                         </TableCell>
-                        <TableCell className="font-medium">{r.host}</TableCell>
+                          <TableCell className="font-medium">
+                            <button
+                              type="button"
+                              className="hover:underline text-left"
+                              onClick={() => setHostFilter(r.host || "")}
+                              title="Фильтровать по этому хосту"
+                            >
+                              {r.host}
+                            </button>
+                          </TableCell>
                         <TableCell className="max-w-[300px]">{r.name}</TableCell>
                         <TableCell>
                           <Badge variant={priorityColor(r.severity) as any}>{priorityLabel(r.severity)}</Badge>
                         </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {r.source === "problem" ? "Проблема" : "Триггер"}
+                            </Badge>
+                          </TableCell>
                         <TableCell>
                           <ProblemFlagBadge
                             eventid={r.eventid || undefined}
@@ -478,8 +644,24 @@ export default function MonitoringProblems({
                           </TableCell>
                         )}
                       </TableRow>
-                    );
-                  })}
+                      );
+                    };
+
+                    const colspan = isStaff ? 10 : 9;
+                    if (groupedActive) {
+                      return groupedActive.map(([host, rows]) => (
+                        <Fragment key={`g-${host}`}>
+                          <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableCell colSpan={colspan} className="py-1.5 text-xs font-semibold text-muted-foreground">
+                              {host} <span className="ml-2 opacity-70">· {rows.length}</span>
+                            </TableCell>
+                          </TableRow>
+                          {rows.map(renderRow)}
+                        </Fragment>
+                      ));
+                    }
+                    return mergedActive.map(renderRow);
+                  })()}
                 </TableBody>
               </Table>
             )}
