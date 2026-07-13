@@ -110,7 +110,7 @@ export default function MonitoringLogs() {
   const selectedEqObj = eqList.find((e) => e.id === selectedEq) ?? null;
 
   // Реестр файлов на SFTP для выбранного оборудования
-  const { data: sftpFiles = [], refetch: refetchFiles } = useQuery({
+  const { data: sftpFiles = [] } = useQuery({
     queryKey: ["equipment-log-files", selectedEq],
     queryFn: async () => {
       if (!selectedEq) return [];
