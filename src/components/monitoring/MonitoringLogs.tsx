@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Sparkles, FileText, Search, ScrollText, CloudOff } from "lucide-react";
+import { Sparkles, FileText, Search, ScrollText, CloudOff, RefreshCw, HardDrive, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { isLogAnalysisTask } from "@/lib/log-task-detect";
 import LogAnalysisDialog from "@/components/logs/LogAnalysisDialog";
 import { LogResultView, type LogAnalysis } from "@/components/logs/LogResultView";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Monitoring → tab "Логи".
@@ -24,11 +25,14 @@ import { LogResultView, type LogAnalysis } from "@/components/logs/LogResultView
  *   + кнопка «Загрузить и проанализировать» открывает LogAnalysisDialog.
  */
 export default function MonitoringLogs() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [onlyWithLogTasks, setOnlyWithLogTasks] = useState(false);
   const [selectedEq, setSelectedEq] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [dlgOpen, setDlgOpen] = useState(false);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   // Всё оборудование.
   const { data: equipmentList = [] } = useQuery({
@@ -104,6 +108,85 @@ export default function MonitoringLogs() {
   });
 
   const selectedEqObj = eqList.find((e) => e.id === selectedEq) ?? null;
+
+  // Реестр файлов на SFTP для выбранного оборудования
+  const { data: sftpFiles = [] } = useQuery({
+    queryKey: ["equipment-log-files", selectedEq],
+    queryFn: async () => {
+      if (!selectedEq) return [];
+      const { data, error } = await supabase
+        .from("equipment_log_files" as any)
+        .select("id, filename, file_path, size_bytes, file_mtime, status, analyzed_log_id, last_error")
+        .eq("equipment_id", selectedEq)
+        .order("file_mtime", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+    enabled: !!selectedEq,
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("log-storage-scan", {
+        body: { equipment_id: selectedEq },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data: any) => {
+      const r = data?.results?.[0];
+      if (r?.error) toast({ title: "Сканирование с ошибкой", description: r.error, variant: "destructive" });
+      else toast({ title: "Сканирование завершено", description: `Найдено: ${r?.found ?? 0}` });
+      qc.invalidateQueries({ queryKey: ["equipment-log-files", selectedEq] });
+    },
+    onError: (e: any) => toast({ title: "Ошибка сканирования", description: e.message, variant: "destructive" }),
+  });
+
+  async function analyzeFromSftp(fileRow: any) {
+    if (!selectedEq) return;
+    setAnalyzingId(fileRow.id);
+    try {
+      const fetched = await supabase.functions.invoke("log-storage-scan", {
+        body: { action: "fetch_file", file_id: fileRow.id },
+      });
+      if (fetched.error) throw fetched.error;
+      const { text, filename, size_bytes } = (fetched.data ?? {}) as any;
+      if (!text) throw new Error("Не удалось прочитать файл");
+      const analyzed = await supabase.functions.invoke("analyze-log", { body: { text, filename } });
+      if (analyzed.error) throw analyzed.error;
+      const analysis = (analyzed.data as any)?.analysis;
+      const { data: inserted, error: insErr } = await supabase.from("equipment_logs").insert({
+        equipment_id: selectedEq,
+        source: "sftp",
+        filename,
+        raw_text: text.slice(0, 200_000),
+        size_bytes,
+        analysis,
+      } as any).select("id").single();
+      if (insErr) throw insErr;
+      await supabase.from("equipment_log_files" as any)
+        .update({ status: "analyzed", analyzed_log_id: inserted.id, last_error: null })
+        .eq("id", fileRow.id);
+      toast({ title: "Файл проанализирован", description: filename });
+      qc.invalidateQueries({ queryKey: ["equipment-logs", selectedEq] });
+      qc.invalidateQueries({ queryKey: ["equipment-log-files", selectedEq] });
+    } catch (e: any) {
+      await supabase.from("equipment_log_files" as any)
+        .update({ last_error: e.message?.slice(0, 500) ?? String(e) })
+        .eq("id", fileRow.id);
+      toast({ title: "Ошибка анализа", description: e.message ?? String(e), variant: "destructive" });
+    } finally {
+      setAnalyzingId(null);
+    }
+  }
+
+  function fmtSize(b: number | null): string {
+    if (!b) return "—";
+    if (b < 1024) return `${b} Б`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} КБ`;
+    return `${(b / 1024 / 1024).toFixed(2)} МБ`;
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
@@ -215,6 +298,55 @@ export default function MonitoringLogs() {
                 <p className="text-xs text-muted-foreground">
                   Загрузите файл лога с оборудования — ИИ проанализирует его и выделит ошибки. Результат привязывается к пункту регламента. Можно выгрузить лог и без привязки.
                 </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <HardDrive className="h-4 w-4 text-primary" /> Файлы на SFTP ({sftpFiles.length})
+                  </CardTitle>
+                  <Button size="sm" variant="outline"
+                    onClick={() => scanMutation.mutate()}
+                    disabled={scanMutation.isPending}>
+                    {scanMutation.isPending
+                      ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                    Сканировать
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {sftpFiles.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground">
+                    Реестр пуст. Настройте хранилище логов на карточке оборудования и запустите сканирование.
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {sftpFiles.map((f: any) => (
+                      <div key={f.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{f.filename}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {f.file_mtime ? format(new Date(f.file_mtime), "dd.MM.yyyy HH:mm") : "—"} · {fmtSize(f.size_bytes)}
+                            {f.last_error ? ` · ошибка: ${f.last_error}` : ""}
+                          </p>
+                        </div>
+                        {f.status === "analyzed" && <Badge variant="outline" className="text-[10px]">проанализирован</Badge>}
+                        {f.status === "new" && <Badge className="bg-blue-500 text-white text-[10px]">новый</Badge>}
+                        <Button size="sm" variant="ghost"
+                          onClick={() => analyzeFromSftp(f)}
+                          disabled={analyzingId === f.id}>
+                          {analyzingId === f.id
+                            ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                            : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                          Анализ
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

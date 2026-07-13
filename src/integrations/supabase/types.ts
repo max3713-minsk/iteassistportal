@@ -717,6 +717,11 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          log_extensions: string[] | null
+          log_filename_pattern: string | null
+          log_max_age_days: number | null
+          log_path: string | null
+          log_storage_id: string | null
           model: string | null
           name: string
           organization_id: string | null
@@ -742,6 +747,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          log_extensions?: string[] | null
+          log_filename_pattern?: string | null
+          log_max_age_days?: number | null
+          log_path?: string | null
+          log_storage_id?: string | null
           model?: string | null
           name: string
           organization_id?: string | null
@@ -767,6 +777,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          log_extensions?: string[] | null
+          log_filename_pattern?: string | null
+          log_max_age_days?: number | null
+          log_path?: string | null
+          log_storage_id?: string | null
           model?: string | null
           name?: string
           organization_id?: string | null
@@ -792,6 +807,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_log_storage_id_fkey"
+            columns: ["log_storage_id"]
+            isOneToOne: false
+            referencedRelation: "backup_storage_connections"
             referencedColumns: ["id"]
           },
           {
@@ -890,6 +912,73 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      equipment_log_files: {
+        Row: {
+          analyzed_log_id: string | null
+          discovered_at: string
+          equipment_id: string
+          file_mtime: string | null
+          file_path: string
+          filename: string
+          id: string
+          last_error: string | null
+          size_bytes: number | null
+          status: string
+          storage_id: string
+          updated_at: string
+        }
+        Insert: {
+          analyzed_log_id?: string | null
+          discovered_at?: string
+          equipment_id: string
+          file_mtime?: string | null
+          file_path: string
+          filename: string
+          id?: string
+          last_error?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_id: string
+          updated_at?: string
+        }
+        Update: {
+          analyzed_log_id?: string | null
+          discovered_at?: string
+          equipment_id?: string
+          file_mtime?: string | null
+          file_path?: string
+          filename?: string
+          id?: string
+          last_error?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_log_files_analyzed_log_id_fkey"
+            columns: ["analyzed_log_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_log_files_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_log_files_storage_id_fkey"
+            columns: ["storage_id"]
+            isOneToOne: false
+            referencedRelation: "backup_storage_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       equipment_logs: {
         Row: {
