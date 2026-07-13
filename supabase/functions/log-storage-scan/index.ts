@@ -4,6 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import SftpClient from "npm:ssh2-sftp-client@10.0.3";
+import { Buffer } from "node:buffer";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -102,6 +103,35 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const action: "scan" | "fetch_file" = body.action ?? "scan";
+
+    if (action === "fetch_file") {
+      const fileId: string | undefined = body.file_id;
+      if (!fileId) throw new Error("file_id required");
+      const { data: rec, error: recErr } = await supabase
+        .from("equipment_log_files")
+        .select("id, file_path, filename, size_bytes, storage_id, equipment_id")
+        .eq("id", fileId).single();
+      if (recErr || !rec) throw new Error("Файл не найден в реестре");
+      const { data: s } = await supabase
+        .from("backup_storage_connections").select("*").eq("id", rec.storage_id).single();
+      if (!s) throw new Error("Хранилище недоступно");
+      const MAX_BYTES = 4 * 1024 * 1024; // 4 МБ хвостом достаточно для ИИ (~60КБ после trim)
+      let sftp: SftpClient | null = null;
+      try {
+        sftp = await connect(s as Storage);
+        const buf = (await sftp.get(rec.file_path)) as Buffer;
+        const slice = buf.length > MAX_BYTES ? buf.subarray(buf.length - MAX_BYTES) : buf;
+        const text = new TextDecoder("utf-8", { fatal: false }).decode(slice);
+        return new Response(JSON.stringify({
+          ok: true, filename: rec.filename, size_bytes: buf.length, text,
+          equipment_id: rec.equipment_id, truncated: buf.length > MAX_BYTES,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } finally {
+        try { if (sftp) await sftp.end(); } catch { /* ignore */ }
+      }
+    }
+
     const equipmentId: string | null = body.equipment_id ?? null;
 
     let q = supabase.from("equipment")
