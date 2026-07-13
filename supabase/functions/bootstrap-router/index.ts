@@ -19,6 +19,7 @@ import analyzeLog from "file:///home/deno/functions/analyze-log/index.ts";
 import ansibleProxy from "file:///home/deno/functions/ansible-proxy/index.ts";
 import bootstrapAdmin from "file:///home/deno/functions/bootstrap-admin/index.ts";
 import backupStorageCheck from "file:///home/deno/functions/backup-storage-check/index.ts";
+import logStorageScan from "file:///home/deno/functions/log-storage-scan/index.ts";
 
 const routes: Record<string, (req: Request) => Promise<Response>> = {
   "zabbix-proxy": zabbixProxy,
@@ -42,6 +43,7 @@ const routes: Record<string, (req: Request) => Promise<Response>> = {
   "ansible-proxy": ansibleProxy,
   "bootstrap-admin": bootstrapAdmin,
   "backup-storage-check": backupStorageCheck,
+  "log-storage-scan": logStorageScan,
 };
 
 Deno.serve(async (req) => {
