@@ -459,6 +459,62 @@ export default function Equipment() {
                     </>
                   )}
                 </div>
+                <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <ScrollText className="h-4 w-4 text-primary" /> Логи оборудования (SFTP)
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Хранилище логов</Label>
+                    <Select
+                      value={form.log_storage_id || "none"}
+                      onValueChange={(v) => setForm({ ...form, log_storage_id: v === "none" ? "" : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Не используется" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Не используется —</SelectItem>
+                        {backupStorages.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}{s.enabled ? "" : " (откл.)"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Можно указать то же SFTP, что и для бэкапов.</p>
+                  </div>
+                  {form.log_storage_id && (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Каталог с логами</Label>
+                        <Input value={form.log_path}
+                          onChange={(e) => setForm({ ...form, log_path: e.target.value })}
+                          placeholder="logs/  или logs/{name}/" />
+                        <p className="text-xs text-muted-foreground">
+                          Относительно базового пути. Подстановки: <code>{"{name}"}</code>, <code>{"{model}"}</code>, <code>{"{serial}"}</code>.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Шаблон имени файла (glob)</Label>
+                        <Input value={form.log_filename_pattern}
+                          onChange={(e) => setForm({ ...form, log_filename_pattern: e.target.value })}
+                          placeholder="ibmc_*Log_{name}_*.txt" />
+                        <p className="text-xs text-muted-foreground">
+                          Если каталог общий — задайте шаблон, чтобы отобрать только «свои» файлы.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Расширения</Label>
+                          <Input value={form.log_extensions}
+                            onChange={(e) => setForm({ ...form, log_extensions: e.target.value })}
+                            placeholder=".txt, .log" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Возраст, дней</Label>
+                          <Input type="number" min={1} value={form.log_max_age_days}
+                            onChange={(e) => setForm({ ...form, log_max_age_days: Number(e.target.value) || 30 })} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => saveMutation.mutate(form)} disabled={!form.name || !form.site_id || saveMutation.isPending}>
