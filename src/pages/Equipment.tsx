@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2, Tag } from "lucide-react";
+import { Plus, Server, Pencil, Trash2, Filter, Activity, FolderArchive, PlayCircle, Loader2, Tag, ScrollText } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEquipmentHealth } from "@/hooks/useEquipmentHealth";
 import { HealthIndicator } from "@/components/equipment/HealthIndicator";
@@ -60,6 +60,11 @@ interface EquipForm {
   backup_min_size_kb: number;
   backup_md5_source: "sidecar" | "stored" | "none";
   backup_md5_expected: string;
+  log_storage_id: string;
+  log_path: string;
+  log_filename_pattern: string;
+  log_extensions: string;
+  log_max_age_days: number;
 }
 
 const empty: EquipForm = {
@@ -68,6 +73,8 @@ const empty: EquipForm = {
   backup_storage_id: "", backup_path: "", backup_filename_pattern: "", backup_extensions: "",
   backup_max_age_hours: 24, backup_min_size_kb: 1,
   backup_md5_source: "sidecar", backup_md5_expected: "",
+  log_storage_id: "", log_path: "", log_filename_pattern: "",
+  log_extensions: ".txt, .log", log_max_age_days: 30,
 };
 
 export default function Equipment() {
@@ -189,6 +196,13 @@ export default function Equipment() {
         backup_min_size_kb: f.backup_min_size_kb || null,
         backup_md5_source: f.backup_md5_source,
         backup_md5_expected: f.backup_md5_expected || null,
+        log_storage_id: f.log_storage_id || null,
+        log_path: f.log_path || null,
+        log_filename_pattern: f.log_filename_pattern || null,
+        log_extensions: f.log_extensions
+          ? f.log_extensions.split(",").map((s) => s.trim()).filter(Boolean)
+          : null,
+        log_max_age_days: f.log_max_age_days || null,
       } as any;
       if (editing) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", editing);
@@ -240,6 +254,11 @@ export default function Equipment() {
       backup_min_size_kb: eq.backup_min_size_kb ?? 1,
       backup_md5_source: (eq.backup_md5_source as any) ?? "sidecar",
       backup_md5_expected: eq.backup_md5_expected ?? "",
+      log_storage_id: eq.log_storage_id ?? "",
+      log_path: eq.log_path ?? "",
+      log_filename_pattern: eq.log_filename_pattern ?? "",
+      log_extensions: Array.isArray(eq.log_extensions) ? eq.log_extensions.join(", ") : ".txt, .log",
+      log_max_age_days: eq.log_max_age_days ?? 30,
     });
     setEditing(eq.id);
     setOpen(true);
