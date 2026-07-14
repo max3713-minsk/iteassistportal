@@ -76,7 +76,8 @@ export default function MonitoringLogs() {
   const eqList: EqAggr[] = useMemo(() => {
     const out: EqAggr[] = equipmentList.map((e) => {
       // Имя категории берётся из связанной таблицы equipment_categories.
-      const category = e.equipment_categories?.[0]?.name ?? null;
+      const cat = e.equipment_categories;
+      const category = (Array.isArray(cat) ? cat[0]?.name : cat?.name) ?? null;
       // Совпавшие задачи логов: либо без category_id (общие), либо привязанные к той же категории.
       const matched = logTasks.filter((t) => !t.category_id || t.category_id === e.category_id);
       return { id: e.id, name: e.name, model: e.model, category, category_id: e.category_id, tasks: matched };
