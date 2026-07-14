@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
-import { Phone, Mail, Globe, Clock, ShieldPlus } from "lucide-react";
+import { Clock, ShieldPlus } from "lucide-react";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
