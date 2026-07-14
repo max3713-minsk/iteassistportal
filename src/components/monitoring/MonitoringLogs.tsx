@@ -34,16 +34,19 @@ export default function MonitoringLogs() {
   const [dlgOpen, setDlgOpen] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
-  // Всё оборудование.
+  // Всё оборудование с именем категории из связи.
   const { data: equipmentList = [] } = useQuery({
     queryKey: ["logs-all-equipment"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("equipment")
-        .select("id, name, model, category, category_id, site_id")
+        .select("id, name, model, category_id, site_id, equipment_categories(name)")
         .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as {
+        id: string; name: string; model: string | null; category_id: string | null; site_id: string | null;
+        equipment_categories: { name: string }[] | null;
+      }[];
     },
   });
 
@@ -71,10 +74,12 @@ export default function MonitoringLogs() {
   };
 
   const eqList: EqAggr[] = useMemo(() => {
-    const out: EqAggr[] = (equipmentList as any[]).map((e) => {
+    const out: EqAggr[] = equipmentList.map((e) => {
+      // Имя категории берётся из связанной таблицы equipment_categories.
+      const category = e.equipment_categories?.[0]?.name ?? null;
       // Совпавшие задачи логов: либо без category_id (общие), либо привязанные к той же категории.
       const matched = logTasks.filter((t) => !t.category_id || t.category_id === e.category_id);
-      return { id: e.id, name: e.name, model: e.model, category: e.category, category_id: e.category_id, tasks: matched };
+      return { id: e.id, name: e.name, model: e.model, category, category_id: e.category_id, tasks: matched };
     });
     const q = search.trim().toLowerCase();
     return out
