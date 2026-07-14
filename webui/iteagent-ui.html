@@ -456,7 +456,7 @@
         <a class="support-card" id="sup-email" href="#">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></div>
           <div class="title">Email</div>
-          <div class="desc">support@iteng.by</div>
+          <div class="desc">support@assistportal.local</div>
         </a>
         <a class="support-card" id="sup-portal" href="#" target="_blank" rel="noopener">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3v6H4a1 1 0 0 1-1-1v-5zM18 14h3v5a1 1 0 0 1-1 1h-2v-6z"/><path d="M3 14a9 9 0 0 1 18 0"/><path d="M21 14v2a4 4 0 0 1-4 4h-2"/></svg></div>
@@ -1051,7 +1051,7 @@ function renderSupport() {
   const s = state.sysinfo || {};
   const c = state.config || {};
   const host = s.hostname || 'unknown';
-  $('sup-email').href = `mailto:support@iteng.by?subject=${encodeURIComponent('Поддержка ' + host)}`;
+  $('sup-email').href = `mailto:support@assistportal.local?subject=${encodeURIComponent('Поддержка ' + host)}`;
   if (c.portal_url) $('sup-portal').href = c.portal_url;
   const rows = [
     ['Hostname', s.hostname || '—'],
