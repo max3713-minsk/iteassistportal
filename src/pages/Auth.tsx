@@ -94,7 +94,7 @@ export default function Auth() {
             {/* В тёмной теме — оригинал; в светлой — инвертируем чёрный в красный (--primary) через CSS-фильтр */}
             <BrandLogo className="h-20 w-auto mx-auto dark:[filter:none] [filter:brightness(0)_saturate(100%)_invert(18%)_sepia(98%)_saturate(7000%)_hue-rotate(355deg)_brightness(95%)_contrast(115%)]" />
           </div>
-          <CardTitle className="font-heading text-2xl">ITE Assist Portal</CardTitle>
+          <CardTitle className="font-heading text-2xl">Assist Portal</CardTitle>
           <CardDescription>Портал технической поддержки</CardDescription>
         </CardHeader>
         <CardContent>
@@ -160,29 +160,9 @@ export default function Auth() {
         </Card>
       )}
 
-      {/* Company info footer */}
-      <div className="mt-8 text-center space-y-2 max-w-md">
-        <p className="text-sm font-medium text-muted-foreground">
-          ООО «ИнноТех Инжиниринг»
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <a href="tel:+375336605070" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-            <Phone className="h-3 w-3" />
-            +375 33 660 50 70
-          </a>
-          <a href="mailto:info@iteng.by" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-            <Mail className="h-3 w-3" />
-            info@iteng.by
-          </a>
-          <a href="https://iteng.by" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-            <Globe className="h-3 w-3" />
-            iteng.by
-          </a>
-        </div>
-        <p className="text-xs text-muted-foreground inline-flex items-center gap-1 justify-center">
-          <Clock className="h-3 w-3" />
-          Пн–Пт: 9:00 – 18:00
-        </p>
+      <div className="mt-8 text-center text-xs text-muted-foreground inline-flex items-center gap-1 justify-center">
+        <Clock className="h-3 w-3" />
+        Пн–Пт: 9:00 – 18:00
       </div>
     </div>
   );
