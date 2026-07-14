@@ -264,7 +264,7 @@ export default function AppSidebar() {
         {!collapsed && (
           <div className="min-w-0">
             <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">Assist Portal</h1>
-            <p className="text-[11px] text-sidebar-foreground/50 truncate">Assist Portal</p>
+            <p className="text-[11px] text-sidebar-foreground/50 truncate">AP</p>
           </div>
         )}
       </div>
