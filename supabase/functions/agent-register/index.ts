@@ -1,4 +1,4 @@
-// Регистрация агента IteAgent. POST /functions/v1/agent-register
+// Регистрация агента AP Agent. POST /functions/v1/agent-register
 // Принимает данные хоста, создаёт/обновляет запись в agent_registrations и
 // возвращает токен для последующей аутентификации (X-Agent-Token).
 import { createClient } from "npm:@supabase/supabase-js@2";

@@ -79,7 +79,7 @@ function clientFor3(ctx) {
 var list_agents_default = defineTool3({
   name: "list_agents",
   title: "List monitoring agents",
-  description: "List installed IteAgent instances (hostname, OS, version, last seen).",
+  description: "List installed AP Agent instances (hostname, OS, version, last seen).",
   inputSchema: {
     online_only: z3.boolean().default(false).describe("Only agents seen in the last 5 minutes."),
     limit: z3.number().int().min(1).max(200).default(100)
@@ -132,10 +132,10 @@ var list_equipment_default = defineTool4({
 // src/lib/mcp/index.ts
 var projectRef = "stersnytcxapngyrhugg";
 var mcp_default = defineMcp({
-  name: "ite-assist-portal-mcp",
-  title: "ITE Assist Portal",
+  name: "assist-portal-mcp",
+  title: "Assist Portal",
   version: "0.1.0",
-  instructions: "Read-only tools for the ITE Assist Portal: organizations, tickets, monitoring agents, and equipment. All queries run as the signed-in user with RLS enforced.",
+  instructions: "Read-only tools for the Assist Portal: organizations, tickets, monitoring agents, and equipment. All queries run as the signed-in user with RLS enforced.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"

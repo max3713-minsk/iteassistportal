@@ -35,7 +35,7 @@ export default function MobileNav() {
     <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b bg-card">
       <div className="flex items-center gap-2">
         <BrandLogo className="h-7 w-auto" />
-        <span className="font-heading font-semibold text-sm">ITE Assist Portal</span>
+        <span className="font-heading font-semibold text-sm">Assist Portal</span>
       </div>
       <div className="flex items-center gap-1">
         <GlobalSearch />

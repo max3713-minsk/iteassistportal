@@ -204,7 +204,7 @@ export async function generateClientReport(data: ReportData, opts?: { returnBlob
   );
 
   const doc = new Document({
-    creator: "ITE Assist Portal",
+    creator: "Assist Portal",
     title: `Отчёт ${o.organizationName}`,
     sections: [{ properties: {}, children }],
   });

@@ -8,11 +8,11 @@ import listEquipment from "./tools/list-equipment";
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
 
 export default defineMcp({
-  name: "ite-assist-portal-mcp",
-  title: "ITE Assist Portal",
+  name: "assist-portal-mcp",
+  title: "Assist Portal",
   version: "0.1.0",
   instructions:
-    "Read-only tools for the ITE Assist Portal: organizations, tickets, monitoring agents, and equipment. All queries run as the signed-in user with RLS enforced.",
+    "Read-only tools for the Assist Portal: organizations, tickets, monitoring agents, and equipment. All queries run as the signed-in user with RLS enforced.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

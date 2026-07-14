@@ -91,7 +91,7 @@ export default function SystemReset() {
       const payload = {
         exported_at: new Date().toISOString(),
         exported_by: user?.email ?? null,
-        portal: "ITE Assist Portal",
+        portal: "Assist Portal",
         version: 1,
         tables: result,
       };
@@ -99,7 +99,7 @@ export default function SystemReset() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `iteassist-backup-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+      a.download = `assist-backup-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       setHasExported(true);

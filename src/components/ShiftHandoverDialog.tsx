@@ -111,7 +111,7 @@ export function ShiftHandoverDialog({ open, onOpenChange }: { open: boolean; onO
         })),
       ];
 
-      const doc = new Document({ creator: "ITE Assist Portal", title: "Передача смены", sections: [{ properties: {}, children }] });
+      const doc = new Document({ creator: "Assist Portal", title: "Передача смены", sections: [{ properties: {}, children }] });
       const blob = await Packer.toBlob(doc);
       saveAs(blob, `Передача_смены_${format(new Date(), "yyyy-MM-dd_HHmm")}.docx`);
       await logAudit({ action: "Сдача смены: скачан DOCX", module: "handover" });

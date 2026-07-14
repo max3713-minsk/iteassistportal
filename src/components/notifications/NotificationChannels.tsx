@@ -432,7 +432,7 @@ function MattermostFields({ config, setConfig }: any) {
         </div>
         <div className="grid gap-2">
           <Label>Имя бота (опц.)</Label>
-          <Input value={config.username ?? ""} onChange={(e) => setConfig({ ...config, username: e.target.value })} placeholder="ITE Assist" />
+          <Input value={config.username ?? ""} onChange={(e) => setConfig({ ...config, username: e.target.value })} placeholder="Assist Portal" />
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -544,7 +544,7 @@ function MtsSmsFields({ config, setConfig }: any) {
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-2">
           <Label>Имя отправителя (alpha_name, до 11 симв.)</Label>
-          <Input maxLength={11} value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="ITE-Portal" />
+          <Input maxLength={11} value={config.sender_name ?? ""} onChange={(e) => setConfig({ ...config, sender_name: e.target.value })} placeholder="AP-Portal" />
         </div>
         <div className="grid gap-2">
           <Label>TTL, сек (300–259200)</Label>
@@ -637,7 +637,7 @@ function SmtpFields({ config, setConfig }: any) {
         </div>
         <div className="grid gap-2">
           <Label>Имя отправителя</Label>
-          <Input value={config.from_name ?? ""} onChange={(e) => setConfig({ ...config, from_name: e.target.value })} placeholder="ITE Assist Portal" />
+          <Input value={config.from_name ?? ""} onChange={(e) => setConfig({ ...config, from_name: e.target.value })} placeholder="Assist Portal" />
         </div>
       </div>
       <div className="grid gap-2">

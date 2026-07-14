@@ -190,7 +190,7 @@ export default function MonitoringHosts({ hosts, alerts, hostsLoading, onCreateT
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              Агенты IteAgent ({filteredAgents.length})
+              Агенты AP Agent ({filteredAgents.length})
             </CardTitle>
           </CardHeader>
           <CardContent>

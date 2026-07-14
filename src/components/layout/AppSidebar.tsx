@@ -263,8 +263,8 @@ export default function AppSidebar() {
         </button>
         {!collapsed && (
           <div className="min-w-0">
-            <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">ITE Assist Portal</h1>
-            <p className="text-[11px] text-sidebar-foreground/50 truncate">Innotech Engineering</p>
+            <h1 className="font-heading text-sm font-semibold text-sidebar-primary-foreground leading-tight">Assist Portal</h1>
+            <p className="text-[11px] text-sidebar-foreground/50 truncate">Assist Portal</p>
           </div>
         )}
       </div>

@@ -55,7 +55,7 @@ export async function previewSeafilePath(kind: SeafileKind, meta: Record<string,
 /** Upload a tiny test text file using the configured folder template for the given kind. */
 export async function sendSeafileTestFile(kind: SeafileKind): Promise<SeafileResult> {
   const stamp = new Date().toISOString();
-  const text = `ITEAssist Portal — тестовая выгрузка\nТип: ${kind}\nВремя: ${stamp}\n`;
+  const text = `Assist Portal — тестовая выгрузка\nТип: ${kind}\nВремя: ${stamp}\n`;
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   return sendToSeafile({
     kind,

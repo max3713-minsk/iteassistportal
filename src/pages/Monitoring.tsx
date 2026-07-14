@@ -66,7 +66,7 @@ export default function Monitoring() {
 
   const { data: isZabbixConfigured = false } = useZabbixConfigured();
 
-  // IteAgent agents (separate group, NOT Zabbix)
+  // AP Agent agents (separate group, NOT Zabbix)
   const { data: agents = [] } = useQuery({
     queryKey: ["monitoring-agents"],
     queryFn: async () => {

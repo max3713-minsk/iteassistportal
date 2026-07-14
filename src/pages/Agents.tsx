@@ -126,7 +126,7 @@ export default function Agents() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Агенты</h1>
           <p className="text-sm text-muted-foreground">
-            Установленные на серверах клиентов агенты IteAgent
+            Установленные на серверах клиентов агенты AP Agent
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>

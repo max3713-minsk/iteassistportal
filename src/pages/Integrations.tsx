@@ -236,7 +236,7 @@ function SeafilePanel() {
           </div>
           <div>
             <Label>Подкаталог по умолчанию</Label>
-            <Input placeholder="/ITEAssist" value={cfg.default_subdir || "/"}
+            <Input placeholder="/AssistPortal" value={cfg.default_subdir || "/"}
               onChange={(e) => updateCfg({ default_subdir: e.target.value })} />
           </div>
           <div>
