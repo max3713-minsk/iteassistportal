@@ -357,7 +357,7 @@ async function sendSmtp(cfg: any, message: string, title: string, overrideEmail?
   const username = String(cfg.username ?? "").trim();
   const password = String(cfg.password ?? "");
   const fromEmail = String(cfg.from_email ?? username).trim();
-  const fromName = String(cfg.from_name ?? "ITE Assist Portal").trim();
+  const fromName = String(cfg.from_name ?? "Assist Portal").trim();
   const toEmail = String(overrideEmail ?? cfg.to_email ?? cfg.recipient ?? "").trim();
   if (!host) throw new Error("SMTP: host обязателен");
   if (!username || !password) throw new Error("SMTP: username и password обязательны");

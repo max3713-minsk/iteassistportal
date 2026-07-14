@@ -11,9 +11,9 @@
   },
   "mcp": {
     "server": {
-      "name": "ite-assist-portal-mcp",
+      "name": "assist-portal-mcp",
       "version": "0.1.0",
-      "title": "ITE Assist Portal"
+      "title": "Assist Portal"
     },
     "tools": [
       {
@@ -72,7 +72,7 @@
       {
         "name": "list_agents",
         "title": "List monitoring agents",
-        "description": "List installed IteAgent instances (hostname, OS, version, last seen).",
+        "description": "List installed AP Agent instances (hostname, OS, version, last seen).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

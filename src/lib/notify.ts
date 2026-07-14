@@ -26,7 +26,7 @@ export async function testChannel(channelId: string, overridePhone?: string): Pr
         event_type: "test.channel",
         priority: "info",
         title: "Тестовое уведомление",
-        body: "Если вы видите это сообщение — канал настроен корректно. Источник: ITE Assist Portal.",
+        body: "Если вы видите это сообщение — канал настроен корректно. Источник: Assist Portal.",
         override_phone: overridePhone,
       },
     });

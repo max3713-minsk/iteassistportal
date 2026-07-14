@@ -12,7 +12,7 @@ function clientFor(ctx: ToolContext) {
 export default defineTool({
   name: "list_agents",
   title: "List monitoring agents",
-  description: "List installed IteAgent instances (hostname, OS, version, last seen).",
+  description: "List installed AP Agent instances (hostname, OS, version, last seen).",
   inputSchema: {
     online_only: z.boolean().default(false).describe("Only agents seen in the last 5 minutes."),
     limit: z.number().int().min(1).max(200).default(100),

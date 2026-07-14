@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ITEAgent</title>
+<title>AP Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -199,10 +199,10 @@
   <aside class="sidebar">
     <div class="logo">
       <!-- === ВСТАВЬТЕ BASE64 ЛОГОТИП СЮДА === -->
-      <img class="logo-mark" alt="ITE" src="data:image/png;base64,/* === ЗАМЕНИТЕ ЭТОТ base64 НА СВОЙ === */" />
+      <img class="logo-mark" alt="AP" src="data:image/png;base64,/* === ЗАМЕНИТЕ ЭТОТ base64 НА СВОЙ === */" />
       <!-- === КОНЕЦ МЕСТА ДЛЯ ЛОГОТИПА === -->
       <div class="logo-text">
-        <span class="name">IteAgent</span>
+        <span class="name">AP Agent</span>
         <span class="ver" id="agent-version">v0.1.0</span>
       </div>
     </div>
@@ -456,7 +456,7 @@
         <a class="support-card" id="sup-email" href="#">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></div>
           <div class="title">Email</div>
-          <div class="desc">support@iteng.by</div>
+          <div class="desc">support@assistportal.local</div>
         </a>
         <a class="support-card" id="sup-portal" href="#" target="_blank" rel="noopener">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3v6H4a1 1 0 0 1-1-1v-5zM18 14h3v5a1 1 0 0 1-1 1h-2v-6z"/><path d="M3 14a9 9 0 0 1 18 0"/><path d="M21 14v2a4 4 0 0 1-4 4h-2"/></svg></div>
@@ -1043,7 +1043,7 @@ async function testConnection() {
 
 function showTokenHelp() {
   infoDialog('Токен агента',
-    'Токен агента — уникальный ключ для идентификации этого сервера в портале ИнноТех Инжиниринг.\n\nКак получить токен:\n\n1. Откройте портал поддержки\n2. Перейдите в раздел «Агенты»\n3. Нажмите «Добавить агент»\n4. Скопируйте сгенерированный токен\n5. Вставьте его в поле «Токен агента» и нажмите «Сохранить»\n\nПри включённой авторегистрации токен заполняется автоматически после первого запуска.');
+    'Токен агента — уникальный ключ для идентификации этого сервера в портале Assist Portal.\n\nКак получить токен:\n\n1. Откройте портал поддержки\n2. Перейдите в раздел «Агенты»\n3. Нажмите «Добавить агент»\n4. Скопируйте сгенерированный токен\n5. Вставьте его в поле «Токен агента» и нажмите «Сохранить»\n\nПри включённой авторегистрации токен заполняется автоматически после первого запуска.');
 }
 
 // ───── Support
@@ -1051,7 +1051,7 @@ function renderSupport() {
   const s = state.sysinfo || {};
   const c = state.config || {};
   const host = s.hostname || 'unknown';
-  $('sup-email').href = `mailto:support@iteng.by?subject=${encodeURIComponent('Поддержка ' + host)}`;
+  $('sup-email').href = `mailto:support@assistportal.local?subject=${encodeURIComponent('Поддержка ' + host)}`;
   if (c.portal_url) $('sup-portal').href = c.portal_url;
   const rows = [
     ['Hostname', s.hostname || '—'],
