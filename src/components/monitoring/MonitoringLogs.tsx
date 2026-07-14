@@ -45,7 +45,7 @@ export default function MonitoringLogs() {
       if (error) throw error;
       return (data ?? []) as {
         id: string; name: string; model: string | null; category_id: string | null; site_id: string | null;
-        equipment_categories: { name: string }[] | null;
+        equipment_categories: { name: string } | null;
       }[];
     },
   });
